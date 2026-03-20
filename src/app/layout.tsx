@@ -21,8 +21,11 @@ const islandMoments = Island_Moments({
 });
 
 export const metadata: Metadata = {
-  title: "TRUSS",
-  description: "TRUSS app (migrating to Next.js)",
+  title: "Truss",
+  description: "Truss App (migrating to Next.js)",
+  icons: {
+    icon: "/Truss/2.svg",
+  },
 };
 
 export default function RootLayout({
