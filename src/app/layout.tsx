@@ -22,11 +22,11 @@ const islandMoments = Island_Moments({
 
 export const metadata: Metadata = {
   title: "Truss",
-  description: "Truss App (migrating to Next.js)",
+  description: "神戸大学 留学生支援サークル Truss の公式アプリです。/ This is the official app of Truss, the international student support club at Kobe University.",
   icons: {
     icon: "/truss-favicon.svg",
     shortcut: "/truss-favicon.svg",
-    apple: "/truss-favicon.svg",
+    apple: "/Truss.svg",
     other: {
       rel: "icon",
       url: "/truss-favicon.svg",
