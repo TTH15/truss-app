@@ -21,7 +21,6 @@ const translations = {
     passwordLabel: 'パスワード',
     passwordPlaceholder: 'パスワードを入力',
     loginButton: 'ログイン',
-    back: '戻る',
   },
   en: {
     title: 'Admin Login',
@@ -31,7 +30,6 @@ const translations = {
     passwordLabel: 'Password',
     passwordPlaceholder: 'Enter password',
     loginButton: 'Login',
-    back: 'Back',
   }
 };
 
@@ -48,11 +46,6 @@ export function AdminLogin({ language, onLogin, onBack }: AdminLoginProps) {
   return (
     <div className="min-h-screen bg-linear-to-br from-[#F5F1E8] via-[#EFE9DD] to-[#E8E4DB] py-12 px-4">
       <div className="container mx-auto max-w-md">
-        <Button onClick={onBack} variant="ghost" className="mb-4">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          {t.back}
-        </Button>
-
         <Card>
           <CardHeader className="text-center">
             <div className="mx-auto w-16 h-16 bg-linear-to-br from-[#49B1E4] to-[#3A9FD3] rounded-full flex items-center justify-center mb-4">

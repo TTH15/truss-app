@@ -225,7 +225,12 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
       });
 
       if (!res.ok) {
-        alert(language === 'ja' ? 'メールアドレスまたはパスワードが正しくありません' : 'Invalid email or password');
+        const errorPayload = (await res.json().catch(() => ({}))) as { error?: string };
+        alert(
+          language === 'ja'
+            ? `メールアドレスまたはパスワードが正しくありません${errorPayload.error ? ` (${errorPayload.error})` : ''}`
+            : `Invalid email or password${errorPayload.error ? ` (${errorPayload.error})` : ''}`
+        );
         return;
       }
 
@@ -253,13 +258,26 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
         };
       };
 
+      if (!accessToken || !refreshToken) {
+        alert(language === 'ja' ? '管理者トークンの取得に失敗しました' : 'Failed to obtain admin token');
+        return;
+      }
+
       const { error: sessionError } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
       });
       if (sessionError) {
-        alert(language === 'ja' ? '管理者セッションの作成に失敗しました' : 'Failed to create admin session');
-        return;
+        // Fallback: sign in directly to ensure a usable client session.
+        const { error: fallbackError } = await supabase.auth.signInWithPassword({ email, password });
+        if (fallbackError) {
+          alert(
+            language === 'ja'
+              ? `管理者セッションの作成に失敗しました: ${sessionError.message}`
+              : `Failed to create admin session: ${sessionError.message}`
+          );
+          return;
+        }
       }
 
       const adminUser: User = {

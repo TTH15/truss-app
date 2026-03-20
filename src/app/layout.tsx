@@ -26,10 +26,10 @@ export const metadata: Metadata = {
   icons: {
     icon: "/truss-favicon.svg",
     shortcut: "/truss-favicon.svg",
-    apple: "/Truss.svg",
+    apple: "/truss-favicon.svg",
     other: {
       rel: "icon",
-      url: "/Truss.svg",
+      url: "/truss-favicon.svg",
     },
   },
 };
