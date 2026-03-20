@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   description: "Truss App (migrating to Next.js)",
   icons: {
     icon: "/truss-favicon.svg",
-    shortcut: "/Truss.svg",
+    shortcut: "/truss-favicon.svg",
     apple: "/Truss.svg",
     other: {
       rel: "icon",
