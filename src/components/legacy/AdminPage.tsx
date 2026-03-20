@@ -110,24 +110,24 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
       <div className="flex min-h-[calc(100vh-80px)]">
         <aside className="w-64 bg-white border-r border-gray-200 hidden lg:block sticky top-[80px] self-start h-[calc(100vh-80px)] overflow-y-auto">
           <nav className="p-4 space-y-2">
-            <Button variant={currentTab === 'members' ? 'default' : 'ghost'} className={`w-full justify-start ${currentTab === 'members' ? 'bg-[#3D3D4E] hover:bg-[#2D2D3D]' : ''}`} onClick={() => setCurrentTab('members')}>
+            <Button variant={currentTab === 'members' ? 'default' : 'ghost'} className={`w-full justify-start ${currentTab === 'members' ? 'bg-[#3D3D4E] text-white hover:bg-[#2D2D3D] text-white' : ''}`} onClick={() => setCurrentTab('members')}>
               <Users className="w-5 h-5 mr-3" />
               {t.members}
               {pendingUsers.length > 0 && <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{pendingUsers.length}</span>}
             </Button>
-            <Button variant={currentTab === 'events' ? 'default' : 'ghost'} className={`w-full justify-start ${currentTab === 'events' ? 'bg-[#3D3D4E] hover:bg-[#2D2D3D]' : ''}`} onClick={() => setCurrentTab('events')}>
+            <Button variant={currentTab === 'events' ? 'default' : 'ghost'} className={`w-full justify-start ${currentTab === 'events' ? 'bg-[#3D3D4E] text-white hover:bg-[#2D2D3D] text-white' : ''}`} onClick={() => setCurrentTab('events')}>
               <Calendar className="w-5 h-5 mr-3" />
               {t.events}
             </Button>
-            <Button variant={currentTab === 'gallery' ? 'default' : 'ghost'} className={`w-full justify-start ${currentTab === 'gallery' ? 'bg-[#3D3D4E] hover:bg-[#2D2D3D]' : ''}`} onClick={() => setCurrentTab('gallery')}>
+            <Button variant={currentTab === 'gallery' ? 'default' : 'ghost'} className={`w-full justify-start ${currentTab === 'gallery' ? 'bg-[#3D3D4E] text-white hover:bg-[#2D2D3D] text-white' : ''}`} onClick={() => setCurrentTab('gallery')}>
               <Image className="w-5 h-5 mr-3" />
               {t.gallery}
             </Button>
-            <Button variant={currentTab === 'boards' ? 'default' : 'ghost'} className={`w-full justify-start ${currentTab === 'boards' ? 'bg-[#3D3D4E] hover:bg-[#2D2D3D]' : ''}`} onClick={() => setCurrentTab('boards')}>
+            <Button variant={currentTab === 'boards' ? 'default' : 'ghost'} className={`w-full justify-start ${currentTab === 'boards' ? 'bg-[#3D3D4E] text-white hover:bg-[#2D2D3D] text-white' : ''}`} onClick={() => setCurrentTab('boards')}>
               <FileText className="w-5 h-5 mr-3" />
               {t.boards}
             </Button>
-            <Button variant={currentTab === 'chat' ? 'default' : 'ghost'} className={`w-full justify-start ${currentTab === 'chat' ? 'bg-[#3D3D4E] hover:bg-[#2D2D3D]' : ''}`} onClick={() => setCurrentTab('chat')}>
+            <Button variant={currentTab === 'chat' ? 'default' : 'ghost'} className={`w-full justify-start ${currentTab === 'chat' ? 'bg-[#3D3D4E] text-white hover:bg-[#2D2D3D] text-white' : ''}`} onClick={() => setCurrentTab('chat')}>
               <MessageCircle className="w-5 h-5 mr-3" />
               {t.chat}
               {totalUnreadCount > 0 && <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{totalUnreadCount}</span>}
