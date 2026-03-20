@@ -51,7 +51,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to inspect auth users" }, { status: 500 });
   }
 
-  const existingAuthUser = usersData.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+  type AuthUserLite = { id: string; email?: string | null };
+  const users = ((usersData?.users ?? []) as unknown[]).filter(
+    (u): u is AuthUserLite =>
+      typeof u === "object" &&
+      u !== null &&
+      "id" in u &&
+      typeof (u as { id?: unknown }).id === "string"
+  );
+
+  const existingAuthUser = users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
   let authUserId = existingAuthUser?.id;
 
   if (existingAuthUser) {

@@ -16,7 +16,7 @@ const translations = {
   ja: {
     title: '運営ログイン',
     subtitle: '運営メンバー専用のログイン画面です',
-    emailLabel: 'メールアドレス',
+    emailLabel: 'ログインID',
     emailPlaceholder: 'admin@example.com',
     passwordLabel: 'パスワード',
     passwordPlaceholder: 'パスワードを入力',
