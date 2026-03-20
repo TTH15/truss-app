@@ -217,26 +217,72 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
   }, [user, eventParticipants]);
 
   const handleAdminLogin = async (email: string, password: string) => {
-    if (email === 'admin@truss.com' && password === '9bFYSf%&CXDr') {
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        alert(language === 'ja' ? 'メールアドレスまたはパスワードが正しくありません' : 'Invalid email or password');
+        return;
+      }
+
+      const data = await res.json();
+      const { accessToken, refreshToken, user: dbUser } = data as {
+        accessToken: string;
+        refreshToken: string;
+        user: {
+          id: string;
+          email: string;
+          name: string;
+          nickname: string;
+          furigana: string;
+          birthday: string | null;
+          languages: string[];
+          country: string;
+          category: User['category'];
+          approved: boolean;
+          is_admin: boolean;
+          registration_step: User['registrationStep'];
+          email_verified: boolean;
+          initial_registered: boolean;
+          profile_completed: boolean;
+          fee_paid: boolean;
+        };
+      };
+
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (sessionError) {
+        alert(language === 'ja' ? '管理者セッションの作成に失敗しました' : 'Failed to create admin session');
+        return;
+      }
+
       const adminUser: User = {
-        id: 'admin-001', email: email, name: 'デモ管理者', nickname: 'Demo', furigana: 'デモカンリシャ',
-        birthday: '1990-01-01', languages: ['日本語', 'English'], birthCountry: 'Japan', category: 'japanese',
-        approved: true, isAdmin: true, registrationStep: 'fully_active', emailVerified: true, initialRegistered: true,
-        profileCompleted: true, feePaid: true,
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name,
+        nickname: dbUser.nickname,
+        furigana: dbUser.furigana,
+        birthday: dbUser.birthday ?? '',
+        languages: dbUser.languages ?? [],
+        birthCountry: dbUser.country,
+        country: dbUser.country,
+        category: dbUser.category,
+        approved: dbUser.approved,
+        isAdmin: dbUser.is_admin,
+        registrationStep: dbUser.registration_step,
+        emailVerified: dbUser.email_verified,
+        initialRegistered: dbUser.initial_registered,
+        profileCompleted: dbUser.profile_completed,
+        feePaid: dbUser.fee_paid,
       };
       setUser(adminUser);
       navigateTo('admin');
-      return;
-    }
-    if (standaloneAdmin) {
-      alert(language === 'ja' ? 'メールアドレスまたはパスワードが正しくありません' : 'Invalid email or password');
-      return;
-    }
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        alert(language === 'ja' ? 'メールアドレスまたはパスワードが正しくありません' : 'Invalid email or password');
-      }
     } catch (error) {
       console.error('Admin login error:', error);
       alert(language === 'ja' ? 'ログインエラーが発生しました' : 'Login error occurred');
@@ -346,6 +392,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
   };
   const handleLogout = async () => {
     if (standaloneAdmin) {
+      await signOut();
       setUser(null);
       setTempEmail('');
       setCurrentPage('admin-login');
