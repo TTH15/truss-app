@@ -13,7 +13,7 @@ interface LoginScreenProps {
 
 function Group() {
   return (
-    <div className="[mask-clip:no-clip,_no-clip,_no-clip,_no-clip,_no-clip] [mask-composite:intersect,_intersect,_intersect,_intersect,_intersect] [mask-mode:alpha,_alpha,_alpha,_alpha,_alpha] [mask-repeat:no-repeat,_no-repeat,_no-repeat,_no-repeat,_no-repeat] absolute inset-[14.78%_72.43%_79.09%_21.45%] mask-position-[0px,_0px,_-0.307px,_0px,_0px_0px,_0px,_-0.3px,_0px,_0px] mask-size-[15.978px_15.733px,_15.978px_15.733px,_16.704px_16.447px,_15.978px_15.733px,_15.978px_15.733px]" data-name="Group" style={{ maskImage: `url('${imgGroup}'), url('${imgGroup1}'), url('${imgGroup2}'), url('${imgGroup3}'), url('${imgGroup4}')` }}>
+    <div className="[mask-clip:no-clip,_no-clip,_no-clip,_no-clip,_no-clip] [mask-composite:intersect,_intersect,_intersect,_intersect,_intersect] [mask-mode:alpha,_alpha,_alpha,_alpha,_alpha] [mask-repeat:no-repeat,_no-repeat,_no-repeat,_no-repeat,_no-repeat] absolute inset-[14.78%_72.43%_79.09%_21.45%] mask-position-[0px,0px,-0.307px,0px,0px_0px,0px,-0.3px,0px,0px] mask-size-[15.978px_15.733px,_15.978px_15.733px,_16.704px_16.447px,_15.978px_15.733px,_15.978px_15.733px]" data-name="Group" style={{ maskImage: `url('${imgGroup}'), url('${imgGroup1}'), url('${imgGroup2}'), url('${imgGroup3}'), url('${imgGroup4}')` }}>
       <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 15.9781 15.7332">
         <g id="Group">
           <path d={svgPaths.p28e3b00} fill="var(--fill-0, #7ED957)" id="Vector" />
@@ -81,9 +81,9 @@ function Truss() {
           <div id="green-dot" className="absolute rounded-full" style={{ width: '22px', height: '22px', backgroundColor: '#82d961', top: '-38px', left: '-11px' }} />
         </div>
       </div>
-      <div className="inline-block" style={{ fontSize: '70px', color: '#5dbbff', marginLeft: '30px', letterSpacing: '10px', zIndex: 1 }}>
+      {/* <div className="inline-block" style={{ fontSize: '70px', color: '#5dbbff', marginLeft: '30px', letterSpacing: '10px', zIndex: 1 }}>
         russ
-      </div>
+      </div> */}
     </div>
   );
 }
