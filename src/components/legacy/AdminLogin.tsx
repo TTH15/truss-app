@@ -3,12 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { ArrowLeft, Shield } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import type { Language } from '../../domain/types/app';
 
 interface AdminLoginProps {
   language: Language;
-  onLogin: (email: string, password: string) => void;
+  onLogin: (email: string, password: string) => void | Promise<void>;
   onBack: () => void;
 }
 
@@ -33,14 +33,25 @@ const translations = {
   }
 };
 
-export function AdminLogin({ language, onLogin, onBack }: AdminLoginProps) {
+export function AdminLogin({ language, onLogin }: AdminLoginProps) {
   const t = translations[language];
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(email, password);
+
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      await onLogin(email, password);
+    } finally {
+      // 成功時は親側の遷移でアンマウントされますが、
+      // 失敗時にローディングが残らないよう保険で戻します。
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -55,19 +66,61 @@ export function AdminLogin({ language, onLogin, onBack }: AdminLoginProps) {
             <CardDescription>{t.subtitle}</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" aria-busy={isSubmitting}>
               <div className="space-y-2">
                 <Label htmlFor="email">{t.emailLabel}</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPlaceholder} required />
+                {isSubmitting ? (
+                  <div className="h-10 rounded-md bg-[#F3F3F3] animate-pulse" />
+                ) : (
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t.emailPlaceholder}
+                    required
+                    disabled={isSubmitting}
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">{t.passwordLabel}</Label>
-                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t.passwordPlaceholder} required />
+                {isSubmitting ? (
+                  <div className="h-10 rounded-md bg-[#F3F3F3] animate-pulse" />
+                ) : (
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={t.passwordPlaceholder}
+                    required
+                    disabled={isSubmitting}
+                  />
+                )}
               </div>
-              <Button type="submit" className="w-full bg-[#49B1E4] hover:bg-[#3A9FD3]">
-                {t.loginButton}
+
+              <Button
+                type="submit"
+                className="w-full bg-[#49B1E4] hover:bg-[#3A9FD3]"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full border-2 border-white/70 border-t-white animate-spin" />
+                    {language === 'ja' ? 'ログイン中...' : 'Logging in...'}
+                  </span>
+                ) : (
+                  t.loginButton
+                )}
               </Button>
             </form>
+
+            {isSubmitting && (
+              <p className="mt-3 text-center text-xs text-muted-foreground">
+                {language === 'ja' ? 'しばらくお待ちください。' : 'Please wait a moment.'}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
