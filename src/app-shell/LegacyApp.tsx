@@ -176,7 +176,64 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
   };
 
   useEffect(() => {
-    if (standaloneAdmin) return;
+    // 管理者専用画面は、ユーザー認証フローと分離しているため
+    // ここでは「セッションが復元されている場合は admin に戻す」だけ行う。
+    if (standaloneAdmin) {
+      const run = async () => {
+        if (authLoading) return;
+
+        if (!authUser) {
+          setUser(null);
+          setCurrentPage('admin-login');
+          return;
+        }
+
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select(
+              'id,email,name,nickname,furigana,birthday,languages,country,category,approved,is_admin,registration_step,email_verified,initial_registered,profile_completed,fee_paid'
+            )
+            .eq('auth_id', authUser.id)
+            .single();
+
+          if (error || !data || !data.is_admin) {
+            setUser(null);
+            setCurrentPage('admin-login');
+            return;
+          }
+
+          setUser({
+            id: data.id,
+            email: data.email,
+            name: data.name,
+            nickname: data.nickname,
+            furigana: data.furigana,
+            birthday: data.birthday ?? '',
+            languages: data.languages ?? [],
+            birthCountry: data.country,
+            country: data.country,
+            category: data.category,
+            approved: data.approved,
+            isAdmin: data.is_admin,
+            registrationStep: data.registration_step,
+            emailVerified: data.email_verified,
+            initialRegistered: data.initial_registered,
+            profileCompleted: data.profile_completed,
+            feePaid: data.fee_paid,
+          });
+          setCurrentPage('admin');
+        } catch (e) {
+          console.error('Standalone admin session restore failed:', e);
+          setUser(null);
+          setCurrentPage('admin-login');
+        }
+      };
+
+      void run();
+      return;
+    }
+
     if (authUser) {
       setUser(authUser);
       if (isOAuthCallback()) {
