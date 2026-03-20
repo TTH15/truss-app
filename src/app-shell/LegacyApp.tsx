@@ -22,6 +22,8 @@ import {
 import '../styles/globals.css';
 import type { Event, Language, User } from '../domain/types/app';
 
+const ADMIN_PATH = '/admin-z8x4m2q9r7';
+
 export type {
   Language,
   RegistrationStep,
@@ -118,7 +120,7 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
     landing: '/',
     login: '/login',
     dashboard: '/dashboard',
-    admin: '/admin',
+    admin: ADMIN_PATH,
     profile: '/profile',
   };
 
@@ -127,7 +129,7 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
     '/': 'landing',
     '/login': 'login',
     '/dashboard': 'dashboard',
-    '/admin': 'admin',
+    [ADMIN_PATH]: 'admin',
     '/profile': 'profile',
   };
 
@@ -210,7 +212,7 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
   }, [user, eventParticipants]);
 
   const handleAdminLogin = async (email: string, password: string) => {
-    if (email === 'demo@truss.local' && password === 'demo') {
+    if (email === 'admin@truss.com' && password === '9bFYSf%&CXDr') {
       const adminUser: User = {
         id: 'admin-001', email: email, name: 'デモ管理者', nickname: 'Demo', furigana: 'デモカンリシャ',
         birthday: '1990-01-01', languages: ['日本語', 'English'], birthCountry: 'Japan', category: 'japanese',
@@ -430,23 +432,15 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
   const isLoadingUser = authLoading || (session && !authUser);
   if (isLoadingUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-orange-50 to-white">
-        <div className="text-center">
-          <div className="relative mb-6">
-            <div className="w-16 h-16 mx-auto">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                <g className="animate-pulse">
-                  <line x1="10" y1="80" x2="50" y2="20" stroke="#f97316" strokeWidth="4" strokeLinecap="round" />
-                  <line x1="50" y1="20" x2="90" y2="80" stroke="#f97316" strokeWidth="4" strokeLinecap="round" />
-                  <line x1="10" y1="80" x2="90" y2="80" stroke="#f97316" strokeWidth="4" strokeLinecap="round" />
-                  <line x1="30" y1="50" x2="70" y2="50" stroke="#fb923c" strokeWidth="3" strokeLinecap="round" className="opacity-70" />
-                </g>
-                <circle cx="50" cy="50" r="3" fill="#f97316" className="animate-ping" />
-              </svg>
-            </div>
-          </div>
-          <h2 className="text-xl font-bold text-orange-600 mb-2">TRUSS</h2>
-          <p className="text-gray-500 text-sm">{language === 'ja' ? '読み込み中...' : 'Loading...'}</p>
+      <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center px-6">
+        <div className="text-center flex flex-col items-center gap-5">
+          <img
+            src="/Truss/3.svg"
+            alt="Truss"
+            className="w-[280px] h-auto animate-pulse"
+            draggable={false}
+          />
+          <p className="text-[#3D3D4E] text-sm">{language === 'ja' ? '読み込み中...' : 'Loading...'}</p>
         </div>
       </div>
     );
