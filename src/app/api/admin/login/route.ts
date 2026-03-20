@@ -7,6 +7,12 @@ type LoginBody = {
   password?: string;
 };
 
+type AuthTokenResponse = {
+  access_token: string;
+  refresh_token: string;
+  user?: { id?: string };
+};
+
 export async function POST(req: Request) {
   const { email, password } = (await req.json()) as LoginBody;
 
@@ -26,7 +32,7 @@ export async function POST(req: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // 1) Verify admin credentials from dedicated table.
+  // 1) Verify admin credentials against dedicated table.
   const { data: adminAccount, error: adminAccountError } = await adminClient
     .from("admin_accounts")
     .select("email,password_hash,display_name,is_active")
@@ -37,103 +43,145 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
-  const passwordMatched = await bcrypt.compare(password, adminAccount.password_hash as string);
+  const passwordMatched = await bcrypt.compare(
+    password,
+    adminAccount.password_hash as string
+  );
   if (!passwordMatched) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
-  // 2) Ensure a Supabase Auth user exists and is login-capable with this credential.
-  const { data: usersData, error: listUsersError } = await adminClient.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  });
-  if (listUsersError) {
-    return NextResponse.json({ error: "Failed to inspect auth users" }, { status: 500 });
-  }
-
-  type AuthUserLite = { id: string; email?: string | null };
-  const users = ((usersData?.users ?? []) as unknown[]).filter(
-    (u): u is AuthUserLite =>
-      typeof u === "object" &&
-      u !== null &&
-      "id" in u &&
-      typeof (u as { id?: unknown }).id === "string"
-  );
-
-  const existingAuthUser = users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
-  let authUserId = existingAuthUser?.id;
-
-  if (existingAuthUser) {
-    const { error: updateAuthError } = await adminClient.auth.admin.updateUserById(existingAuthUser.id, {
-      password,
-      email_confirm: true,
-      user_metadata: { role: "admin" },
+  const createAuthTokens = async () => {
+    const authRes = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: {
+        apikey: supabaseAnonKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
     });
-    if (updateAuthError) {
-      return NextResponse.json({ error: "Failed to sync auth user" }, { status: 500 });
+
+    if (!authRes.ok) return { ok: false as const, error: `Auth token failed: ${authRes.status}` };
+
+    const authData = (await authRes.json()) as AuthTokenResponse;
+    if (!authData.access_token || !authData.refresh_token) {
+      return { ok: false as const, error: "Auth token response missing fields" };
     }
-  } else {
-    const { data: createdAuthUser, error: createAuthError } = await adminClient.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { role: "admin" },
-    });
-    if (createAuthError || !createdAuthUser.user?.id) {
-      return NextResponse.json({ error: "Failed to create auth user" }, { status: 500 });
+
+    // Token response might not include user.id. Resolve by email using admin API.
+    let authUserId = authData.user?.id;
+    if (!authUserId) {
+      try {
+        // supabase-js v2: auth.admin.getUserByEmail
+        const res = await (adminClient.auth.admin as any).getUserByEmail(email);
+        authUserId = res?.data?.user?.id ?? res?.data?.user?.uid ?? res?.data?.id;
+      } catch {
+        // fallback to listUsers (slower but reliable)
+        const adminUsers = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        const match = (adminUsers as any)?.data?.users?.find(
+          (u: any) => (u?.email ?? "").toLowerCase() === email.toLowerCase()
+        );
+        authUserId = match?.id ?? match?.uid;
+      }
     }
-    authUserId = createdAuthUser.user.id;
+
+    if (!authUserId) return { ok: false as const, error: "Failed to resolve auth user id" };
+
+    return {
+      ok: true as const,
+      accessToken: authData.access_token,
+      refreshToken: authData.refresh_token,
+      authUserId,
+    };
+  };
+
+  // 2) Try to obtain auth tokens first (fast path).
+  let tokenAttempt = await createAuthTokens();
+  if (!tokenAttempt.ok) {
+    // 3) If auth user/password is not set up in Supabase yet, create or update it, then retry once.
+    const adminUsers = (await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 }).catch(() => null)) as
+      | { users: Array<{ id: string; email?: string | null }> }
+      | null;
+
+    const users = (adminUsers?.users ?? []) as Array<{ id: string; email?: string | null }>;
+    const existing = users.find(
+      (u) => (u.email ?? "").toLowerCase() === email.toLowerCase()
+    );
+
+    if (!existing) {
+      const { data: createdUser, error: createUserError } = await adminClient.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { role: "admin" },
+      });
+
+      if (createUserError) {
+        return NextResponse.json({ error: "Failed to create auth user" }, { status: 500 });
+      }
+
+      if (!createdUser.user?.id) {
+        return NextResponse.json({ error: "Failed to resolve created auth user" }, { status: 500 });
+      }
+    } else {
+      const { error: updateUserError } = await adminClient.auth.admin.updateUserById(existing.id, {
+        password,
+        email_confirm: true,
+        user_metadata: { role: "admin" },
+      });
+      if (updateUserError) {
+        return NextResponse.json({ error: "Failed to update auth user password" }, { status: 500 });
+      }
+    }
+
+    const retry = await createAuthTokens();
+    if (!retry.ok) {
+      return NextResponse.json({ error: retry.error }, { status: 401 });
+    }
+
+    tokenAttempt = retry;
   }
 
-  if (!authUserId) {
-    return NextResponse.json({ error: "Failed to resolve auth user" }, { status: 500 });
+  if (!tokenAttempt.ok) {
+    return NextResponse.json({ error: "Auth token preparation failed" }, { status: 401 });
   }
 
-  // 3) Ensure users row exists for RLS checks.
-  const displayName = (adminAccount.display_name as string) || "Admin";
-  const { error: upsertUserError } = await adminClient.from("users").upsert(
-    {
-      auth_id: authUserId,
-      email,
-      name: displayName,
-      nickname: displayName,
-      furigana: displayName,
-      birthday: null,
-      languages: ["日本語", "English"],
-      country: "Japan",
-      category: "japanese",
-      approved: true,
-      is_admin: true,
-      registration_step: "fully_active",
-      email_verified: true,
-      initial_registered: true,
-      profile_completed: true,
-      fee_paid: true,
-    },
-    { onConflict: "auth_id" }
-  );
+  const accessToken = tokenAttempt.accessToken;
+  const refreshToken = tokenAttempt.refreshToken;
+  const authUserId = tokenAttempt.authUserId;
+
+  // 4) Ensure `public.users` row exists for RLS.
+  const displayName =
+    (adminAccount.display_name as string | null | undefined) ?? "Admin";
+
+  const upsertPayload = {
+    auth_id: authUserId,
+    email,
+    name: displayName,
+    nickname: displayName,
+    furigana: displayName,
+    birthday: null as string | null,
+    languages: ["日本語", "English"],
+    country: "Japan",
+    category: "japanese",
+    approved: true,
+    is_admin: true,
+    registration_step: "fully_active",
+    email_verified: true,
+    initial_registered: true,
+    profile_completed: true,
+    fee_paid: true,
+  };
+
+  const { error: upsertUserError } = await adminClient
+    .from("users")
+    .upsert(upsertPayload, { onConflict: "auth_id" });
+
   if (upsertUserError) {
     return NextResponse.json({ error: "Failed to sync users row" }, { status: 500 });
   }
 
-  // 4) Create normal auth tokens for the browser client.
-  const authRes = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: {
-      apikey: supabaseAnonKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!authRes.ok) {
-    return NextResponse.json({ error: "Failed to create auth token" }, { status: 500 });
-  }
-
-  const authData = (await authRes.json()) as {
-    access_token: string;
-    refresh_token: string;
-  };
-
+  // 5) Return user row for client-side `User` mapping.
   const { data: dbUser, error: userError } = await adminClient
     .from("users")
     .select(
@@ -141,13 +189,14 @@ export async function POST(req: Request) {
     )
     .eq("auth_id", authUserId)
     .single();
+
   if (userError || !dbUser || !dbUser.is_admin) {
     return NextResponse.json({ error: "Admin permission required" }, { status: 403 });
   }
 
   return NextResponse.json({
-    accessToken: authData.access_token,
-    refreshToken: authData.refresh_token,
+    accessToken,
+    refreshToken,
     user: dbUser,
   });
 }
