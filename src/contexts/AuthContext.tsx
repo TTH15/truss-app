@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Query timeout after 15s')), 15000);
       });
-      const queryPromise = supabase.from('users').select('*').eq('auth_id', authId).single();
+      const queryPromise = supabase.from('users').select('*').eq('auth_id', authId).maybeSingle();
       const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
       if (error || !data) return null;
       return {

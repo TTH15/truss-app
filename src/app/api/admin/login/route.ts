@@ -215,3 +215,16 @@ export async function POST(req: Request) {
   });
 }
 
+export async function GET() {
+  // 誤ってブラウザで開かれた場合でも原因が分かるようにする
+  return NextResponse.json({ error: "Use POST /api/admin/login" }, { status: 200 });
+}
+
+export async function HEAD() {
+  return new NextResponse(null, { status: 200 });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204 });
+}
+

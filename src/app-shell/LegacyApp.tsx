@@ -195,7 +195,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
               'id,email,name,nickname,furigana,birthday,languages,country,category,approved,is_admin,registration_step,email_verified,initial_registered,profile_completed,fee_paid'
             )
             .eq('auth_id', authUser.id)
-            .single();
+            .maybeSingle();
 
           if (error || !data || !data.is_admin) {
             setUser(null);
