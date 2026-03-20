@@ -136,9 +136,8 @@ export function LoginScreen({ onLogin, onAdminLogin, language, onLanguageChange 
           </p>
           <div className="relative h-[28px] w-[283px]">
             <Icon />
-            <p className="absolute font-semibold inset-0 leading-[28px] not-italic text-[#3d3d4e] text-[0px] text-center tracking-[-0.4395px]">
-              <span className="text-[18px]">　　</span>
-              <span className="text-[15px]">{language === 'ja' ? 'Googleアカウントを利用します' : 'Use Google Account'}</span>
+            <p className="absolute inset-0 leading-[28px] font-semibold not-italic text-[#3d3d4e] text-[15px] text-center tracking-[-0.4395px]">
+              {language === 'ja' ? 'Googleアカウントを利用します' : 'Use Google Account'}
             </p>
           </div>
         </div>

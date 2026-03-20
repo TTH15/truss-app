@@ -223,7 +223,8 @@ html {
 /* russは動かさない - アニメーション削除 */
 
 #t-bar-axis {
-  animation: tiltAction 4s infinite ease-in-out;
+  /* 初期画面のロゴアニメ停止（要望対応） */
+  animation: none !important;
 }
 
 @keyframes tiltAction {
@@ -234,7 +235,8 @@ html {
 }
 
 #green-dot {
-  animation: ballAction 4s infinite ease-in-out;
+  /* 初期画面のロゴアニメ停止（要望対応） */
+  animation: none !important;
 }
 
 @keyframes ballAction {

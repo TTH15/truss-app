@@ -455,7 +455,7 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
   return (
     <div className="min-h-screen">
       {currentPage === 'landing' && (
-        <LoginScreen onLogin={handleGoogleLogin} onAdminLogin={() => navigateTo('admin')} language={language} onLanguageChange={setLanguage} />
+        <LoginScreen onLogin={handleGoogleLogin} language={language} onLanguageChange={setLanguage} />
       )}
       {currentPage === 'auth-selection' && (
         <AuthSelection language={language} onLanguageChange={setLanguage} onGoogleAuth={handleGoogleLogin} />
