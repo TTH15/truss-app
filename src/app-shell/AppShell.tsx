@@ -17,6 +17,9 @@ export type {
   GalleryPhoto,
 } from "../domain/types/app";
 
-export default function AppShell(props: { initialPage?: "landing" | "auth-selection" | "auth-complete" | "login" | "admin-login" | "email-verification" | "initial-registration" | "profile" | "dashboard" | "admin" }) {
+export default function AppShell(props: {
+  initialPage?: "landing" | "auth-selection" | "auth-complete" | "login" | "admin-login" | "email-verification" | "initial-registration" | "profile" | "dashboard" | "admin";
+  standaloneAdmin?: boolean;
+}) {
   return <LegacyApp {...props} />;
 }

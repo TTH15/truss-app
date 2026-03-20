@@ -53,9 +53,10 @@ type PageState =
 
 interface AppProps {
   initialPage?: PageState;
+  standaloneAdmin?: boolean;
 }
 
-function LegacyApp({ initialPage = 'landing' }: AppProps) {
+function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProps) {
   const router = useRouter();
   const pathname = usePathname();
   const {
@@ -105,7 +106,9 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
     refreshBoardPosts,
   } = useData();
 
-  const [currentPage, setCurrentPage] = useState<PageState>(initialPage);
+  const [currentPage, setCurrentPage] = useState<PageState>(
+    standaloneAdmin ? 'admin-login' : initialPage
+  );
   const [language, setLanguage] = useState<Language>('ja');
   const [user, setUser] = useState<User | null>(null);
   const [tempEmail, setTempEmail] = useState('');
@@ -150,6 +153,7 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
 
   /** ブラウザの戻る/進む・直接 URL 入力時に currentPage を合わせる（認証フローの仮画面は `/` で上書きしない） */
   useEffect(() => {
+    if (standaloneAdmin) return;
     const next = pathToPage[pathname];
     if (!next || next === currentPage) return;
     const authFlowPages: PageState[] = [
@@ -160,7 +164,7 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
     ];
     if (pathname === '/' && authFlowPages.includes(currentPage)) return;
     setCurrentPage(next);
-  }, [pathname, currentPage]);
+  }, [pathname, currentPage, standaloneAdmin]);
 
   const isOAuthCallback = () => {
     const hash = window.location.hash;
@@ -172,6 +176,7 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
   };
 
   useEffect(() => {
+    if (standaloneAdmin) return;
     if (authUser) {
       setUser(authUser);
       if (isOAuthCallback()) {
@@ -197,7 +202,7 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
       setUser(null);
       navigateTo('landing');
     }
-  }, [authUser, authLoading, session]);
+  }, [authUser, authLoading, session, standaloneAdmin]);
 
   useEffect(() => {
     if (user && eventParticipants) {
@@ -221,6 +226,10 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
       };
       setUser(adminUser);
       navigateTo('admin');
+      return;
+    }
+    if (standaloneAdmin) {
+      alert(language === 'ja' ? 'メールアドレスまたはパスワードが正しくありません' : 'Invalid email or password');
       return;
     }
     try {
@@ -336,6 +345,12 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
     setAdminActiveTab('chat');
   };
   const handleLogout = async () => {
+    if (standaloneAdmin) {
+      setUser(null);
+      setTempEmail('');
+      setCurrentPage('admin-login');
+      return;
+    }
     await signOut();
     setUser(null);
     setTempEmail('');
@@ -429,7 +444,7 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
     toast.success(language === 'ja' ? `${userIds.length}人に${messageType}を送信しました` : `Sent ${messageType} to ${userIds.length} members`);
   };
 
-  const isLoadingUser = authLoading || (session && !authUser);
+  const isLoadingUser = !standaloneAdmin && (authLoading || (session && !authUser));
   if (isLoadingUser) {
     return (
       <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center px-6">
@@ -455,7 +470,7 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
         <AuthSelection language={language} onLanguageChange={setLanguage} onGoogleAuth={handleGoogleLogin} />
       )}
       {currentPage === 'login' && (
-        <LoginScreen onLogin={handleGoogleLogin} onAdminLogin={() => navigateTo('admin')} language={language} onLanguageChange={setLanguage} />
+        <LoginScreen onLogin={handleGoogleLogin} onAdminLogin={() => navigateTo('admin-login')} language={language} onLanguageChange={setLanguage} />
       )}
       {currentPage === 'email-verification' && (
         <EmailVerification onVerified={handleEmailVerified} onBack={() => setCurrentPage('auth-selection')} language={language} onLanguageChange={setLanguage} />
@@ -491,7 +506,7 @@ function LegacyApp({ initialPage = 'landing' }: AppProps) {
         />
       )}
       {currentPage === 'admin-login' && (
-        <AdminLogin onLogin={handleAdminLogin} language={language} onBack={() => navigateTo('landing')} />
+        <AdminLogin onLogin={handleAdminLogin} language={language} onBack={() => (standaloneAdmin ? setCurrentPage('admin-login') : navigateTo('landing'))} />
       )}
       {currentPage === 'auth-complete' && (
         <AuthCompleteScreen onContinue={handleAuthComplete} language={language} onLanguageChange={setLanguage} />
