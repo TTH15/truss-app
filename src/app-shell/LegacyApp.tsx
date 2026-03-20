@@ -188,46 +188,17 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
           return;
         }
 
-        try {
-          const { data, error } = await supabase
-            .from('users')
-            .select(
-              'id,email,name,nickname,furigana,birthday,languages,country,category,approved,is_admin,registration_step,email_verified,initial_registered,profile_completed,fee_paid'
-            )
-            .eq('auth_id', authUser.id)
-            .maybeSingle();
-
-          if (error || !data || !data.is_admin) {
-            setUser(null);
-            setCurrentPage('admin-login');
-            return;
-          }
-
-          setUser({
-            id: data.id,
-            email: data.email,
-            name: data.name,
-            nickname: data.nickname,
-            furigana: data.furigana,
-            birthday: data.birthday ?? '',
-            languages: data.languages ?? [],
-            birthCountry: data.country,
-            country: data.country,
-            category: data.category,
-            approved: data.approved,
-            isAdmin: data.is_admin,
-            registrationStep: data.registration_step,
-            emailVerified: data.email_verified,
-            initialRegistered: data.initial_registered,
-            profileCompleted: data.profile_completed,
-            feePaid: data.fee_paid,
-          });
-          setCurrentPage('admin');
-        } catch (e) {
-          console.error('Standalone admin session restore failed:', e);
+        if (!authUser.isAdmin) {
           setUser(null);
           setCurrentPage('admin-login');
+          return;
         }
+
+        // AuthContext が復元した AppUser をそのまま admin として採用する。
+        // standaloneAdmin では users.auth_id と users.id の取り違えが起きやすいため、
+        // 追加クエリせずに authUser を信頼する。
+        setUser(authUser);
+        setCurrentPage('admin');
       };
 
       void run();
