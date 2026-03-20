@@ -33,13 +33,20 @@ export async function POST(req: Request) {
   });
 
   // 1) Verify admin credentials against dedicated table.
-  const { data: adminAccount, error: adminAccountError } = await adminClient
-    .from("admin_accounts")
-    .select("email,password_hash,display_name,is_active")
-    .eq("email", email)
-    .single();
+  let adminAccount: any = null;
+  try {
+    const { data, error } = await adminClient
+      .from("admin_accounts")
+      .select("email,password_hash,display_name,is_active")
+      .eq("email", email)
+      .maybeSingle();
+    adminAccount = data;
+    if (error) throw error;
+  } catch (e) {
+    return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+  }
 
-  if (adminAccountError || !adminAccount || !adminAccount.is_active) {
+  if (!adminAccount || !adminAccount.is_active) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
@@ -182,15 +189,22 @@ export async function POST(req: Request) {
   }
 
   // 5) Return user row for client-side `User` mapping.
-  const { data: dbUser, error: userError } = await adminClient
-    .from("users")
-    .select(
-      "id,email,name,nickname,furigana,birthday,languages,country,category,approved,is_admin,registration_step,email_verified,initial_registered,profile_completed,fee_paid"
-    )
-    .eq("auth_id", authUserId)
-    .single();
+  let dbUser: any = null;
+  try {
+    const { data, error } = await adminClient
+      .from("users")
+      .select(
+        "id,email,name,nickname,furigana,birthday,languages,country,category,approved,is_admin,registration_step,email_verified,initial_registered,profile_completed,fee_paid"
+      )
+      .eq("auth_id", authUserId)
+      .maybeSingle();
+    dbUser = data;
+    if (error) throw error;
+  } catch (e) {
+    return NextResponse.json({ error: "Admin permission required" }, { status: 403 });
+  }
 
-  if (userError || !dbUser || !dbUser.is_admin) {
+  if (!dbUser || !dbUser.is_admin) {
     return NextResponse.json({ error: "Admin permission required" }, { status: 403 });
   }
 
