@@ -4,6 +4,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
+import { getAppOrigin } from '../lib/app-origin';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import type { User as AppUser, RegistrationStep } from '../domain/types/app';
 
@@ -105,6 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (mounted && appUser) {
             setUser(appUser);
             setCachedUser(appUser);
+          } else if (mounted) {
+            setUser(null);
+            setCachedUser(null);
           }
         } else if (storedSession) {
           const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
@@ -118,6 +122,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (appUser && mounted) {
               setUser(appUser);
               setCachedUser(appUser);
+            } else if (mounted) {
+              setUser(null);
+              setCachedUser(null);
             }
           }
         } else {
@@ -141,6 +148,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (appUser && mounted) {
           setUser(appUser);
           setCachedUser(appUser);
+        } else if (mounted) {
+          setUser(null);
+          setCachedUser(null);
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -160,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: window.location.origin },
+        options: { emailRedirectTo: getAppOrigin() },
       });
       return { error: error || null };
     } catch (error) {
@@ -182,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${getAppOrigin()}/auth/callback`,
           queryParams: { access_type: 'offline' },
         },
       });
@@ -240,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const appUser = await fetchAppUser(supabaseUser.id);
     setUser(appUser);
     if (appUser) setCachedUser(appUser);
+    else setCachedUser(null);
   };
 
   const value: AuthContextType = {

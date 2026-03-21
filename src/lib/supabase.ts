@@ -4,6 +4,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.types';
+import { getAppOrigin } from './app-origin';
 
 // Environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -41,7 +42,7 @@ export async function signUp(email: string, password: string) {
     email,
     password,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      emailRedirectTo: `${getAppOrigin()}/auth/callback`,
     },
   });
   return { data, error };
@@ -72,7 +73,7 @@ export async function getCurrentUser() {
 
 export async function resetPassword(email: string) {
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/auth/reset-password`,
+    redirectTo: `${getAppOrigin()}/auth/reset-password`,
   });
   return { data, error };
 }
@@ -88,7 +89,7 @@ export async function sendMagicLink(email: string) {
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      emailRedirectTo: `${getAppOrigin()}/auth/callback`,
     },
   });
   return { data, error };

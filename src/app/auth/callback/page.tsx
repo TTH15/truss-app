@@ -38,7 +38,8 @@ function AuthCallbackContent() {
         return;
       }
 
-      router.replace("/dashboard");
+      // LegacyApp がセッションと users 行の有無に応じて dashboard / 初期登録へ振り分ける
+      router.replace("/");
     };
 
     void handleCallback();

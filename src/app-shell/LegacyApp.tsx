@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { LandingPage } from '../components/legacy/LandingPage';
 import { AuthSelection } from '../components/legacy/AuthSelection';
@@ -232,6 +232,21 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
     }
   }, [authUser, authLoading, session, standaloneAdmin]);
 
+  /**
+   * Google OAuth 直後など: Supabase セッションはあるが public.users にまだ行がない場合は
+   * 初期登録へ（描画前に currentPage を合わせてログイン画面の一瞬表示を防ぐ）
+   */
+  useLayoutEffect(() => {
+    if (standaloneAdmin || authLoading || authUser) return;
+    if (!session?.user) return;
+    setUser(null);
+    setTempEmail(session.user.email ?? '');
+    setCurrentPage('initial-registration');
+    if (pathname !== '/') {
+      router.replace('/');
+    }
+  }, [standaloneAdmin, authLoading, authUser, session?.user?.id, pathname, router]);
+
   useEffect(() => {
     if (user && eventParticipants) {
       const attending = new Set<number>();
@@ -346,7 +361,10 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
     if (error) {
       toast.dismiss();
       toast.error(language === 'ja' ? 'Google認証エラー' : 'Google auth error');
+      return;
     }
+    // リダイレクトが始まるまでトーストが残らないようにする
+    toast.dismiss();
   };
 
   const handleAuthComplete = () => {
@@ -385,7 +403,11 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
         toast.error(language === 'ja' ? '認証エラー' : 'Auth error');
         return;
       }
-      const { data: existingUser } = await supabase.from('users').select('id').eq('auth_id', authData.user.id).single();
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_id', authData.user.id)
+        .maybeSingle();
       const email = tempEmail || authData.user.email || '';
       let error;
       if (existingUser) {
@@ -537,7 +559,8 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
     toast.success(language === 'ja' ? `${userIds.length}人に${messageType}を送信しました` : `Sent ${messageType} to ${userIds.length} members`);
   };
 
-  const isLoadingUser = !standaloneAdmin && (authLoading || (session && !authUser));
+  // session あり・App ユーザー未取得は「初回 Google ログインで users 未作成」があり得るためローディングにしない
+  const isLoadingUser = !standaloneAdmin && authLoading;
   if (isLoadingUser) {
     return (
       <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center px-6">
