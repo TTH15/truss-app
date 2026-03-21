@@ -28,7 +28,7 @@ export function LoginScreen({
 
   const handleStart = () => {
     if (!acceptedAgreement) {
-      setError(language === "ja" ? "チェックボックスに同意してから開始してください。" : "Please agree using the checkboxes to continue.");
+      setError(language === "ja" ? "上記に同意してから開始してください。" : "Please agree to the terms of service and privacy policy to continue.");
       return;
     }
     setError(null);
@@ -66,6 +66,7 @@ export function LoginScreen({
         >
           <label className="flex items-start gap-2 cursor-pointer">
             <Checkbox
+              className="mt-0.5 size-5 border-2 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4] data-[state=checked]:text-white mt-0.5"
               checked={acceptedAgreement}
               onCheckedChange={(v) => setAcceptedAgreement(v === true)}
             />
@@ -113,7 +114,7 @@ export function LoginScreen({
           </label>
 
           {error && (
-            <p className="mt-2 text-xs text-red-600 font-medium leading-snug">
+            <p className="mt-2 text-xs text-red-600 font-medium leading-snug text-center">
               {error}
             </p>
           )}
