@@ -114,7 +114,7 @@ export function LoginScreen({
           </label>
 
           {error && (
-            <p className="ml-2mt-2 text-xs text-red-600 font-medium leading-snug">
+            <p className="ml-2 mt-2 text-xs text-red-600 font-medium leading-snug">
               {error}
             </p>
           )}
