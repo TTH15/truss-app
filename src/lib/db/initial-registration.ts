@@ -7,6 +7,7 @@ export type InitialRegistrationPayload = {
   name: string;
   furigana: string;
   studentNumber: string;
+  phone: string;
   major: string;
   grade: string;
   studentIdImage: string;
@@ -26,6 +27,7 @@ export function buildInitialRegistrationUserUpdate(
     approved: false,
     student_id_image: data.studentIdImage,
     student_number: data.studentNumber,
+    phone: data.phone,
     grade: data.grade,
     major: data.major,
     registration_step: "waiting_approval",
@@ -59,9 +61,9 @@ export function buildInitialRegistrationUserInsert(
     is_admin: false,
     student_id_image: base.student_id_image ?? null,
     student_number: base.student_number ?? null,
+    phone: base.phone ?? null,
     grade: base.grade ?? null,
     major: base.major ?? null,
-    phone: null,
     organizations: null,
     blocked: false,
     registration_step: base.registration_step!,
