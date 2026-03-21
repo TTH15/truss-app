@@ -61,7 +61,7 @@ export function LoginScreen({
         />
 
         <div
-          className="w-full max-w-md px-6"
+          className="w-full max-w-md pb-6"
           onClick={(e) => e.stopPropagation()}
         >
           <label className="flex items-start gap-2 cursor-pointer">
@@ -114,7 +114,7 @@ export function LoginScreen({
           </label>
 
           {error && (
-            <p className="mt-2 text-xs text-red-600 font-medium leading-snug text-center">
+            <p className="ml-2mt-2 text-xs text-red-600 font-medium leading-snug">
               {error}
             </p>
           )}
