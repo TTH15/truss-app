@@ -20,15 +20,14 @@ export function LoginScreen({
   language,
   onLanguageChange,
 }: LoginScreenProps) {
-  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedAgreement, setAcceptedAgreement] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const privacyHref = "/privacy-policy";
   const termsHref = "/terms-of-service";
 
   const handleStart = () => {
-    if (!acceptedPrivacy || !acceptedTerms) {
+    if (!acceptedAgreement) {
       setError(language === "ja" ? "チェックボックスに同意してから開始してください。" : "Please agree using the checkboxes to continue.");
       return;
     }
@@ -61,6 +60,65 @@ export function LoginScreen({
           draggable={false}
         />
 
+        <div
+          className="w-full max-w-md px-6"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <label className="flex items-start gap-2 cursor-pointer">
+            <Checkbox
+              checked={acceptedAgreement}
+              onCheckedChange={(v) => setAcceptedAgreement(v === true)}
+            />
+            <span className="text-[#3D3D4E] text-sm leading-relaxed">
+              {language === "ja" ? (
+                <>
+                  <Link
+                    href={privacyHref}
+                    className="text-[#49B1E4] underline underline-offset-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    プライバシーポリシー（リンク）
+                  </Link>
+                  および
+                  <Link
+                    href={termsHref}
+                    className="text-[#49B1E4] underline underline-offset-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    利用規約（リンク）
+                  </Link>
+                  に同意します
+                </>
+              ) : (
+                <>
+                  I agree to the{" "}
+                  <Link
+                    href={privacyHref}
+                    className="text-[#49B1E4] underline underline-offset-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Privacy Policy
+                  </Link>{" "}
+                  and{" "}
+                  <Link
+                    href={termsHref}
+                    className="text-[#49B1E4] underline underline-offset-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Terms of Service
+                  </Link>
+                </>
+              )}
+            </span>
+          </label>
+
+          {error && (
+            <p className="mt-2 text-xs text-red-600 font-medium leading-snug">
+              {error}
+            </p>
+          )}
+        </div>
+
         <div className="flex flex-col items-center gap-4">
           <p className="font-semibold leading-[28px] not-italic text-[#3d3d4e] text-[18px] text-center tracking-[-0.4395px] w-[283px]">
             {language === "ja" ? "画面をタップして始める" : "Tap to start"}
@@ -69,55 +127,6 @@ export function LoginScreen({
           <p className="leading-[28px] font-semibold not-italic text-[#3d3d4e] text-[15px] text-center tracking-[-0.4395px]">
             {language === "ja" ? "Googleアカウントを利用します" : "Use Google Account"}
           </p>
-        </div>
-      </div>
-
-      <div
-        className="absolute left-1/2 -translate-x-1/2 bottom-6 w-[92%] max-w-md"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="bg-white/70 backdrop-blur rounded-[12px] border border-[rgba(61,61,78,0.15)] px-4 py-3">
-          <div className="flex flex-col gap-2">
-            <label className="flex items-start gap-2 cursor-pointer">
-              <Checkbox
-                checked={acceptedPrivacy}
-                onCheckedChange={(v) => setAcceptedPrivacy(v === true)}
-              />
-              <span className="text-[#3D3D4E] text-sm leading-relaxed">
-                {language === "ja" ? "プライバシーポリシーに同意します。" : "I agree to the Privacy Policy."}{" "}
-                <Link
-                  href={privacyHref}
-                  className="text-[#49B1E4] underline underline-offset-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {language === "ja" ? "プライバシーポリシー" : "Privacy Policy"}
-                </Link>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-2 cursor-pointer">
-              <Checkbox
-                checked={acceptedTerms}
-                onCheckedChange={(v) => setAcceptedTerms(v === true)}
-              />
-              <span className="text-[#3D3D4E] text-sm leading-relaxed">
-                {language === "ja" ? "利用規約に同意します。" : "I agree to the Terms of Service."}{" "}
-                <Link
-                  href={termsHref}
-                  className="text-[#49B1E4] underline underline-offset-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {language === "ja" ? "利用規約" : "Terms of Service"}
-                </Link>
-              </span>
-            </label>
-          </div>
-
-          {error && (
-            <p className="mt-2 text-xs text-red-600 font-medium leading-snug">
-              {error}
-            </p>
-          )}
         </div>
       </div>
 

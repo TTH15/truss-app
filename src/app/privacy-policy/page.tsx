@@ -127,6 +127,23 @@ export default function PrivacyPolicyPage() {
 ※お問い合わせの際は、本人確認が必要となる場合があります。
 `;
 
+  const cleanedDoc = doc
+    .split("\n")
+    .map((line) => {
+      const t = line.trim();
+      if (!t) return "";
+      if (t.startsWith("----------------------------------------------------------------")) return "";
+      if (t.startsWith("---")) return "";
+      return line;
+    })
+    .join("\n")
+    .trim();
+
+  const blocks = cleanedDoc
+    .split(/\n\s*\n/g)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
   return (
     <div className="min-h-screen bg-[#F5F1E8] py-12 px-4">
       <main className="mx-auto max-w-3xl text-[#3D3D4E]">
@@ -137,9 +154,37 @@ export default function PrivacyPolicyPage() {
           </p>
         </div>
 
-        <pre className="whitespace-pre-wrap text-sm leading-relaxed bg-white/60 border border-[rgba(61,61,78,0.15)] rounded-[12px] p-5">
-          {doc}
-        </pre>
+        <div className="space-y-5 text-base leading-7">
+          {blocks.map((block, blockIndex) => {
+            const lines = block
+              .split("\n")
+              .map((l) => l.trim())
+              .filter(Boolean);
+            const first = lines[0] || "";
+            const headingType = /^\d+\.\s/.test(first) || /^第\d+条/.test(first) ? "h2" : /^\(\d+\)\s/.test(first) ? "h3" : "none";
+
+            return (
+              <section key={blockIndex} className="space-y-2">
+                {headingType === "h2" && (
+                  <h2 className="text-xl sm:text-2xl font-bold leading-snug mt-2">{first}</h2>
+                )}
+                {headingType === "h3" && (
+                  <h3 className="text-lg sm:text-xl font-semibold leading-snug mt-2">{first}</h3>
+                )}
+                {headingType === "none" && <p className="text-base leading-7">{first}</p>}
+
+                {lines.slice(1).map((line, i) => (
+                  <p
+                    key={`${blockIndex}-${i}`}
+                    className={line.startsWith("・") ? "pl-4 text-base leading-7" : "text-base leading-7"}
+                  >
+                    {line}
+                  </p>
+                ))}
+              </section>
+            );
+          })}
+        </div>
 
         <div className="mt-10 pt-6 border-t border-[rgba(61,61,78,0.15)] text-sm">
           <p>

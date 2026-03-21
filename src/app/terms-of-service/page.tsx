@@ -117,6 +117,23 @@ export default function TermsOfServicePage() {
 ・メール：admin@truss.com
 `;
 
+  const cleanedDoc = doc
+    .split("\n")
+    .map((line) => {
+      const t = line.trim();
+      if (!t) return "";
+      if (t.startsWith("----------------------------------------------------------------")) return "";
+      if (t.startsWith("---")) return "";
+      return line;
+    })
+    .join("\n")
+    .trim();
+
+  const blocks = cleanedDoc
+    .split(/\n\s*\n/g)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
   return (
     <div className="min-h-screen bg-[#F5F1E8] py-12 px-4">
       <main className="mx-auto max-w-3xl text-[#3D3D4E]">
@@ -127,9 +144,47 @@ export default function TermsOfServicePage() {
           </p>
         </div>
 
-        <pre className="whitespace-pre-wrap text-sm leading-relaxed bg-white/60 border border-[rgba(61,61,78,0.15)] rounded-[12px] p-5">
-          {doc}
-        </pre>
+        <div className="space-y-5 text-base leading-7">
+          {blocks.map((block, blockIndex) => {
+            const lines = block
+              .split("\n")
+              .map((l) => l.trim())
+              .filter(Boolean);
+            const first = lines[0] || "";
+            const headingType = /^第\d+条/.test(first) ? "h2" : "none";
+
+            return (
+              <section key={blockIndex} className="space-y-2">
+                {headingType === "h2" ? (
+                  <h2 className="text-xl sm:text-2xl font-bold leading-snug mt-2">
+                    {first}
+                  </h2>
+                ) : (
+                  <p className="text-base leading-7">{first}</p>
+                )}
+
+                {lines.slice(1).map((line, i) => {
+                  const isNumberedPoint = /^\d+\.\s/.test(line);
+                  const isBulletPoint = line.startsWith("・");
+                  return (
+                    <p
+                      key={`${blockIndex}-${i}`}
+                      className={
+                        isNumberedPoint
+                          ? "pl-6 font-medium text-base leading-7"
+                          : isBulletPoint
+                            ? "pl-4 text-base leading-7"
+                            : "text-base leading-7"
+                      }
+                    >
+                      {line}
+                    </p>
+                  );
+                })}
+              </section>
+            );
+          })}
+        </div>
 
         <div className="mt-10 pt-6 border-t border-[rgba(61,61,78,0.15)] text-sm">
           <p>
