@@ -135,16 +135,25 @@ export default function TermsOfServicePage() {
     .filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-[#F5F1E8] py-12 px-4">
-      <main className="mx-auto max-w-3xl text-[#3D3D4E]">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-[-0.02em]">利用規約</h1>
-          <p className="mt-2 text-sm text-[#3D3D4E]/70">
-            本規約は、Truss Appの利用条件を定めるものです。
-          </p>
+    <div className="min-h-screen bg-[#F5F1E8] text-[#3D3D4E]">
+      <header className="fixed top-0 left-0 right-0 z-20 bg-[#F5F1E8]/95 backdrop-blur border-b border-[rgba(61,61,78,0.12)]">
+        <div className="mx-auto max-w-5xl px-6 sm:px-10 lg:px-16 h-14 flex items-center justify-between">
+          <Link href="/login" className="text-sm font-medium text-[#49B1E4]">
+            戻る
+          </Link>
+          <h1 className="text-base sm:text-lg font-semibold tracking-[-0.01em]">
+            利用規約
+          </h1>
+          <span className="w-10" aria-hidden="true"></span>
         </div>
+      </header>
 
-        <div className="space-y-5 text-base leading-7">
+      <main className="mx-auto max-w-5xl px-6 sm:px-10 lg:px-16 pt-20 pb-12">
+        <p className="mb-6 text-xs sm:text-sm text-[#3D3D4E]/70">
+          本規約は、Truss Appの利用条件を定めるものです。
+        </p>
+
+        <div className="space-y-5 text-sm sm:text-[15px] leading-7">
           {blocks.map((block, blockIndex) => {
             const lines = block
               .split("\n")
@@ -156,11 +165,11 @@ export default function TermsOfServicePage() {
             return (
               <section key={blockIndex} className="space-y-2">
                 {headingType === "h2" ? (
-                  <h2 className="text-xl sm:text-2xl font-bold leading-snug mt-2">
+                  <h2 className="text-lg sm:text-xl font-bold leading-snug mt-2">
                     {first}
                   </h2>
                 ) : (
-                  <p className="text-base leading-7">{first}</p>
+                  <p className="text-sm sm:text-[15px] leading-7">{first}</p>
                 )}
 
                 {lines.slice(1).map((line, i) => {
@@ -171,10 +180,10 @@ export default function TermsOfServicePage() {
                       key={`${blockIndex}-${i}`}
                       className={
                         isNumberedPoint
-                          ? "pl-6 font-medium text-base leading-7"
+                          ? "pl-6 font-medium text-sm sm:text-[15px] leading-7"
                           : isBulletPoint
-                            ? "pl-4 text-base leading-7"
-                            : "text-base leading-7"
+                            ? "pl-4 text-sm sm:text-[15px] leading-7"
+                            : "text-sm sm:text-[15px] leading-7"
                       }
                     >
                       {line}
@@ -184,15 +193,6 @@ export default function TermsOfServicePage() {
               </section>
             );
           })}
-        </div>
-
-        <div className="mt-10 pt-6 border-t border-[rgba(61,61,78,0.15)] text-sm">
-          <p>
-            前へ：{" "}
-            <Link href="/privacy-policy" className="text-[#49B1E4] underline underline-offset-2">
-              プライバシーポリシー
-            </Link>
-          </p>
         </div>
       </main>
     </div>
