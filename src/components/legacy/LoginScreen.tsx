@@ -77,7 +77,7 @@ export function LoginScreen({
                     className="text-[#49B1E4] underline underline-offset-2"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    プライバシーポリシー（リンク）
+                    プライバシーポリシー
                   </Link>
                   および
                   <Link
@@ -85,7 +85,7 @@ export function LoginScreen({
                     className="text-[#49B1E4] underline underline-offset-2"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    利用規約（リンク）
+                    利用規約
                   </Link>
                   に同意します
                 </>
