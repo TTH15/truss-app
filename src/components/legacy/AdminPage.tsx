@@ -25,8 +25,8 @@ interface AdminPageProps {
   onApproveUser: (userId: string) => void;
   onRejectUser: (userId: string) => void;
   onRequestReupload: (userId: string, reasons?: string[]) => void;
-  onConfirmFeePayment?: (userId: string, isRenewal?: boolean) => void;
-  onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void;
+  onConfirmFeePayment?: (userId: string, isRenewal?: boolean) => void | Promise<void>;
+  onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void | Promise<void>;
   onDeleteUser?: (userId: string) => void;
   messageThreads: MessageThread;
   onUpdateMessageThreads: (threads: MessageThread) => void;

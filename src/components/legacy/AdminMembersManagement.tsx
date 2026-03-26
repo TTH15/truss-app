@@ -10,8 +10,8 @@ interface AdminMembersManagementProps {
   onRequestReupload?: (userId: string, reasons?: string[]) => void;
   onOpenChat?: (userId: string) => void;
   onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
-  onConfirmFeePayment?: (userId: string, isRenewal: boolean) => void;
-  onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void;
+  onConfirmFeePayment?: (userId: string, isRenewal: boolean) => void | Promise<void>;
+  onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void | Promise<void>;
   onDeleteUser?: (userId: string) => void;
 }
 

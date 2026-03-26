@@ -30,6 +30,14 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
   const getCategoryLabel = (category: string) => category === 'japanese' ? t.japanese : category === 'regular-international' ? t.regularInternational : category === 'exchange' ? t.exchange : '';
   const getCategoryColor = (category: string) => category === 'japanese' ? 'bg-[#dbeafe] text-[#193cb8]' : category === 'regular-international' ? 'bg-[rgba(132,212,97,0.3)] text-[#00a63e]' : category === 'exchange' ? 'bg-[#fce7f3] text-[#be185d]' : 'bg-gray-100 text-gray-800';
 
+  const isFeePaid = !!user.feePaid;
+  const isRenewal = !!user.isRenewal;
+  const feeBadgeClass = isFeePaid
+    ? 'bg-[#dcfce7] text-[#166534]'
+    : 'bg-[#fee2e2] text-[#991b1b]';
+  const feeTypeBadgeClass = isRenewal ? 'bg-[#eef2ff] text-[#3730a3]' : 'bg-[#fff7ed] text-[#9a3412]';
+  const feeTypeLabel = isRenewal ? t.renewal : t.newMember;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[510px] shadow-xl border border-[rgba(61,61,78,0.15)] relative max-h-[90vh] overflow-y-auto">
@@ -52,6 +60,80 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.birthCountry}</p><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.birthCountry || '-'}</p></div>
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.languages}</p><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.languages || '-'}</p></div>
           </div>
+
+          {!isPending && (
+            <div className="mt-8 pt-6 border-t border-[rgba(61,61,78,0.15)] space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="font-semibold text-[#3D3D4E] tracking-[-0.1504px]">
+                  {t.feeStatus}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge className={`${feeBadgeClass} border-0 font-medium text-xs px-2 py-1`}>
+                    {isFeePaid ? t.feePaid : t.feeUnpaid}
+                  </Badge>
+                  <Badge className={`${feeTypeBadgeClass} border-0 font-medium text-xs px-2 py-1`}>
+                    {feeTypeLabel}
+                  </Badge>
+                  {typeof user.membershipYear === 'number' && (
+                    <Badge className="bg-white/60 border-0 font-medium text-xs px-2 py-1 text-[#3D3D4E]">
+                      {t.membershipYear}: {user.membershipYear}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {onSetRenewalStatus && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    onClick={() => onSetRenewalStatus(true)}
+                    className="bg-[#F5F1E8] hover:bg-[#E8E4DB] border border-[rgba(61,61,78,0.2)] text-[#3D3D4E] h-9"
+                  >
+                    {t.setAsRenewal}
+                  </Button>
+                  <Button
+                    onClick={() => onSetRenewalStatus(false)}
+                    className="bg-[#F5F1E8] hover:bg-[#E8E4DB] border border-[rgba(61,61,78,0.2)] text-[#3D3D4E] h-9"
+                  >
+                    {t.setAsNew}
+                  </Button>
+                </div>
+              )}
+
+              {onConfirmFeePayment && (
+                <>
+                  <div className="pt-1">
+                    <Button
+                      onClick={() => setShowPaymentOptions((p) => !p)}
+                      className="w-full bg-[#49B1E4] hover:bg-[#3A9FD3] text-white h-9"
+                    >
+                      {t.confirmFeePayment}
+                    </Button>
+                  </div>
+
+                  {showPaymentOptions && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={() => onConfirmFeePayment(true)}
+                        className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white h-9"
+                      >
+                        {t.confirmAsRenewal}
+                      </Button>
+                      <Button
+                        onClick={() => onConfirmFeePayment(false)}
+                        className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white h-9"
+                      >
+                        {t.confirmAsNew}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <p className="text-xs text-[#6B6B7A]">
+                {t.memberTypeHint}
+              </p>
+            </div>
+          )}
 
           {isPending && (
             <div className="flex gap-2 mt-8">

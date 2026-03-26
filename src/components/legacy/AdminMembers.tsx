@@ -23,8 +23,8 @@ interface AdminMembersProps {
   onRequestReupload?: (userId: string, reasons?: string[]) => void;
   onOpenChat?: (userId: string) => void;
   onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
-  onConfirmFeePayment?: (userId: string, isRenewal: boolean) => void;
-  onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void;
+  onConfirmFeePayment?: (userId: string, isRenewal: boolean) => void | Promise<void>;
+  onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void | Promise<void>;
   onDeleteUser?: (userId: string) => void;
 }
 
@@ -41,8 +41,18 @@ const translations = {
     feeUnpaid: '年会費未払い',
     exportData: 'データをエクスポート',
     sendBulkEmail: 'メールを一斉送信',
+    bulkSetRenewal: '一括: 継続会員に設定',
+    bulkSetNewMember: '一括: 新規会員に設定',
+    bulkMarkPaidRenewal: '一括: 継続として支払済み',
+    bulkMarkPaidNew: '一括: 新規として支払済み',
     chat: '個別チャット',
     selectAll: 'すべて選択',
+    noMemberSelected: 'メンバーを選択してください',
+    bulkUpdated: '一括更新しました',
+    feePaidBadge: '会費: 支払済み',
+    feeUnpaidBadge: '会費: 未払い',
+    renewalBadge: '区分: 継続',
+    newMemberBadge: '区分: 新規',
   },
   en: {
     title: 'Member Management',
@@ -56,8 +66,18 @@ const translations = {
     feeUnpaid: 'Fee Unpaid',
     exportData: 'Export Data',
     sendBulkEmail: 'Send Bulk Email',
+    bulkSetRenewal: 'Bulk: Set Renewal',
+    bulkSetNewMember: 'Bulk: Set New Member',
+    bulkMarkPaidRenewal: 'Bulk: Mark Paid (Renewal)',
+    bulkMarkPaidNew: 'Bulk: Mark Paid (New)',
     chat: 'Chat',
     selectAll: 'Select All',
+    noMemberSelected: 'Please select members',
+    bulkUpdated: 'Bulk update completed',
+    feePaidBadge: 'Fee: Paid',
+    feeUnpaidBadge: 'Fee: Unpaid',
+    renewalBadge: 'Type: Renewal',
+    newMemberBadge: 'Type: New',
   }
 };
 
@@ -101,6 +121,28 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, onApprov
   const handleToggleAll = () => { if (selectAll) setSelectedMembers(new Set()); else setSelectedMembers(new Set(filteredMembers.map(m => m.id))); setSelectAll(!selectAll); };
   const handleExport = () => toast.success(language === 'ja' ? 'データをエクスポートしました' : 'Data exported successfully');
   const handleBulkEmail = () => { if (selectedMembers.size === 0) { toast.error(language === 'ja' ? 'メンバーを選択してください' : 'Please select members'); return; } setShowEmailModal(true); };
+  const requireSelectedMemberIds = () => {
+    const ids = Array.from(selectedMembers);
+    if (ids.length === 0) {
+      toast.error(t.noMemberSelected);
+      return null;
+    }
+    return ids;
+  };
+  const handleBulkSetRenewalStatus = async (isRenewal: boolean) => {
+    if (!onSetRenewalStatus) return;
+    const ids = requireSelectedMemberIds();
+    if (!ids) return;
+    await Promise.all(ids.map((id) => onSetRenewalStatus(id, isRenewal)));
+    toast.success(t.bulkUpdated);
+  };
+  const handleBulkConfirmFeePayment = async (isRenewal: boolean) => {
+    if (!onConfirmFeePayment) return;
+    const ids = requireSelectedMemberIds();
+    if (!ids) return;
+    await Promise.all(ids.map((id) => onConfirmFeePayment(id, isRenewal)));
+    toast.success(t.bulkUpdated);
+  };
   const handleReuploadRequestOpen = (userId: string, userName: string) => { setReuploadUserId(userId); setReuploadUserName(userName); setShowReuploadModal(true); };
 
   const handleReuploadRequestSend = (reasons: string[]) => {
@@ -172,11 +214,25 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, onApprov
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <button onClick={handleToggleAll} className={`w-[18px] h-[17px] rounded border flex items-center justify-center ${selectAll ? 'bg-[#3D3D4E] border-[#3D3D4E]' : 'bg-[#EEEBE3] border-[rgba(61,61,78,0.15)]'}`}>
-                  {selectAll && <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 14 14"><path d={(svgPaths2 as any).p3de7e600} stroke="#F5F1E8" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.16667" /></svg>}
+                  {selectAll && (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 14 14">
+                      <path
+                        d={(svgPaths2 as Record<string, string>)["p3de7e600"]}
+                        stroke="#F5F1E8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.16667"
+                      />
+                    </svg>
+                  )}
                 </button>
                 <label onClick={handleToggleAll} className="text-[#3D3D4E] text-sm cursor-pointer select-none">{t.selectAll}</label>
               </div>
               <div className="flex items-center gap-2">
+                <Button onClick={() => void handleBulkSetRenewalStatus(true)} size="sm" variant="outline" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.2)] text-[#3D3D4E] hover:bg-[#E8E4DB]">{t.bulkSetRenewal}</Button>
+                <Button onClick={() => void handleBulkSetRenewalStatus(false)} size="sm" variant="outline" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.2)] text-[#3D3D4E] hover:bg-[#E8E4DB]">{t.bulkSetNewMember}</Button>
+                <Button onClick={() => void handleBulkConfirmFeePayment(true)} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkMarkPaidRenewal}</Button>
+                <Button onClick={() => void handleBulkConfirmFeePayment(false)} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkMarkPaidNew}</Button>
                 <Button onClick={handleBulkEmail} size="icon" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white h-9 w-9" title={t.sendBulkEmail}><Mail className="w-4 h-4" /></Button>
                 <Button onClick={handleExport} size="icon" variant="outline" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-9 w-9" title={t.exportData}><Download className="w-4 h-4" /></Button>
               </div>
@@ -188,7 +244,11 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, onApprov
                   <button onClick={() => handleToggleMember(member.id)} className="shrink-0"><div className={`w-5 h-5 rounded border-2 border-[#49B1E4] flex items-center justify-center ${selectedMembers.has(member.id) ? 'bg-[#49B1E4]' : 'bg-white'}`}>{selectedMembers.has(member.id) && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 20 20"><path d="M4 10L8 14L16 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div></button>
                   <Avatar className="w-12 h-12 shrink-0" style={{ backgroundImage: 'linear-gradient(135deg, rgb(21, 93, 252) 0%, rgb(152, 16, 250) 100%)' }}><AvatarFallback className="bg-transparent text-white font-normal">{getInitials(member.name)}</AvatarFallback></Avatar>
                   <div className="flex-1 min-w-0"><h3 className="text-[#101828] text-base font-normal truncate">{member.name}</h3><p className="text-[#4A5565] text-sm truncate">{member.email}</p><p className="text-[#6A7282] text-xs">ID: {member.id}</p></div>
-                  <Badge className={`${getCategoryColor(member.category)} border-0 font-medium text-xs px-2 py-1 h-8 flex items-center shrink-0`}>{getCategoryLabel(member.category)}</Badge>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <Badge className={`${getCategoryColor(member.category)} border-0 font-medium text-xs px-2 py-1 h-8 flex items-center shrink-0`}>{getCategoryLabel(member.category)}</Badge>
+                    <Badge className={`${member.feePaid ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fee2e2] text-[#991b1b]'} border-0 font-medium text-xs px-2 py-1`}>{member.feePaid ? t.feePaidBadge : t.feeUnpaidBadge}</Badge>
+                    <Badge className="bg-[#eef2ff] text-[#3730a3] border-0 font-medium text-xs px-2 py-1">{member.isRenewal ? t.renewalBadge : t.newMemberBadge}</Badge>
+                  </div>
                   <Button onClick={() => onOpenChat && onOpenChat(member.id)} variant="outline" size="sm" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] gap-2 shrink-0 h-8"><MessageCircle className="w-4 h-4" />{t.chat}</Button>
                   <button onClick={() => { setSelectedUser(member); setShowDetailModal(true); }} className="text-[#3D3D4E] shrink-0 hover:bg-[#F5F1E8] rounded p-1 transition-colors"><MoreVertical className="w-5 h-5" /></button>
                 </div>
@@ -203,7 +263,10 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, onApprov
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-2 ml-9">
-                    <Badge className={`${getCategoryColor(member.category)} border-0 font-medium text-xs px-2 py-1`}>{getCategoryLabel(member.category)}</Badge>
+                    <div className="flex flex-col gap-1">
+                      <Badge className={`${getCategoryColor(member.category)} border-0 font-medium text-xs px-2 py-1`}>{getCategoryLabel(member.category)}</Badge>
+                      <Badge className={`${member.feePaid ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fee2e2] text-[#991b1b]'} border-0 font-medium text-xs px-2 py-1`}>{member.feePaid ? t.feePaidBadge : t.feeUnpaidBadge}</Badge>
+                    </div>
                     <Button onClick={() => onOpenChat && onOpenChat(member.id)} variant="outline" size="sm" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] gap-1.5 h-8 text-xs"><MessageCircle className="w-3.5 h-3.5" />{t.chat}</Button>
                   </div>
                 </div>
