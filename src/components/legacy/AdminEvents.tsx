@@ -17,9 +17,9 @@ interface AdminEventsProps {
   language: Language;
   events?: AdminEvent[];
   eventParticipants?: { [eventId: number]: AdminEventParticipant[] };
-  onCreateEvent?: (eventData: any) => void;
-  onUpdateEvent?: (eventId: number, eventData: any) => void;
-  onDeleteEvent?: (eventId: number) => void;
+  onCreateEvent?: (eventData: any) => Promise<void>;
+  onUpdateEvent?: (eventId: number, eventData: any) => Promise<void>;
+  onDeleteEvent?: (eventId: number) => Promise<void>;
   onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
 }
 
@@ -208,9 +208,9 @@ export function AdminEvents({
   language,
   events: propsEvents = [],
   eventParticipants = {},
-  onCreateEvent = () => {},
-  onUpdateEvent = () => {},
-  onDeleteEvent = () => {},
+  onCreateEvent = async () => {},
+  onUpdateEvent = async () => {},
+  onDeleteEvent = async () => {},
   onSendBulkEmail,
 }: AdminEventsProps) {
   const t = translations[language];
@@ -225,6 +225,7 @@ export function AdminEvents({
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSavingEvent, setIsSavingEvent] = useState(false);
+  const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const saveInFlightRef = useRef(false);
   const [confirmType, setConfirmType] = useState<'create' | 'update'>('create');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
@@ -379,13 +380,20 @@ export function AdminEvents({
   };
 
   const handleConfirmDelete = async () => {
-    if (selectedEvent) {
+    if (!selectedEvent || isDeletingEvent) return;
+    setIsDeletingEvent(true);
+    try {
       console.log('Deleting event:', selectedEvent.id);
       await onDeleteEvent(selectedEvent.id);
       toast.success(language === 'ja' ? 'イベントを削除しました' : 'Event deleted successfully');
+      setShowDeleteConfirm(false);
+      handleCloseForm();
+    } catch (error) {
+      console.error('Delete event failed:', error);
+      toast.error(language === 'ja' ? 'イベント削除に失敗しました。時間をおいて再試行してください。' : 'Failed to delete event. Please try again.');
+    } finally {
+      setIsDeletingEvent(false);
     }
-    setShowDeleteConfirm(false);
-    handleCloseForm();
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1482,6 +1490,7 @@ export function AdminEvents({
             <div className="p-6">
               <div className="flex gap-2">
                 <Button
+                  disabled={isDeletingEvent}
                   onClick={handleConfirmDelete}
                   className="flex-1 bg-[#D4183D] hover:bg-[#B01535] text-white h-9 flex items-center justify-center gap-2"
                 >
@@ -1489,6 +1498,7 @@ export function AdminEvents({
                   <span className="font-medium text-sm tracking-[-0.1504px]">{t.delete}</span>
                 </Button>
                 <Button
+                  disabled={isDeletingEvent}
                   onClick={() => setShowDeleteConfirm(false)}
                   className="flex-1 bg-[#00A63E] hover:bg-[#008C35] text-[#F5F1E8] h-9 flex items-center justify-center gap-2"
                 >

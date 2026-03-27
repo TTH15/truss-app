@@ -547,9 +547,15 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
   const handleCreateEvent = async (eventData: Omit<Event, 'id' | 'currentParticipants' | 'likes'>) => { await createEvent(eventData); };
   const handleUpdateEvent = async (eventId: number, eventData: Partial<Event>) => { await updateEvent(eventId, eventData); };
   const handleDeleteEvent = async (eventId: number) => {
-    await deleteEvent(eventId);
-    setAttendingEvents(prev => { const newSet = new Set(prev); newSet.delete(eventId); return newSet; });
-    setLikedEvents(prev => { const newSet = new Set(prev); newSet.delete(eventId); return newSet; });
+    try {
+      await deleteEvent(eventId);
+      setAttendingEvents(prev => { const newSet = new Set(prev); newSet.delete(eventId); return newSet; });
+      setLikedEvents(prev => { const newSet = new Set(prev); newSet.delete(eventId); return newSet; });
+    } catch (error) {
+      console.error('Delete event failed in LegacyApp:', error);
+      toast.error(language === 'ja' ? 'イベント削除に失敗しました' : 'Failed to delete event');
+      throw error;
+    }
   };
   const addEventParticipant = async (eventId: number, photoRefusal: boolean = false) => {
     if (!user) return;

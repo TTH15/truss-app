@@ -25,18 +25,26 @@ import type {
 } from "../../../domain/types/app";
 
 export async function queryEvents(): Promise<Event[]> {
+  const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
   const { data, error } = await supabase
     .from("events")
     .select("*")
     .order("date", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(mapDbEventRowToEvent);
+  const rows = data ?? [];
+  const dataUrlImages = rows.filter((row) => typeof row.image === "string" && row.image.startsWith("data:image")).length;
+  const endedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+  console.info(
+    `[perf] queryEvents: ${Math.round(endedAt - startedAt)}ms, rows=${rows.length}, dataUrlImages=${dataUrlImages}`
+  );
+  return rows.map(mapDbEventRowToEvent);
 }
 
 export async function queryPendingAndApprovedUsers(): Promise<{
   pending: User[];
   approved: User[];
 }> {
+  const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
   const { data, error } = await supabase.from("users").select("*");
   if (error) throw error;
 
@@ -46,10 +54,15 @@ export async function queryPendingAndApprovedUsers(): Promise<{
   );
   const approvedRows = rows.filter((row) => row.approved === true);
 
-  return {
+  const result = {
     pending: pendingRows.map(mapDbUserRowToUser),
     approved: approvedRows.map(mapDbUserRowToUser),
   };
+  const endedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+  console.info(
+    `[perf] queryPendingAndApprovedUsers: ${Math.round(endedAt - startedAt)}ms, pending=${result.pending.length}, approved=${result.approved.length}`
+  );
+  return result;
 }
 
 export async function queryMessageThreadsAndMetadata(): Promise<{
@@ -138,6 +151,7 @@ export async function queryGalleryPhotos(): Promise<GalleryPhoto[]> {
 export async function queryEventParticipantsGrouped(): Promise<{
   [eventId: number]: EventParticipant[];
 }> {
+  const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
   const { data, error } = await supabase.from("event_participants").select("*");
   if (error) throw error;
   const participants: { [eventId: number]: EventParticipant[] } = {};
@@ -145,5 +159,9 @@ export async function queryEventParticipantsGrouped(): Promise<{
     if (!participants[p.event_id]) participants[p.event_id] = [];
     participants[p.event_id].push(mapDbEventParticipantRow(p));
   });
+  const endedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+  console.info(
+    `[perf] queryEventParticipantsGrouped: ${Math.round(endedAt - startedAt)}ms, rows=${(data ?? []).length}`
+  );
   return participants;
 }

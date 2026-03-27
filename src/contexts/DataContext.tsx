@@ -2,7 +2,7 @@
 // Truss App - Data Context (Supabase)
 // =============================================
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   queryEvents,
@@ -118,6 +118,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const isAdmin = user?.isAdmin === true;
   const [events, setEvents] = useState<Event[]>([]);
   const [pendingUsers, setPendingUsers] = useState<User[]>([]);
   const [approvedMembers, setApprovedMembers] = useState<User[]>([]);
@@ -129,16 +130,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(true);
+  const eventsFetchInFlight = useRef<Promise<void> | null>(null);
+  const usersFetchInFlight = useRef<Promise<void> | null>(null);
 
   const fetchEvents = useCallback(async () => {
-    try {
-      setEvents(await queryEvents());
-    } catch (error) {
-      console.error('Error fetching events:', error);
-    }
+    if (eventsFetchInFlight.current) return eventsFetchInFlight.current;
+    const run = (async () => {
+      const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      try {
+        setEvents(await queryEvents());
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      } finally {
+        eventsFetchInFlight.current = null;
+        const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        console.info(`[perf] fetchEvents: ${Math.round(endedAt - startedAt)}ms`);
+      }
+    })();
+    eventsFetchInFlight.current = run;
+    return run;
   }, []);
 
   const fetchUsers = useCallback(async () => {
+    if (!isAdmin) {
+      setUsersLoading(false);
+      return;
+    }
+    if (usersFetchInFlight.current) return usersFetchInFlight.current;
+    const run = (async () => {
     const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
     setUsersLoading(true);
     try {
@@ -149,10 +168,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       console.error('Error fetching users:', error);
     } finally {
       setUsersLoading(false);
+      usersFetchInFlight.current = null;
       const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
       console.info(`[perf] fetchUsers: ${Math.round(endedAt - startedAt)}ms`);
     }
-  }, []);
+    })();
+    usersFetchInFlight.current = run;
+    return run;
+  }, [isAdmin]);
 
   const fetchMessages = useCallback(async () => {
     if (!user) return;
@@ -202,9 +225,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const initData = async () => {
       const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
       setLoading(true);
-      await Promise.all([fetchEvents(), fetchUsers()]);
+      // 初回表示は最小限（events）のみ待ち、残りは背景でロードする
+      await fetchEvents();
       setLoading(false);
-      void Promise.all([fetchBoardPosts(), fetchEventParticipants(), fetchGalleryPhotos()]);
+      void Promise.all([
+        fetchBoardPosts(),
+        fetchEventParticipants(),
+        fetchGalleryPhotos(),
+        fetchUsers(),
+      ]);
       const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
       console.info(`[perf] initData(core): ${Math.round(endedAt - startedAt)}ms`);
     };
@@ -222,16 +251,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const eventsChannel = supabase.channel('events-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => fetchEvents()).subscribe();
     const boardPostsChannel = supabase.channel('board-posts-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'board_posts' }, () => fetchBoardPosts()).subscribe();
     const galleryChannel = supabase.channel('gallery-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'gallery_photos' }, () => fetchGalleryPhotos()).subscribe();
-    const usersChannel = supabase.channel('users-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => fetchUsers()).subscribe();
+    const usersChannel = isAdmin
+      ? supabase.channel('users-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => fetchUsers()).subscribe()
+      : null;
     const participantsChannel = supabase.channel('participants-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'event_participants' }, () => { fetchEventParticipants(); fetchEvents(); }).subscribe();
     return () => {
       supabase.removeChannel(eventsChannel);
       supabase.removeChannel(boardPostsChannel);
       supabase.removeChannel(galleryChannel);
-      supabase.removeChannel(usersChannel);
+      if (usersChannel) supabase.removeChannel(usersChannel);
       supabase.removeChannel(participantsChannel);
     };
-  }, [fetchEvents, fetchBoardPosts, fetchGalleryPhotos, fetchUsers, fetchEventParticipants]);
+  }, [isAdmin, fetchEvents, fetchBoardPosts, fetchGalleryPhotos, fetchUsers, fetchEventParticipants]);
 
   useEffect(() => {
     if (!user) return;
@@ -252,9 +283,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await insertEventRow(eventData);
       if (error) throw error;
-      await fetchEvents();
+      void fetchEvents();
     } catch (error) {
       console.error('Error creating event:', error);
+      throw error;
     }
   };
 
@@ -262,9 +294,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await updateEventRow(eventId, updates);
       if (error) throw error;
-      await fetchEvents();
+      void fetchEvents();
     } catch (error) {
       console.error('Error updating event:', error);
+      throw error;
     }
   };
 
@@ -272,9 +305,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await deleteEventRow(eventId);
       if (error) throw error;
-      await fetchEvents();
+      setEvents(prev => prev.filter(e => e.id !== eventId));
+      void fetchEvents();
     } catch (error) {
       console.error('Error deleting event:', error);
+      throw error;
     }
   };
 
@@ -289,7 +324,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         photoRefusal,
       });
       if (error) throw error;
-      await Promise.all([fetchEvents(), fetchEventParticipants()]);
+      void Promise.all([fetchEvents(), fetchEventParticipants()]);
     } catch (error) {
       console.error('Error registering for event:', error);
     }
@@ -300,7 +335,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await unregisterEventParticipant(eventId, user.id);
       if (error) throw error;
-      await Promise.all([fetchEvents(), fetchEventParticipants()]);
+      void Promise.all([fetchEvents(), fetchEventParticipants()]);
     } catch (error) {
       console.error('Error unregistering from event:', error);
     }
@@ -311,7 +346,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await toggleEventLikeForUser(eventId, user.id);
       if (error) throw error;
-      await fetchEvents();
+      void fetchEvents();
     } catch (error) {
       console.error('Error toggling event like:', error);
     }

@@ -17,9 +17,9 @@ interface AdminPageProps {
   onLanguageChange: (lang: Language) => void;
   events: Event[];
   eventParticipants: { [eventId: number]: EventParticipant[] };
-  onCreateEvent: (eventData: Omit<Event, 'id' | 'currentParticipants' | 'likes'>) => void;
-  onUpdateEvent: (eventId: number, eventData: Partial<Event>) => void;
-  onDeleteEvent: (eventId: number) => void;
+  onCreateEvent: (eventData: Omit<Event, 'id' | 'currentParticipants' | 'likes'>) => Promise<void>;
+  onUpdateEvent: (eventId: number, eventData: Partial<Event>) => Promise<void>;
+  onDeleteEvent: (eventId: number) => Promise<void>;
   pendingUsers: UserType[];
   approvedMembers: UserType[];
   membersLoading?: boolean;
