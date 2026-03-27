@@ -106,11 +106,10 @@ export async function POST(req: Request) {
   let tokenAttempt = await createAuthTokens();
   if (!tokenAttempt.ok) {
     // 3) If auth user/password is not set up in Supabase yet, create or update it, then retry once.
-    const adminUsers = (await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 }).catch(() => null)) as
-      | { users: Array<{ id: string; email?: string | null }> }
-      | null;
-
-    const users = (adminUsers?.users ?? []) as Array<{ id: string; email?: string | null }>;
+    const adminUsersResponse = await adminClient.auth.admin
+      .listUsers({ page: 1, perPage: 1000 })
+      .catch(() => null);
+    const users = (adminUsersResponse?.data?.users ?? []) as Array<{ id: string; email?: string | null }>;
     const existing = users.find(
       (u) => (u.email ?? "").toLowerCase() === email.toLowerCase()
     );

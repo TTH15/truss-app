@@ -23,6 +23,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const USER_CACHE_KEY = 'truss-app-user-cache';
+const ADMIN_SESSION_KEY = 'truss-admin-session';
 
 const getCachedUser = (): AppUser | null => {
   if (typeof window === 'undefined') return null;
@@ -94,10 +95,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     const initAuth = async () => {
       const cachedUser = getCachedUser();
-      const storedSession = localStorage.getItem('truss-app-auth');
-      if (cachedUser && storedSession) setLoading(false);
+      const adminSessionRaw = localStorage.getItem(ADMIN_SESSION_KEY);
+      if (cachedUser) setLoading(false);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        let { data: { session } } = await supabase.auth.getSession();
+
+        // Admin login fallback:
+        // If Supabase session is empty but we have locally saved admin tokens,
+        // restore once to avoid re-login on reload.
+        if (!session && adminSessionRaw) {
+          try {
+            const parsed = JSON.parse(adminSessionRaw) as { accessToken?: string; refreshToken?: string };
+            if (parsed.accessToken && parsed.refreshToken) {
+              const restored = await supabase.auth.setSession({
+                access_token: parsed.accessToken,
+                refresh_token: parsed.refreshToken,
+              });
+              session = restored.data.session ?? null;
+            }
+          } catch {
+            // ignore broken local data
+          }
+        }
+
         if (!mounted) return;
         setSession(session);
         setSupabaseUser(session?.user || null);
@@ -109,23 +129,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else if (mounted) {
             setUser(null);
             setCachedUser(null);
-          }
-        } else if (storedSession) {
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError) {
-            setCachedUser(null);
-            if (mounted) setUser(null);
-          } else if (refreshData.session && mounted) {
-            setSession(refreshData.session);
-            setSupabaseUser(refreshData.session.user);
-            const appUser = await fetchAppUser(refreshData.session.user.id);
-            if (appUser && mounted) {
-              setUser(appUser);
-              setCachedUser(appUser);
-            } else if (mounted) {
-              setUser(null);
-              setCachedUser(null);
-            }
           }
         } else {
           setCachedUser(null);
@@ -155,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setCachedUser(null);
+        localStorage.removeItem(ADMIN_SESSION_KEY);
       }
       setLoading(false);
     });
@@ -206,6 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setCachedUser(null);
+    localStorage.removeItem(ADMIN_SESSION_KEY);
   };
 
   const updateUser = async (updates: Partial<AppUser>) => {

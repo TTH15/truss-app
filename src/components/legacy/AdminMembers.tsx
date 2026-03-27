@@ -39,6 +39,8 @@ const translations = {
     exchange: '交換留学生',
     feePaid: '年会費支払い済み',
     feeUnpaid: '年会費未払い',
+    feeFilterGroup: '年会費:',
+    categoryFilterGroup: '区分:',
     exportData: 'データをエクスポート',
     sendBulkEmail: 'メールを一斉送信',
     bulkSetRenewal: '一括: 継続会員に設定',
@@ -49,6 +51,8 @@ const translations = {
     selectAll: 'すべて選択',
     noMemberSelected: 'メンバーを選択してください',
     bulkUpdated: '一括更新しました',
+    selectMembersToBulkAction: '一括操作を行うにはメンバーを選択してください',
+    selectedCount: '選択中',
     feePaidBadge: '会費: 支払済み',
     feeUnpaidBadge: '会費: 未払い',
     renewalBadge: '区分: 継続',
@@ -64,6 +68,8 @@ const translations = {
     exchange: 'Exchange Student',
     feePaid: 'Fee Paid',
     feeUnpaid: 'Fee Unpaid',
+    feeFilterGroup: 'Annual fee:',
+    categoryFilterGroup: 'Category:',
     exportData: 'Export Data',
     sendBulkEmail: 'Send Bulk Email',
     bulkSetRenewal: 'Bulk: Set Renewal',
@@ -74,6 +80,8 @@ const translations = {
     selectAll: 'Select All',
     noMemberSelected: 'Please select members',
     bulkUpdated: 'Bulk update completed',
+    selectMembersToBulkAction: 'Select members to enable bulk actions',
+    selectedCount: 'Selected',
     feePaidBadge: 'Fee: Paid',
     feeUnpaidBadge: 'Fee: Unpaid',
     renewalBadge: 'Type: Renewal',
@@ -113,6 +121,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, onApprov
     }
     return true;
   });
+  const selectedCount = selectedMembers.size;
 
   const getCategoryLabel = (category: string) => category === 'japanese' ? t.japanese : category === 'regular-international' ? t.regularInternational : category === 'exchange' ? t.exchange : '';
   const getCategoryColor = (category: string) => category === 'japanese' ? 'bg-[#dbeafe] text-[#193cb8]' : category === 'regular-international' ? 'bg-[rgba(132,212,97,0.3)] text-[#00a63e]' : category === 'exchange' ? 'bg-[#fce7f3] text-[#be185d]' : 'bg-gray-100 text-gray-800';
@@ -196,12 +205,18 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, onApprov
 
         {activeTab === 'approved' && (
           <div className="space-y-3 max-w-2xl mx-auto">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2"><Checkbox id="filter-fee-paid" checked={filters.feePaid} onCheckedChange={() => handleToggleFilter('feePaid')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-fee-paid" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.feePaid}</label></div>
-              <div className="flex items-center gap-2"><Checkbox id="filter-fee-unpaid" checked={filters.feeUnpaid} onCheckedChange={() => handleToggleFilter('feeUnpaid')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-fee-unpaid" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.feeUnpaid}</label></div>
-              <div className="flex items-center gap-2"><Checkbox id="filter-japanese" checked={filters.japanese} onCheckedChange={() => handleToggleFilter('japanese')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-japanese" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.japanese}</label></div>
-              <div className="flex items-center gap-2"><Checkbox id="filter-exchange" checked={filters.exchange} onCheckedChange={() => handleToggleFilter('exchange')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-exchange" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.exchange}</label></div>
-              <div className="flex items-center gap-2"><Checkbox id="filter-regular-international" checked={filters.regularInternational} onCheckedChange={() => handleToggleFilter('regularInternational')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-regular-international" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.regularInternational}</label></div>
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="text-sm font-semibold text-[#3D3D4E]">{t.feeFilterGroup}</span>
+                <div className="flex items-center gap-2"><Checkbox id="filter-fee-paid" checked={filters.feePaid} onCheckedChange={() => handleToggleFilter('feePaid')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-fee-paid" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.feePaid}</label></div>
+                <div className="flex items-center gap-2"><Checkbox id="filter-fee-unpaid" checked={filters.feeUnpaid} onCheckedChange={() => handleToggleFilter('feeUnpaid')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-fee-unpaid" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.feeUnpaid}</label></div>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="text-sm font-semibold text-[#3D3D4E]">{t.categoryFilterGroup}</span>
+                <div className="flex items-center gap-2"><Checkbox id="filter-japanese" checked={filters.japanese} onCheckedChange={() => handleToggleFilter('japanese')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-japanese" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.japanese}</label></div>
+                <div className="flex items-center gap-2"><Checkbox id="filter-regular-international" checked={filters.regularInternational} onCheckedChange={() => handleToggleFilter('regularInternational')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-regular-international" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.regularInternational}</label></div>
+                <div className="flex items-center gap-2"><Checkbox id="filter-exchange" checked={filters.exchange} onCheckedChange={() => handleToggleFilter('exchange')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-exchange" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.exchange}</label></div>
+              </div>
             </div>
             <div className="relative w-full max-w-xl"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#99A1AF]" /><Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t.search} className="pl-10 bg-[#EEEBE3] border-0 text-[#6B6B7A]" /></div>
           </div>
@@ -227,16 +242,25 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, onApprov
                   )}
                 </button>
                 <label onClick={handleToggleAll} className="text-[#3D3D4E] text-sm cursor-pointer select-none">{t.selectAll}</label>
+                <span className="text-xs text-[#6B6B7A]">
+                  {t.selectedCount}: {selectedCount}
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <Button onClick={() => void handleBulkSetRenewalStatus(true)} size="sm" variant="outline" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.2)] text-[#3D3D4E] hover:bg-[#E8E4DB]">{t.bulkSetRenewal}</Button>
-                <Button onClick={() => void handleBulkSetRenewalStatus(false)} size="sm" variant="outline" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.2)] text-[#3D3D4E] hover:bg-[#E8E4DB]">{t.bulkSetNewMember}</Button>
-                <Button onClick={() => void handleBulkConfirmFeePayment(true)} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkMarkPaidRenewal}</Button>
-                <Button onClick={() => void handleBulkConfirmFeePayment(false)} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkMarkPaidNew}</Button>
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                <Button onClick={() => void handleBulkSetRenewalStatus(true)} disabled={selectedCount === 0} size="sm" variant="outline" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.2)] text-[#3D3D4E] hover:bg-[#E8E4DB]">{t.bulkSetRenewal}</Button>
+                <Button onClick={() => void handleBulkSetRenewalStatus(false)} disabled={selectedCount === 0} size="sm" variant="outline" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.2)] text-[#3D3D4E] hover:bg-[#E8E4DB]">{t.bulkSetNewMember}</Button>
+                <Button onClick={() => void handleBulkConfirmFeePayment(true)} disabled={selectedCount === 0} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkMarkPaidRenewal}</Button>
+                <Button onClick={() => void handleBulkConfirmFeePayment(false)} disabled={selectedCount === 0} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkMarkPaidNew}</Button>
                 <Button onClick={handleBulkEmail} size="icon" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white h-9 w-9" title={t.sendBulkEmail}><Mail className="w-4 h-4" /></Button>
                 <Button onClick={handleExport} size="icon" variant="outline" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-9 w-9" title={t.exportData}><Download className="w-4 h-4" /></Button>
               </div>
             </div>
+
+            {selectedCount === 0 && (
+              <p className="text-xs text-[#6B6B7A]">
+                {t.selectMembersToBulkAction}
+              </p>
+            )}
 
             {filteredMembers.map((member) => (
               <div key={member.id} className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-4">

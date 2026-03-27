@@ -23,6 +23,7 @@ import '../styles/globals.css';
 import type { Event, Language, User } from '../domain/types/app';
 
 const ADMIN_PATH = '/admin-z8x4m2q9r7';
+const ADMIN_SESSION_KEY = 'truss-admin-session';
 
 export type {
   Language,
@@ -306,6 +307,12 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
         return;
       }
 
+      // リロード時の再ログインを避けるため、管理者トークンを補助保存する
+      localStorage.setItem(
+        ADMIN_SESSION_KEY,
+        JSON.stringify({ accessToken, refreshToken })
+      );
+
       const { error: sessionError } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
@@ -314,6 +321,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
         // Fallback: sign in directly to ensure a usable client session.
         const { error: fallbackError } = await supabase.auth.signInWithPassword({ email, password });
         if (fallbackError) {
+          localStorage.removeItem(ADMIN_SESSION_KEY);
           alert(
             language === 'ja'
               ? `管理者セッションの作成に失敗しました: ${sessionError.message}`
