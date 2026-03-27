@@ -7,7 +7,7 @@ import { Checkbox } from '../ui/checkbox';
 import { Skeleton } from '../ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Search, Download, Mail, MessageCircle, MoreVertical } from 'lucide-react';
+import { Search, Download, Mail, MessageCircle, MoreVertical, Pencil, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { queryFeeSettings } from '../../lib/db/queries/fee-settings';
@@ -55,14 +55,14 @@ const translations = {
     sortOrderDesc: '降順',
     exportData: 'データをエクスポート',
     sendBulkEmail: 'メールを一斉送信',
-    bulkAction: '一括操作',
+    bulkAction: '編集',
     bulkActionTitle: '一括操作',
     feePriceSetting: '年会費・入会費の価格設定',
     annualFee: '年会費',
     admissionFee: '入会費',
     applyPriceSetting: '価格を適用',
     markPaid: '支払い済み設定',
-    targetMemberType: '対象区分',
+    markPaidInBulk: '一括で支払い済みにする',
     downloadInfo: '情報ダウンロード',
     downloadCsv: 'CSVダウンロード',
     downloadXlsx: 'XLSXダウンロード',
@@ -75,10 +75,6 @@ const translations = {
     confirmBulkDelete: '選択したメンバーを削除します。よろしいですか？',
     csvDownloaded: 'CSVをダウンロードしました',
     xlsxDownloaded: 'XLSXをダウンロードしました',
-    bulkSetRenewal: '一括: 継続会員に設定',
-    bulkSetNewMember: '一括: 新規会員に設定',
-    bulkMarkPaidRenewal: '一括: 継続として支払済み',
-    bulkMarkPaidNew: '一括: 新規として支払済み',
     chat: '個別チャット',
     selectAll: 'すべて選択',
     noMemberSelected: 'メンバーを選択してください',
@@ -109,14 +105,14 @@ const translations = {
     sortOrderDesc: 'Descending',
     exportData: 'Export Data',
     sendBulkEmail: 'Send Bulk Email',
-    bulkAction: 'Bulk Action',
+    bulkAction: 'Edit',
     bulkActionTitle: 'Bulk Actions',
     feePriceSetting: 'Fee Price Settings',
     annualFee: 'Annual Fee',
     admissionFee: 'Admission Fee',
     applyPriceSetting: 'Apply Price',
     markPaid: 'Mark as Paid',
-    targetMemberType: 'Target Type',
+    markPaidInBulk: 'Mark selected as paid',
     downloadInfo: 'Download Info',
     downloadCsv: 'Download CSV',
     downloadXlsx: 'Download XLSX',
@@ -129,10 +125,6 @@ const translations = {
     confirmBulkDelete: 'Delete selected members?',
     csvDownloaded: 'CSV downloaded',
     xlsxDownloaded: 'XLSX downloaded',
-    bulkSetRenewal: 'Bulk: Set Renewal',
-    bulkSetNewMember: 'Bulk: Set New Member',
-    bulkMarkPaidRenewal: 'Bulk: Mark Paid (Renewal)',
-    bulkMarkPaidNew: 'Bulk: Mark Paid (New)',
     chat: 'Chat',
     selectAll: 'Select All',
     noMemberSelected: 'Please select members',
@@ -163,7 +155,6 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [annualFeeAmount, setAnnualFeeAmount] = useState('2000');
   const [admissionFeeAmount, setAdmissionFeeAmount] = useState('2500');
-  const [bulkPaymentTarget, setBulkPaymentTarget] = useState<'renewal' | 'new'>('renewal');
   const displayedMembers = activeTab === 'approved' ? approvedMembers : pendingUsers;
 
   const filteredMembers = displayedMembers.filter(member => {
@@ -233,21 +224,32 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     await Promise.all(ids.map((id) => onConfirmFeePayment(id, isRenewal)));
     toast.success(t.bulkUpdated);
   };
+  const handleBulkConfirmFeePaymentKeepType = async () => {
+    if (!onConfirmFeePayment) return;
+    const selected = sortedMembers.filter((member) => selectedMembers.has(member.id));
+    if (selected.length === 0) {
+      toast.error(t.noMemberSelected);
+      return;
+    }
+    await Promise.all(selected.map((member) => onConfirmFeePayment(member.id, member.isRenewal ?? false)));
+    toast.success(t.bulkUpdated);
+  };
   const getSelectedMemberList = () => sortedMembers.filter((member) => selectedMembers.has(member.id));
   const handleBulkDownloadCsv = () => {
     const rows = getSelectedMemberList();
     if (rows.length === 0) return toast.error(t.noMemberSelected);
     const escapeCsv = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-    const header = ['id', 'name', 'furigana', 'email', 'category', 'feePaid', 'isRenewal', 'createdAt'];
+    const header =
+      language === 'ja'
+        ? ['学籍番号', '氏名', '電話番号', 'メールアドレス', '他の所属団体']
+        : ['Student ID', 'Name', 'Phone', 'Email', 'Organizations'];
+
     const body = rows.map((m) => [
-      m.id,
+      m.studentNumber ?? '',
       m.name,
-      m.furigana,
+      m.phone ?? '',
       m.email,
-      m.category,
-      m.feePaid ? 'true' : 'false',
-      m.isRenewal ? 'true' : 'false',
-      m.createdAt ?? '',
+      m.organizations ?? '',
     ]);
     const csv = [header, ...body].map((line) => line.map(escapeCsv).join(',')).join('\n');
     const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
@@ -264,16 +266,27 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
   const handleBulkDownloadXlsx = () => {
     const rows = getSelectedMemberList();
     if (rows.length === 0) return toast.error(t.noMemberSelected);
-    const worksheet = XLSX.utils.json_to_sheet(rows.map((m) => ({
-      ID: m.id,
-      Name: m.name,
-      Furigana: m.furigana,
-      Email: m.email,
-      Category: m.category,
-      FeePaid: m.feePaid ? 'true' : 'false',
-      IsRenewal: m.isRenewal ? 'true' : 'false',
-      CreatedAt: m.createdAt ?? '',
-    })));
+    const worksheet = XLSX.utils.json_to_sheet(
+      rows.map((m) => {
+        const row: Record<string, string> =
+          language === 'ja'
+            ? {
+                '学籍番号': m.studentNumber ?? '',
+                '氏名': m.name,
+                '電話番号': m.phone ?? '',
+                'メールアドレス': m.email,
+                '他の所属団体': m.organizations ?? '',
+              }
+            : {
+                'Student ID': m.studentNumber ?? '',
+                'Name': m.name,
+                'Phone': m.phone ?? '',
+                'Email': m.email,
+                'Organizations': m.organizations ?? '',
+              };
+        return row;
+      })
+    );
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Members');
     XLSX.writeFile(workbook, `members_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -407,7 +420,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
           <>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
-                <button onClick={handleToggleAll} className={`w-[18px] h-[17px] rounded border flex items-center justify-center ${allFilteredSelected ? 'bg-[#3D3D4E] border-[#3D3D4E]' : 'bg-[#EEEBE3] border-[rgba(61,61,78,0.15)]'}`}>
+                <button onClick={handleToggleAll} className={`w-[18px] h-[17px] rounded border flex items-center justify-center ${allFilteredSelected ? 'bg-[#49B1E4] border-[#49B1E4]' : 'bg-white border-[#49B1E4]'}`}>
                   {allFilteredSelected && (
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 14 14">
                       <path
@@ -425,15 +438,9 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                 </span>
               </div>
               <div className="flex items-center gap-2 flex-wrap justify-end">
-                <Button onClick={() => void openBulkActionsModal()} disabled={selectedCount === 0} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkAction}</Button>
+                <Button onClick={() => void openBulkActionsModal()} disabled={selectedCount === 0} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1.5"><Plus className="w-4 h-4" /><Pencil className="w-4 h-4" />{t.bulkAction}</Button>
               </div>
             </div>
-
-            {selectedCount === 0 && (
-              <p className="text-xs text-[#6B6B7A]">
-                {t.selectMembersToBulkAction}
-              </p>
-            )}
 
             {isLoading && (
               <div className="space-y-3">
@@ -563,42 +570,38 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
               <div className="space-y-3 border rounded-lg border-[rgba(61,61,78,0.15)] p-3">
                 <p className="text-sm font-semibold text-[#3D3D4E]">{t.feePriceSetting}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Input value={annualFeeAmount} onChange={(e) => setAnnualFeeAmount(e.target.value)} placeholder={t.annualFee} className="bg-[#EEEBE3] border-0" />
-                  <Input value={admissionFeeAmount} onChange={(e) => setAdmissionFeeAmount(e.target.value)} placeholder={t.admissionFee} className="bg-[#EEEBE3] border-0" />
+                  <div className="space-y-1">
+                    <label className="text-xs text-[#3D3D4E]">{t.annualFee}</label>
+                    <Input value={annualFeeAmount} onChange={(e) => setAnnualFeeAmount(e.target.value)} className="bg-[#EEEBE3] border-0" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-[#3D3D4E]">{t.admissionFee}</label>
+                    <Input value={admissionFeeAmount} onChange={(e) => setAdmissionFeeAmount(e.target.value)} className="bg-[#EEEBE3] border-0" />
+                  </div>
                 </div>
-                <Button variant="outline" onClick={() => void handleSaveFeeSettings()}>
+                <Button onClick={() => void handleSaveFeeSettings()} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">
                   {t.applyPriceSetting}
                 </Button>
               </div>
 
               <div className="space-y-3 border rounded-lg border-[rgba(61,61,78,0.15)] p-3">
                 <p className="text-sm font-semibold text-[#3D3D4E]">{t.markPaid}</p>
-                <div className="flex gap-2 items-center">
-                  <span className="text-sm text-[#3D3D4E]">{t.targetMemberType}</span>
-                  <Select value={bulkPaymentTarget} onValueChange={(value: 'renewal' | 'new') => setBulkPaymentTarget(value)}>
-                    <SelectTrigger className="w-[180px] bg-[#EEEBE3] border-0"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="renewal">{t.bulkSetRenewal}</SelectItem>
-                      <SelectItem value="new">{t.bulkSetNewMember}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={() => void handleBulkConfirmFeePayment(bulkPaymentTarget === 'renewal')} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">
-                  {t.apply}
+                <Button onClick={() => void handleBulkConfirmFeePaymentKeepType()} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">
+                  {t.markPaidInBulk}
                 </Button>
               </div>
 
               <div className="space-y-2 border rounded-lg border-[rgba(61,61,78,0.15)] p-3">
                 <p className="text-sm font-semibold text-[#3D3D4E]">{t.downloadInfo}</p>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={handleBulkDownloadCsv} className="gap-1"><Download className="w-4 h-4" />{t.downloadCsv}</Button>
-                  <Button variant="outline" onClick={handleBulkDownloadXlsx} className="gap-1"><Download className="w-4 h-4" />{t.downloadXlsx}</Button>
+                  <Button onClick={handleBulkDownloadCsv} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1"><Download className="w-4 h-4" />{t.downloadCsv}</Button>
+                  <Button onClick={handleBulkDownloadXlsx} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1"><Download className="w-4 h-4" />{t.downloadXlsx}</Button>
                 </div>
               </div>
 
               <div className="flex items-center justify-between pt-2">
-                <Button variant="destructive" onClick={() => void handleBulkDelete()}>{t.bulkDelete}</Button>
-                <Button variant="outline" onClick={() => setShowBulkActionsModal(false)}>{t.close}</Button>
+                <Button onClick={() => void handleBulkDelete()} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkDelete}</Button>
+                <Button onClick={() => setShowBulkActionsModal(false)} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.close}</Button>
               </div>
             </div>
           </DialogContent>
