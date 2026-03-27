@@ -6,7 +6,7 @@ import { Checkbox } from '../ui/checkbox';
 import { X, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrashCan, faUpload, faEye, faWandMagicSparkles, faFloppyDisk } from '@fortawesome/free-solid-svg-icons';
+import { faTrashCan, faUpload, faEye, faWandMagicSparkles, faFloppyDisk, faRotateLeft } from '@fortawesome/free-solid-svg-icons';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { Language } from '../../domain/types/app';
@@ -224,6 +224,10 @@ export function AdminEvents({
   const t = translations[language];
   const [currentMonth, setCurrentMonth] = useState(3); // 4月 = 3 (0-indexed)
   const [currentYear, setCurrentYear] = useState(2026);
+  const currentMonthRef = useRef(currentMonth);
+  const currentYearRef = useRef(currentYear);
+  const lastMonthSwitchAtRef = useRef<number>(0);
+  const calendarContainerRef = useRef<HTMLDivElement | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<AdminEvent | null>(null);
   const [showNewEventForm, setShowNewEventForm] = useState(false);
@@ -241,6 +245,9 @@ export function AdminEvents({
   const [isImageProcessing, setIsImageProcessing] = useState(false);
   const imageCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef(false);
+  const imageHistoryRef = useRef<ImageData[]>([]);
+  const [canUndoImageEdit, setCanUndoImageEdit] = useState(false);
+  const [draggingEvent, setDraggingEvent] = useState<AdminEvent | null>(null);
   const saveInFlightRef = useRef(false);
   const [confirmType, setConfirmType] = useState<'create' | 'update'>('create');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
@@ -334,6 +341,33 @@ export function AdminEvents({
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     setSelectedDate(dateStr);
     const nextEvent = { ...newEvent, date: dateStr };
+    setNewEvent(nextEvent);
+    setInitialEventSnapshot(JSON.stringify(nextEvent));
+    setShowNewEventForm(true);
+    setSelectedEvent(null);
+  };
+
+  const handleImportEventToDate = (sourceEvent: AdminEvent, day: number | null) => {
+    if (!day) return;
+    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    setSelectedDate(dateStr);
+    const { startTime, endTime } = parseEventTime(sourceEvent);
+    const nextEvent = {
+      titleJa: getEventText(sourceEvent, 'title', 'ja'),
+      titleEn: getEventText(sourceEvent, 'title', 'en'),
+      descriptionJa: getEventText(sourceEvent, 'description', 'ja'),
+      descriptionEn: getEventText(sourceEvent, 'description', 'en'),
+      date: dateStr,
+      startTime,
+      endTime,
+      location: getEventText(sourceEvent, 'location', 'ja'),
+      locationEn: getEventText(sourceEvent, 'location', 'en'),
+      googleMapUrl: sourceEvent?.googleMapUrl || '',
+      maxParticipants: String(sourceEvent?.maxParticipants || ''),
+      lineGroupUrl: '',
+      image: sourceEvent?.image || null,
+      eventColor: sourceEvent?.eventColor || '#49B1E4',
+    };
     setNewEvent(nextEvent);
     setInitialEventSnapshot(JSON.stringify(nextEvent));
     setShowNewEventForm(true);
@@ -497,6 +531,30 @@ export function AdminEvents({
     setImageEditorOpen(false);
     setImageEditorSource(null);
     setImageEditorMode('preview');
+    imageHistoryRef.current = [];
+    setCanUndoImageEdit(false);
+  };
+
+  const pushImageHistory = () => {
+    const canvas = imageCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    imageHistoryRef.current.push(snapshot);
+    if (imageHistoryRef.current.length > 40) imageHistoryRef.current.shift();
+    setCanUndoImageEdit(true);
+  };
+
+  const undoImageEdit = () => {
+    const canvas = imageCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const snapshot = imageHistoryRef.current.pop();
+    if (!snapshot) return;
+    ctx.putImageData(snapshot, 0, 0);
+    setCanUndoImageEdit(imageHistoryRef.current.length > 0);
   };
 
   const applyMosaicAtPoint = (canvas: HTMLCanvasElement, centerX: number, centerY: number, brushSize: number) => {
@@ -644,6 +702,47 @@ export function AdminEvents({
     }
   };
 
+  useEffect(() => {
+    currentMonthRef.current = currentMonth;
+  }, [currentMonth]);
+
+  useEffect(() => {
+    currentYearRef.current = currentYear;
+  }, [currentYear]);
+
+  const handleCalendarDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!draggingEvent) return;
+    e.preventDefault();
+    const el = calendarContainerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const threshold = 70; // 左右何px寄せたら切替するか
+    const now = Date.now();
+    if (now - lastMonthSwitchAtRef.current < 550) return;
+
+    if (e.clientX < rect.left + threshold) {
+      lastMonthSwitchAtRef.current = now;
+      const cm = currentMonthRef.current;
+      const cy = currentYearRef.current;
+      if (cm === 0) {
+        setCurrentMonth(11);
+        setCurrentYear(cy - 1);
+      } else {
+        setCurrentMonth(cm - 1);
+      }
+    } else if (e.clientX > rect.right - threshold) {
+      lastMonthSwitchAtRef.current = now;
+      const cm = currentMonthRef.current;
+      const cy = currentYearRef.current;
+      if (cm === 11) {
+        setCurrentMonth(0);
+        setCurrentYear(cy + 1);
+      } else {
+        setCurrentMonth(cm + 1);
+      }
+    }
+  };
+
   const selectedDateValue = useMemo(() => {
     if (!newEvent.date) return undefined;
     const parsed = new Date(`${newEvent.date}T00:00:00`);
@@ -671,9 +770,23 @@ export function AdminEvents({
       canvas.height = Math.max(1, Math.floor(image.height * scale));
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      imageHistoryRef.current = [];
+      setCanUndoImageEdit(false);
     };
     image.src = imageEditorSource;
   }, [imageEditorOpen, imageEditorSource]);
+
+  useEffect(() => {
+    if (!imageEditorOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isUndo = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && !event.shiftKey;
+      if (!isUndo) return;
+      event.preventDefault();
+      undoImageEdit();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [imageEditorOpen]);
 
   const renderEventImageField = () => (
     <div>
@@ -732,7 +845,7 @@ export function AdminEvents({
         </div>
 
         {/* カレンダーグリッド */}
-        <div className="overflow-hidden">
+        <div className="overflow-hidden" ref={calendarContainerRef} onDragOver={handleCalendarDragOver}>
           <div className="grid grid-cols-7 gap-px bg-[#E5E7EB] border border-[#E5E7EB] overflow-hidden">
             {/* 曜日ヘッダー */}
             {dayNames.map((day, index) => (
@@ -757,6 +870,19 @@ export function AdminEvents({
                   className={`p-2 flex flex-col relative overflow-hidden h-[120px] ${isSunday ? 'bg-red-50/35' : isSaturday ? 'bg-blue-50/35' : 'bg-white'
                     } ${day ? 'cursor-pointer hover:bg-[#F5F8FC]' : ''}`}
                   onClick={() => handleAddEvent(day)}
+                  onDragOver={(e) => {
+                    if (draggingEvent && day) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'copy';
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (draggingEvent && day) {
+                      e.preventDefault();
+                      handleImportEventToDate(draggingEvent, day);
+                      setDraggingEvent(null);
+                    }
+                  }}
                 >
                   {day && (
                     <>
@@ -768,9 +894,17 @@ export function AdminEvents({
                         {dayEvents.map((event) => (
                           <button
                             key={event.id}
+                            draggable
                             onClick={(e) => {
                               e.stopPropagation();
                               handleEventClick(event);
+                            }}
+                            onDragStart={(e) => {
+                              setDraggingEvent(event);
+                              e.dataTransfer.effectAllowed = 'copy';
+                            }}
+                            onDragEnd={() => {
+                              setDraggingEvent(null);
                             }}
                             className="flex items-center gap-1 text-left w-full px-1 py-0.5 rounded hover:bg-black/5 transition-colors"
                           >
@@ -1552,6 +1686,15 @@ export function AdminEvents({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
+                  title={language === 'ja' ? '1つ戻す (Cmd/Ctrl+Z)' : 'Undo (Cmd/Ctrl+Z)'}
+                  className="text-lg text-white/60 hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-white/60"
+                  onClick={undoImageEdit}
+                  disabled={!canUndoImageEdit}
+                >
+                  <FontAwesomeIcon icon={faRotateLeft} />
+                </button>
+                <button
+                  type="button"
                   title={language === 'ja' ? 'プレビュー' : 'Preview'}
                   className={`text-lg transition-colors ${imageEditorMode === 'preview' ? 'text-white' : 'text-white/60 hover:text-white'}`}
                   onClick={() => setImageEditorMode('preview')}
@@ -1616,6 +1759,7 @@ export function AdminEvents({
                 className={`max-w-full max-h-[78vh] ${imageEditorMode === 'mosaic' ? 'cursor-crosshair' : 'cursor-default'}`}
                 onMouseDown={(e) => {
                   if (imageEditorMode !== 'mosaic') return;
+                  pushImageHistory();
                   isDrawingRef.current = true;
                   handleCanvasPointer(e.clientX, e.clientY);
                 }}
