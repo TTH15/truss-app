@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -7,11 +7,15 @@ import { Plus, X, Upload, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, 
 import { toast } from 'sonner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { format } from 'date-fns';
+import { ja } from 'date-fns/locale';
 import type { Language } from '../../domain/types/app';
 import imgEventSample from '@/assets/c4e8899bf782af1b6b9889d032b63d8a0c141f8b.png';
 import { BulkEmailModal } from './BulkEmailModal';
 import { translateText } from '../../utils/translate';
 import { uploadEventImage } from '../../lib/supabase';
+import { Calendar } from '../ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
 type AdminEvent = any;
 type AdminEventParticipant = any;
@@ -233,6 +237,7 @@ export function AdminEvents({
   const saveInFlightRef = useRef(false);
   const [confirmType, setConfirmType] = useState<'create' | 'update'>('create');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
+  const [initialEventSnapshot, setInitialEventSnapshot] = useState('');
 
   const getEventText = (event: AdminEvent, key: 'title' | 'description' | 'location', locale: 'ja' | 'en') => {
     const jaKeyMap = {
@@ -318,7 +323,9 @@ export function AdminEvents({
     if (!day) return;
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     setSelectedDate(dateStr);
-    setNewEvent({ ...newEvent, date: dateStr });
+    const nextEvent = { ...newEvent, date: dateStr };
+    setNewEvent(nextEvent);
+    setInitialEventSnapshot(JSON.stringify(nextEvent));
     setShowNewEventForm(true);
     setSelectedEvent(null);
     setCalendarCompact(true);
@@ -327,7 +334,7 @@ export function AdminEvents({
   const handleEventClick = (event: AdminEvent) => {
     setSelectedEvent(event);
     const { startTime, endTime } = parseEventTime(event);
-    setNewEvent({
+    const nextEvent = {
       titleJa: getEventText(event, 'title', 'ja'),
       titleEn: getEventText(event, 'title', 'en'),
       descriptionJa: getEventText(event, 'description', 'ja'),
@@ -341,7 +348,9 @@ export function AdminEvents({
       maxParticipants: String(event?.maxParticipants || ''),
       lineGroupUrl: event?.lineGroupLink || event?.lineGroupUrl || '',
       image: event?.image || null,
-    });
+    };
+    setNewEvent(nextEvent);
+    setInitialEventSnapshot(JSON.stringify(nextEvent));
     setEditMode(true);
     setSelectedParticipants(new Set());
     setShowNewEventForm(false);
@@ -368,6 +377,7 @@ export function AdminEvents({
       lineGroupUrl: '',
       image: null,
     });
+    setInitialEventSnapshot('');
   };
 
   const handleSaveEvent = () => {
@@ -410,7 +420,7 @@ export function AdminEvents({
     if (!selectedEvent) return;
     const { startTime, endTime } = parseEventTime(selectedEvent);
     setEditMode(true);
-    setNewEvent({
+    const nextEvent = {
       titleJa: getEventText(selectedEvent, 'title', 'ja'),
       titleEn: getEventText(selectedEvent, 'title', 'en'),
       descriptionJa: getEventText(selectedEvent, 'description', 'ja'),
@@ -424,7 +434,9 @@ export function AdminEvents({
       maxParticipants: String(selectedEvent.maxParticipants || ''),
       lineGroupUrl: selectedEvent.lineGroupLink || selectedEvent.lineGroupUrl || '',
       image: selectedEvent.image || null,
-    });
+    };
+    setNewEvent(nextEvent);
+    setInitialEventSnapshot(JSON.stringify(nextEvent));
   };
 
   const handleSaveEditedEvent = () => {
@@ -535,6 +547,17 @@ export function AdminEvents({
       setCurrentMonth(currentMonth + 1);
     }
   };
+
+  const selectedDateValue = useMemo(() => {
+    if (!newEvent.date) return undefined;
+    const parsed = new Date(`${newEvent.date}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }, [newEvent.date]);
+
+  const hasUnsavedChanges = useMemo(() => {
+    if (!initialEventSnapshot) return false;
+    return JSON.stringify(newEvent) !== initialEventSnapshot;
+  }, [newEvent, initialEventSnapshot]);
 
   return (
     <div className="space-y-6">
@@ -826,12 +849,25 @@ export function AdminEvents({
                   <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
                     {t.date}
                   </label>
-                  <Input
-                    type="date"
-                    value={newEvent.date}
-                    onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                    className="bg-[#EEEBE3] border-0"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" className="w-full justify-start bg-[#EEEBE3] border-0 text-left font-normal text-[#3D3D4E]">
+                        <CalendarIcon className="w-4 h-4 mr-2 text-[#6B6B7A]" />
+                        {selectedDateValue ? format(selectedDateValue, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined }) : (language === 'ja' ? '日付を選択' : 'Select date')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDateValue}
+                        onSelect={(date) => {
+                          if (!date) return;
+                          setNewEvent({ ...newEvent, date: format(date, 'yyyy-MM-dd') });
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
@@ -1152,12 +1188,6 @@ export function AdminEvents({
                 {newEvent.titleJa || newEvent.titleEn || (language === 'ja' ? '無題のイベント' : 'Untitled event')}
               </p>
             </div>
-            <Button
-              onClick={handleDeleteEvent}
-              className="bg-[#D4183D] hover:bg-[#B01535] text-white"
-            >
-              {t.deleteEvent}
-            </Button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1311,12 +1341,25 @@ export function AdminEvents({
                   <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
                     {t.date}
                   </label>
-                  <Input
-                    type="date"
-                    value={newEvent.date}
-                    onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                    className="bg-[#EEEBE3] border-0"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" className="w-full justify-start bg-[#EEEBE3] border-0 text-left font-normal text-[#3D3D4E]">
+                        <CalendarIcon className="w-4 h-4 mr-2 text-[#6B6B7A]" />
+                        {selectedDateValue ? format(selectedDateValue, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined }) : (language === 'ja' ? '日付を選択' : 'Select date')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDateValue}
+                        onSelect={(date) => {
+                          if (!date) return;
+                          setNewEvent({ ...newEvent, date: format(date, 'yyyy-MM-dd') });
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
@@ -1405,10 +1448,17 @@ export function AdminEvents({
           </div>
 
           {/* ボタン */}
-          <div className="flex gap-2 mt-6">
+          <div className="flex gap-2 mt-6 justify-end">
+            <Button
+              onClick={handleDeleteEvent}
+              className="min-w-28 bg-[#D4183D] hover:bg-[#B01535] text-white"
+            >
+              {t.deleteEvent}
+            </Button>
             <Button
               onClick={handleSaveEditedEvent}
-              className="flex-1 bg-[#00A63E] hover:bg-[#008C35] text-white"
+              disabled={!hasUnsavedChanges || isSavingEvent || isUploadingImage}
+              className="min-w-28 bg-[#00A63E] hover:bg-[#008C35] text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t.save}
             </Button>
