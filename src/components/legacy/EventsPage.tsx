@@ -81,7 +81,11 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
       <div key={event.id} ref={(el) => { eventRefs.current[event.id] = el; }}>
         <Card className={`overflow-hidden hover:shadow-lg transition-all duration-500 ${isHighlighted ? 'ring-4 ring-[#49B1E4] shadow-2xl' : ''}`}>
           <button onClick={() => { setDetailEvent(event); setDetailModalOpen(true); }} className="w-full h-48 sm:h-72 bg-linear-to-br from-blue-100 to-purple-100 relative cursor-pointer group">
-            <img src={event.image} alt={displayTitle} loading="lazy" className="w-full h-full object-cover" />
+            {event.image ? (
+              <img src={event.image} alt={displayTitle} loading="lazy" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-linear-to-br from-blue-100 to-purple-100" />
+            )}
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center"><div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full p-2"><Info className="w-6 h-6 text-[#49B1E4]" /></div></div>
           </button>
           <CardContent className="pt-3 pb-3 px-3 sm:px-6">
@@ -131,7 +135,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
             <>
               <DialogHeader><DialogTitle className="flex items-center gap-2 text-[#3D3D4E]"><Calendar className="w-5 h-5 text-[#49B1E4]" />{t.eventDetails}</DialogTitle></DialogHeader>
               <div className="space-y-4">
-                {detailEvent.image && <div className="rounded-lg overflow-hidden"><img src={detailEvent.image} alt={language === 'ja' ? detailEvent.title : (detailEvent.titleEn || detailEvent.title)} className="w-full h-48 object-cover" /></div>}
+                {detailEvent.image ? <div className="rounded-lg overflow-hidden"><img src={detailEvent.image} alt={language === 'ja' ? detailEvent.title : (detailEvent.titleEn || detailEvent.title)} className="w-full h-48 object-cover" /></div> : <div className="rounded-lg overflow-hidden"><div className="w-full h-48 bg-linear-to-br from-blue-100 to-purple-100" /></div>}
                 <h3 className="text-xl font-bold text-[#3D3D4E]">{language === 'ja' ? detailEvent.title : (detailEvent.titleEn || detailEvent.title)}</h3>
                 <div className="bg-[#F5F1E8] rounded-lg p-4 space-y-3">
                   <div className="flex items-center gap-3 text-[#3D3D4E]"><Calendar className="w-5 h-5 text-[#49B1E4]" /><span>{detailEvent.date}</span></div>

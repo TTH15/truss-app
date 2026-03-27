@@ -9,6 +9,7 @@ import type { Language } from '../../domain/types/app';
 import imgEventSample from '@/assets/c4e8899bf782af1b6b9889d032b63d8a0c141f8b.png';
 import { BulkEmailModal } from './BulkEmailModal';
 import { translateText } from '../../utils/translate';
+import { uploadEventImage } from '../../lib/supabase';
 
 type AdminEvent = any;
 type AdminEventParticipant = any;
@@ -226,6 +227,7 @@ export function AdminEvents({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSavingEvent, setIsSavingEvent] = useState(false);
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const saveInFlightRef = useRef(false);
   const [confirmType, setConfirmType] = useState<'create' | 'update'>('create');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
@@ -314,7 +316,7 @@ export function AdminEvents({
   };
 
   const handleSaveEvent = () => {
-    if (isSavingEvent) return;
+    if (isSavingEvent || isUploadingImage) return;
     setConfirmType('create');
     setShowSaveConfirm(true);
   };
@@ -370,7 +372,7 @@ export function AdminEvents({
   };
 
   const handleSaveEditedEvent = () => {
-    if (isSavingEvent) return;
+    if (isSavingEvent || isUploadingImage) return;
     setConfirmType('update');
     setShowSaveConfirm(true);
   };
@@ -396,14 +398,24 @@ export function AdminEvents({
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewEvent({ ...newEvent, image: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    const uploadKey = selectedEvent?.id ?? Date.now();
+    setIsUploadingImage(true);
+    toast.loading(language === 'ja' ? '画像をアップロード中...' : 'Uploading image...');
+    try {
+      const { url, error } = await uploadEventImage(uploadKey, file);
+      toast.dismiss();
+      if (error || !url) {
+        toast.error(language === 'ja' ? '画像アップロードに失敗しました' : 'Failed to upload image');
+        return;
+      }
+      setNewEvent((prev) => ({ ...prev, image: url }));
+      toast.success(language === 'ja' ? '画像をアップロードしました' : 'Image uploaded');
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -726,7 +738,7 @@ export function AdminEvents({
                         </label>
                         <button
                           type="button"
-                          onClick={() => setNewEvent({ ...newEvent, image: '' })}
+                          onClick={() => setNewEvent({ ...newEvent, image: null })}
                           className="flex flex-col items-center bg-red-500/90 hover:bg-red-500 px-4 py-2 rounded-lg transition-colors"
                         >
                           <X className="w-4 h-4 text-white mb-1" />
@@ -1198,7 +1210,7 @@ export function AdminEvents({
                         </label>
                         <button
                           type="button"
-                          onClick={() => setNewEvent({ ...newEvent, image: '' })}
+                          onClick={() => setNewEvent({ ...newEvent, image: null })}
                           className="flex flex-col items-center bg-red-500/90 hover:bg-red-500 px-4 py-2 rounded-lg transition-colors"
                         >
                           <X className="w-4 h-4 text-white mb-1" />
@@ -1388,9 +1400,9 @@ export function AdminEvents({
             <div className="p-6">
               <div className="flex gap-2">
                 <Button
-                  disabled={isSavingEvent}
+                  disabled={isSavingEvent || isUploadingImage}
                   onClick={async () => {
-                    if (isSavingEvent || saveInFlightRef.current) return;
+                    if (isSavingEvent || isUploadingImage || saveInFlightRef.current) return;
                     saveInFlightRef.current = true;
                     setIsSavingEvent(true);
                     try {

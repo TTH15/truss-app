@@ -116,7 +116,11 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
             const displayTitle = language === 'ja' ? event.title : (event.titleEn || event.title);
             return (
               <div key={`${event.id}-${index}`} onClick={() => onNavigateToEvent(event.id)} className="shrink-0 w-40 h-28 md:w-52 md:h-36 rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer relative group">
-                <img src={event.image} alt={displayTitle} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                {event.image ? (
+                  <img src={event.image} alt={displayTitle} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                ) : (
+                  <div className="w-full h-full bg-linear-to-br from-blue-100 to-purple-100" />
+                )}
                 <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="absolute bottom-0 left-0 right-0 p-2"><p className="text-white text-xs truncate">{displayTitle}</p><p className="text-white/80 text-xs">{event.date}</p></div>
                 </div>
