@@ -231,9 +231,16 @@ export function AdminEvents({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [imageEditorOpen, setImageEditorOpen] = useState(false);
+  const [imageEditorMode, setImageEditorMode] = useState<'preview' | 'mosaic'>('preview');
+  const [imageEditorSource, setImageEditorSource] = useState<string | null>(null);
+  const [mosaicBrushSize, setMosaicBrushSize] = useState(36);
   const [isSavingEvent, setIsSavingEvent] = useState(false);
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isImageProcessing, setIsImageProcessing] = useState(false);
+  const imageCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isDrawingRef = useRef(false);
   const saveInFlightRef = useRef(false);
   const [confirmType, setConfirmType] = useState<'create' | 'update'>('create');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
@@ -480,25 +487,100 @@ export function AdminEvents({
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const openImageEditor = (source: string, mode: 'preview' | 'mosaic' = 'preview') => {
+    setImageEditorSource(source);
+    setImageEditorMode(mode);
+    setImageEditorOpen(true);
+  };
 
-    const uploadKey = selectedEvent?.id ?? Date.now();
-    setIsUploadingImage(true);
-    toast.loading(language === 'ja' ? '画像をアップロード中...' : 'Uploading image...');
+  const closeImageEditor = () => {
+    setImageEditorOpen(false);
+    setImageEditorSource(null);
+    setImageEditorMode('preview');
+  };
+
+  const applyMosaicAtPoint = (canvas: HTMLCanvasElement, centerX: number, centerY: number, brushSize: number) => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const blockSize = 8;
+    const half = Math.floor(brushSize / 2);
+    const startX = Math.max(0, Math.floor(centerX - half));
+    const startY = Math.max(0, Math.floor(centerY - half));
+    const width = Math.min(canvas.width - startX, brushSize);
+    const height = Math.min(canvas.height - startY, brushSize);
+    if (width <= 0 || height <= 0) return;
+    const imageData = ctx.getImageData(startX, startY, width, height);
+    const { data } = imageData;
+    for (let y = 0; y < height; y += blockSize) {
+      for (let x = 0; x < width; x += blockSize) {
+        const px = (y * width + x) * 4;
+        const r = data[px];
+        const g = data[px + 1];
+        const b = data[px + 2];
+        const a = data[px + 3];
+        for (let by = 0; by < blockSize && y + by < height; by++) {
+          for (let bx = 0; bx < blockSize && x + bx < width; bx++) {
+            const i = ((y + by) * width + (x + bx)) * 4;
+            data[i] = r;
+            data[i + 1] = g;
+            data[i + 2] = b;
+            data[i + 3] = a;
+          }
+        }
+      }
+    }
+    ctx.putImageData(imageData, startX, startY);
+  };
+
+  const handleCanvasPointer = (clientX: number, clientY: number) => {
+    if (imageEditorMode !== 'mosaic') return;
+    const canvas = imageCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+    applyMosaicAtPoint(canvas, x, y, mosaicBrushSize);
+  };
+
+  const saveEditedImage = async () => {
+    const canvas = imageCanvasRef.current;
+    if (!canvas) return;
+    setIsImageProcessing(true);
     try {
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+      if (!blob) {
+        toast.error(language === 'ja' ? '画像変換に失敗しました' : 'Failed to process image');
+        return;
+      }
+      const file = new File([blob], `event-${selectedEvent?.id ?? Date.now()}.jpg`, { type: 'image/jpeg' });
+      const uploadKey = selectedEvent?.id ?? Date.now();
       const { url, error } = await uploadEventImage(uploadKey, file);
-      toast.dismiss();
       if (error || !url) {
         toast.error(language === 'ja' ? '画像アップロードに失敗しました' : 'Failed to upload image');
         return;
       }
       setNewEvent((prev) => ({ ...prev, image: url }));
-      toast.success(language === 'ja' ? '画像をアップロードしました' : 'Image uploaded');
+      toast.success(language === 'ja' ? '画像を更新しました' : 'Image updated');
+      closeImageEditor();
     } finally {
-      setIsUploadingImage(false);
+      setIsImageProcessing(false);
     }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result;
+      if (typeof result === 'string') {
+        openImageEditor(result, 'mosaic');
+      }
+      e.currentTarget.value = '';
+    };
+    reader.readAsDataURL(file);
   };
 
   const toggleAttended = (participantId: string) => {
@@ -572,6 +654,53 @@ export function AdminEvents({
     if (!initialEventSnapshot) return false;
     return JSON.stringify(newEvent) !== initialEventSnapshot;
   }, [newEvent, initialEventSnapshot]);
+
+  useEffect(() => {
+    if (!imageEditorOpen || !imageEditorSource) return;
+    const canvas = imageCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => {
+      const maxWidth = 1200;
+      const maxHeight = 700;
+      const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+      canvas.width = Math.max(1, Math.floor(image.width * scale));
+      canvas.height = Math.max(1, Math.floor(image.height * scale));
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    };
+    image.src = imageEditorSource;
+  }, [imageEditorOpen, imageEditorSource]);
+
+  const renderEventImageField = () => (
+    <div>
+      <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+        {t.eventImage}
+      </label>
+      <div className="bg-[#F5F1E8] border border-[rgba(61,61,78,0.15)] rounded-[8px] h-[126px] flex items-center justify-center relative overflow-hidden group">
+        {newEvent.image ? (
+          <button type="button" className="w-full h-full" onClick={() => openImageEditor(newEvent.image!, 'preview')}>
+            <img src={newEvent.image} alt="Event" className="w-full h-full object-cover" />
+          </button>
+        ) : (
+          <label className="cursor-pointer flex flex-col items-center">
+            <Upload className="w-4 h-4 text-[#3D3D4E] mb-1" />
+            <span className="text-[#3D3D4E] text-sm font-medium">{t.upload}</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+          </label>
+        )}
+      </div>
+      <p className="text-[#6A7282] text-xs mt-2">{t.imageNote}</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -777,52 +906,7 @@ export function AdminEvents({
             {/* 右側 */}
             <div className="space-y-4">
               {/* イベント画像 */}
-              <div>
-                <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                  {t.eventImage}
-                </label>
-                <div className="bg-[#F5F1E8] border border-[rgba(61,61,78,0.15)] rounded-[8px] h-[126px] flex items-center justify-center relative overflow-hidden group">
-                  {newEvent.image ? (
-                    <>
-                      <img src={newEvent.image} alt="Event" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                        <label className="cursor-pointer flex flex-col items-center bg-white/90 hover:bg-white px-4 py-2 rounded-lg transition-colors">
-                          <Upload className="w-4 h-4 text-[#3D3D4E] mb-1" />
-                          <span className="text-[#3D3D4E] text-xs font-medium">{t.upload}</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setNewEvent({ ...newEvent, image: null })}
-                          className="flex flex-col items-center bg-red-500/90 hover:bg-red-500 px-4 py-2 rounded-lg transition-colors"
-                        >
-                          <X className="w-4 h-4 text-white mb-1" />
-                          <span className="text-white text-xs font-medium">
-                            {language === 'ja' ? '削除' : 'Remove'}
-                          </span>
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <label className="cursor-pointer flex flex-col items-center">
-                      <Upload className="w-4 h-4 text-[#3D3D4E] mb-1" />
-                      <span className="text-[#3D3D4E] text-sm font-medium">{t.upload}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
-                <p className="text-[#6A7282] text-xs mt-2">{t.imageNote}</p>
-              </div>
+              {renderEventImageField()}
 
               <div>
                 <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
@@ -855,7 +939,7 @@ export function AdminEvents({
                         {selectedDateValue ? format(selectedDateValue, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined }) : (language === 'ja' ? '日付を選択' : 'Select date')}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0 bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80" align="start">
                       <Calendar
                         mode="single"
                         selected={selectedDateValue}
@@ -1287,52 +1371,7 @@ export function AdminEvents({
             {/* 右側 */}
             <div className="space-y-4">
               {/* イベント画像 */}
-              <div>
-                <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                  {t.eventImage}
-                </label>
-                <div className="bg-[#F5F1E8] border border-[rgba(61,61,78,0.15)] rounded-[8px] h-[126px] flex items-center justify-center relative overflow-hidden group">
-                  {newEvent.image ? (
-                    <>
-                      <img src={newEvent.image} alt="Event" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                        <label className="cursor-pointer flex flex-col items-center bg-white/90 hover:bg-white px-4 py-2 rounded-lg transition-colors">
-                          <Upload className="w-4 h-4 text-[#3D3D4E] mb-1" />
-                          <span className="text-[#3D3D4E] text-xs font-medium">{t.upload}</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setNewEvent({ ...newEvent, image: null })}
-                          className="flex flex-col items-center bg-red-500/90 hover:bg-red-500 px-4 py-2 rounded-lg transition-colors"
-                        >
-                          <X className="w-4 h-4 text-white mb-1" />
-                          <span className="text-white text-xs font-medium">
-                            {language === 'ja' ? '削除' : 'Remove'}
-                          </span>
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <label className="cursor-pointer flex flex-col items-center">
-                      <Upload className="w-4 h-4 text-[#3D3D4E] mb-1" />
-                      <span className="text-[#3D3D4E] text-sm font-medium">{t.upload}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
-                <p className="text-[#6A7282] text-xs mt-2">{t.imageNote}</p>
-              </div>
+              {renderEventImageField()}
 
               <div>
                 <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
@@ -1365,7 +1404,7 @@ export function AdminEvents({
                         {selectedDateValue ? format(selectedDateValue, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined }) : (language === 'ja' ? '日付を選択' : 'Select date')}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0 bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80" align="start">
                       <Calendar
                         mode="single"
                         selected={selectedDateValue}
@@ -1503,6 +1542,110 @@ export function AdminEvents({
             setSelectedParticipants(new Set()); // 送信後選択をクリア
           }}
         />
+      )}
+
+      {imageEditorOpen && imageEditorSource && (
+        <div
+          className="fixed inset-0 z-90 bg-black/70 flex items-center justify-center p-4"
+          onClick={closeImageEditor}
+        >
+          <div className="relative w-full max-w-[95vw] max-h-[95vh] bg-[#111827] rounded-xl border border-white/10 p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3 gap-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={imageEditorMode === 'preview' ? 'default' : 'outline'}
+                  className={imageEditorMode === 'preview' ? 'bg-white text-[#111827] hover:bg-white/90' : 'bg-transparent text-white border-white/40 hover:bg-white/10'}
+                  onClick={() => setImageEditorMode('preview')}
+                >
+                  {language === 'ja' ? 'プレビュー' : 'Preview'}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={imageEditorMode === 'mosaic' ? 'default' : 'outline'}
+                  className={imageEditorMode === 'mosaic' ? 'bg-[#49B1E4] text-white hover:bg-[#3EA3D4]' : 'bg-transparent text-white border-white/40 hover:bg-white/10'}
+                  onClick={() => setImageEditorMode('mosaic')}
+                >
+                  {language === 'ja' ? 'モザイクブラシ' : 'Mosaic Brush'}
+                </Button>
+                {imageEditorMode === 'mosaic' && (
+                  <div className="flex items-center gap-2 text-white text-xs">
+                    <span>{language === 'ja' ? 'ブラシ' : 'Brush'}</span>
+                    <input
+                      type="range"
+                      min={16}
+                      max={84}
+                      value={mosaicBrushSize}
+                      onChange={(e) => setMosaicBrushSize(Number(e.target.value))}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  <span className="inline-flex h-8 items-center rounded-md border border-white/40 px-3 text-xs text-white hover:bg-white/10">
+                    {language === 'ja' ? 'アップロード' : 'Upload'}
+                  </span>
+                </label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="bg-transparent text-red-300 border-red-300/70 hover:bg-red-500/20"
+                  onClick={() => {
+                    setNewEvent((prev) => ({ ...prev, image: null }));
+                    closeImageEditor();
+                  }}
+                >
+                  {language === 'ja' ? '画像削除' : 'Remove Image'}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-[#49B1E4] hover:bg-[#3EA3D4] text-white"
+                  disabled={isImageProcessing}
+                  onClick={() => {
+                    void saveEditedImage();
+                  }}
+                >
+                  {isImageProcessing ? (language === 'ja' ? '保存中...' : 'Saving...') : (language === 'ja' ? '反映して保存' : 'Apply & Save')}
+                </Button>
+              </div>
+            </div>
+            <div className="overflow-auto max-h-[78vh] rounded-lg bg-black/50 flex items-center justify-center">
+              <canvas
+                ref={imageCanvasRef}
+                className={`max-w-full max-h-[78vh] ${imageEditorMode === 'mosaic' ? 'cursor-crosshair' : 'cursor-default'}`}
+                onMouseDown={(e) => {
+                  if (imageEditorMode !== 'mosaic') return;
+                  isDrawingRef.current = true;
+                  handleCanvasPointer(e.clientX, e.clientY);
+                }}
+                onMouseMove={(e) => {
+                  if (!isDrawingRef.current) return;
+                  handleCanvasPointer(e.clientX, e.clientY);
+                }}
+                onMouseUp={() => {
+                  isDrawingRef.current = false;
+                }}
+                onMouseLeave={() => {
+                  isDrawingRef.current = false;
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={closeImageEditor}
+              className="absolute -top-10 right-0 text-white hover:text-gray-200"
+              aria-label="close-image-preview"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
       )}
 
       {/* 保存確認ダイアログ */}
