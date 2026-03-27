@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -224,6 +224,8 @@ export function AdminEvents({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSavingEvent, setIsSavingEvent] = useState(false);
+  const saveInFlightRef = useRef(false);
   const [confirmType, setConfirmType] = useState<'create' | 'update'>('create');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
   
@@ -311,6 +313,7 @@ export function AdminEvents({
   };
 
   const handleSaveEvent = () => {
+    if (isSavingEvent) return;
     setConfirmType('create');
     setShowSaveConfirm(true);
   };
@@ -366,6 +369,7 @@ export function AdminEvents({
   };
 
   const handleSaveEditedEvent = () => {
+    if (isSavingEvent) return;
     setConfirmType('update');
     setShowSaveConfirm(true);
   };
@@ -1376,32 +1380,15 @@ export function AdminEvents({
             <div className="p-6">
               <div className="flex gap-2">
                 <Button
+                  disabled={isSavingEvent}
                   onClick={async () => {
-                    if (confirmType === 'create') {
-                      // Supabaseにイベントを作成
-                      const eventData = {
-                        title: newEvent.titleJa,
-                        titleEn: newEvent.titleEn || undefined,
-                        description: newEvent.descriptionJa,
-                        descriptionEn: newEvent.descriptionEn || undefined,
-                        date: newEvent.date,
-                        time: `${newEvent.startTime}〜${newEvent.endTime}`,
-                        location: newEvent.location,
-                        locationEn: newEvent.locationEn || undefined,
-                        googleMapUrl: newEvent.googleMapUrl || undefined,
-                        maxParticipants: parseInt(newEvent.maxParticipants) || 30,
-                        image: newEvent.image || undefined,
-                        tags: { friendsCanMeet: false, photoContest: false },
-                        status: 'upcoming' as const,
-                        lineGroupLink: newEvent.lineGroupUrl || undefined,
-                      };
-                      console.log('Creating event with data:', eventData);
-                      await onCreateEvent(eventData);
-                      toast.success(language === 'ja' ? 'イベントを作成しました' : 'Event created successfully');
-                    } else {
-                      // Supabaseでイベントを更新
-                      if (selectedEvent) {
-                        const updateData = {
+                    if (isSavingEvent || saveInFlightRef.current) return;
+                    saveInFlightRef.current = true;
+                    setIsSavingEvent(true);
+                    try {
+                      if (confirmType === 'create') {
+                        // Supabaseにイベントを作成
+                        const eventData = {
                           title: newEvent.titleJa,
                           titleEn: newEvent.titleEn || undefined,
                           description: newEvent.descriptionJa,
@@ -1413,16 +1400,42 @@ export function AdminEvents({
                           googleMapUrl: newEvent.googleMapUrl || undefined,
                           maxParticipants: parseInt(newEvent.maxParticipants) || 30,
                           image: newEvent.image || undefined,
+                          tags: { friendsCanMeet: false, photoContest: false },
+                          status: 'upcoming' as const,
                           lineGroupLink: newEvent.lineGroupUrl || undefined,
                         };
-                        console.log('Updating event with data:', updateData);
-                        await onUpdateEvent(selectedEvent.id, updateData);
+                        console.log('Creating event with data:', eventData);
+                        await onCreateEvent(eventData);
+                        toast.success(language === 'ja' ? 'イベントを作成しました' : 'Event created successfully');
+                      } else {
+                        // Supabaseでイベントを更新
+                        if (selectedEvent) {
+                          const updateData = {
+                            title: newEvent.titleJa,
+                            titleEn: newEvent.titleEn || undefined,
+                            description: newEvent.descriptionJa,
+                            descriptionEn: newEvent.descriptionEn || undefined,
+                            date: newEvent.date,
+                            time: `${newEvent.startTime}〜${newEvent.endTime}`,
+                            location: newEvent.location,
+                            locationEn: newEvent.locationEn || undefined,
+                            googleMapUrl: newEvent.googleMapUrl || undefined,
+                            maxParticipants: parseInt(newEvent.maxParticipants) || 30,
+                            image: newEvent.image || undefined,
+                            lineGroupLink: newEvent.lineGroupUrl || undefined,
+                          };
+                          console.log('Updating event with data:', updateData);
+                          await onUpdateEvent(selectedEvent.id, updateData);
+                        }
+                        toast.success(language === 'ja' ? 'イベントを更新しました' : 'Event updated successfully');
+                        setEditMode(false);
                       }
-                      toast.success(language === 'ja' ? 'イベントを更新しました' : 'Event updated successfully');
-                      setEditMode(false);
+                      setShowSaveConfirm(false);
+                      handleCloseForm();
+                    } finally {
+                      saveInFlightRef.current = false;
+                      setIsSavingEvent(false);
                     }
-                    setShowSaveConfirm(false);
-                    handleCloseForm();
                   }}
                   className="flex-1 bg-[#00A63E] hover:bg-[#008C35] text-[#F5F1E8] h-9 flex items-center justify-center gap-2"
                 >
@@ -1430,6 +1443,7 @@ export function AdminEvents({
                   <span className="font-medium text-sm tracking-[-0.1504px]">{t.save}</span>
                 </Button>
                 <Button
+                  disabled={isSavingEvent}
                   onClick={() => setShowSaveConfirm(false)}
                   className="flex-1 bg-[#D4183D] hover:bg-[#B01432] text-white h-9 flex items-center justify-center gap-2"
                 >
