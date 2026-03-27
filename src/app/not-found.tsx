@@ -5,7 +5,7 @@ export default function NotFound() {
     <main className="min-h-screen bg-[#F5F1E8] flex items-center justify-center px-6">
       <div className="max-w-md text-center flex flex-col items-center gap-4">
         <img
-          src="/Truss/2.svg"
+          src="/Truss/3.svg"
           alt="Truss"
           className="w-[220px] h-auto"
           draggable={false}

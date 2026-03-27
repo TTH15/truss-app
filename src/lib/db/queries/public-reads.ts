@@ -24,6 +24,37 @@ import type {
   GalleryPhoto,
 } from "../../../domain/types/app";
 
+const USER_SELECT_COLUMNS = [
+  "id",
+  "email",
+  "name",
+  "nickname",
+  "furigana",
+  "birthday",
+  "languages",
+  "country",
+  "category",
+  "approved",
+  "is_admin",
+  "student_id_image",
+  "student_number",
+  "grade",
+  "major",
+  "phone",
+  "organizations",
+  "blocked",
+  "registration_step",
+  "email_verified",
+  "initial_registered",
+  "profile_completed",
+  "fee_paid",
+  "membership_year",
+  "is_renewal",
+  "student_id_reupload_requested",
+  "reupload_reason",
+  "requested_at",
+].join(",");
+
 export async function queryEvents(): Promise<Event[]> {
   const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
   const { data, error } = await supabase
@@ -44,10 +75,10 @@ export async function queryPendingAndApprovedUsers(): Promise<{
   approved: User[];
 }> {
   const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
-  const { data, error } = await supabase.from("users").select("*");
+  const { data, error } = await supabase.from("users").select(USER_SELECT_COLUMNS);
   if (error) throw error;
 
-  const rows = data ?? [];
+  const rows = (data ?? []) as unknown as Array<Parameters<typeof mapDbUserRowToUser>[0]>;
   const pendingRows = rows.filter(
     (row) => row.approved === false && row.registration_step === "waiting_approval"
   );

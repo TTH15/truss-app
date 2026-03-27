@@ -115,6 +115,30 @@ interface DataContextType {
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
+const EVENTS_CACHE_KEY = 'truss-cache-events-v1';
+const USERS_CACHE_KEY = 'truss-cache-users-v1';
+const CACHE_TTL_MS = 60 * 1000;
+
+const readCache = <T,>(key: string): T | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { timestamp?: number; data?: T };
+    if (!parsed.timestamp || parsed.data === undefined) return null;
+    if (Date.now() - parsed.timestamp > CACHE_TTL_MS) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+};
+
+const writeCache = <T,>(key: string, data: T) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify({ timestamp: Date.now(), data }));
+  } catch {}
+};
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -133,12 +157,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const eventsFetchInFlight = useRef<Promise<void> | null>(null);
   const usersFetchInFlight = useRef<Promise<void> | null>(null);
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (force: boolean = false) => {
+    if (!force) {
+      const cached = readCache<Event[]>(EVENTS_CACHE_KEY);
+      if (cached) {
+        setEvents(cached);
+        return;
+      }
+    }
     if (eventsFetchInFlight.current) return eventsFetchInFlight.current;
     const run = (async () => {
       const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
       try {
-        setEvents(await queryEvents());
+        const next = await queryEvents();
+        setEvents(next);
+        writeCache(EVENTS_CACHE_KEY, next);
       } catch (error) {
         console.error('Error fetching events:', error);
       } finally {
@@ -151,10 +184,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return run;
   }, []);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (force: boolean = false) => {
     if (!isAdmin) {
       setUsersLoading(false);
       return;
+    }
+    if (!force) {
+      const cached = readCache<{ pending: User[]; approved: User[] }>(USERS_CACHE_KEY);
+      if (cached) {
+        setPendingUsers(cached.pending);
+        setApprovedMembers(cached.approved);
+        setUsersLoading(false);
+        return;
+      }
     }
     if (usersFetchInFlight.current) return usersFetchInFlight.current;
     const run = (async () => {
@@ -164,6 +206,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const { pending, approved } = await queryPendingAndApprovedUsers();
       setPendingUsers(pending);
       setApprovedMembers(approved);
+      writeCache(USERS_CACHE_KEY, { pending, approved });
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
@@ -248,13 +291,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [user, fetchMessages, fetchNotifications]);
 
   useEffect(() => {
-    const eventsChannel = supabase.channel('events-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => fetchEvents()).subscribe();
+    const eventsChannel = supabase.channel('events-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => fetchEvents(true)).subscribe();
     const boardPostsChannel = supabase.channel('board-posts-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'board_posts' }, () => fetchBoardPosts()).subscribe();
     const galleryChannel = supabase.channel('gallery-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'gallery_photos' }, () => fetchGalleryPhotos()).subscribe();
     const usersChannel = isAdmin
-      ? supabase.channel('users-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => fetchUsers()).subscribe()
+      ? supabase.channel('users-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => fetchUsers(true)).subscribe()
       : null;
-    const participantsChannel = supabase.channel('participants-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'event_participants' }, () => { fetchEventParticipants(); fetchEvents(); }).subscribe();
+    const participantsChannel = supabase.channel('participants-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'event_participants' }, () => { fetchEventParticipants(); fetchEvents(true); }).subscribe();
     return () => {
       supabase.removeChannel(eventsChannel);
       supabase.removeChannel(boardPostsChannel);
@@ -283,7 +326,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await insertEventRow(eventData);
       if (error) throw error;
-      void fetchEvents();
+      void fetchEvents(true);
     } catch (error) {
       console.error('Error creating event:', error);
       throw error;
@@ -294,7 +337,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await updateEventRow(eventId, updates);
       if (error) throw error;
-      void fetchEvents();
+      void fetchEvents(true);
     } catch (error) {
       console.error('Error updating event:', error);
       throw error;
@@ -306,7 +349,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const { error } = await deleteEventRow(eventId);
       if (error) throw error;
       setEvents(prev => prev.filter(e => e.id !== eventId));
-      void fetchEvents();
+      void fetchEvents(true);
     } catch (error) {
       console.error('Error deleting event:', error);
       throw error;
@@ -324,7 +367,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         photoRefusal,
       });
       if (error) throw error;
-      void Promise.all([fetchEvents(), fetchEventParticipants()]);
+      void Promise.all([fetchEvents(true), fetchEventParticipants()]);
     } catch (error) {
       console.error('Error registering for event:', error);
     }
@@ -335,7 +378,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await unregisterEventParticipant(eventId, user.id);
       if (error) throw error;
-      void Promise.all([fetchEvents(), fetchEventParticipants()]);
+      void Promise.all([fetchEvents(true), fetchEventParticipants()]);
     } catch (error) {
       console.error('Error unregistering from event:', error);
     }
@@ -346,7 +389,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await toggleEventLikeForUser(eventId, user.id);
       if (error) throw error;
-      void fetchEvents();
+      void fetchEvents(true);
     } catch (error) {
       console.error('Error toggling event like:', error);
     }
@@ -372,7 +415,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         feePaid,
       });
       if (error) throw error;
-      await fetchUsers();
+      await fetchUsers(true);
     } catch (error) {
       console.error('Error approving user:', error);
     }
@@ -382,7 +425,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await rejectUserRow(userId);
       if (error) throw error;
-      await fetchUsers();
+      await fetchUsers(true);
     } catch (error) {
       console.error('Error rejecting user:', error);
     }
@@ -392,7 +435,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await requestReuploadRow(userId, reason);
       if (error) throw error;
-      await fetchUsers();
+      await fetchUsers(true);
     } catch (error) {
       console.error('Error requesting reupload:', error);
     }
@@ -408,7 +451,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         isRenewal,
       });
       if (error) throw error;
-      await fetchUsers();
+      await fetchUsers(true);
     } catch (error) {
       console.error('Error confirming fee payment:', error);
     }
@@ -420,7 +463,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await setRenewalStatusRow(userId, isRenewal);
       if (error) throw error;
-      await fetchUsers();
+      await fetchUsers(true);
     } catch (error) {
       console.error('Error setting renewal status:', error);
     }
@@ -433,7 +476,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const newMembershipYear = currentMonth >= 4 ? currentYear : currentYear - 1;
       const { error } = await resetMembershipForNewYearRow(newMembershipYear);
       if (error) throw error;
-      await fetchUsers();
+      await fetchUsers(true);
     } catch (error) {
       console.error('Error resetting membership:', error);
     }
@@ -633,7 +676,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     sendMessage, sendBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, updateChatMetadata,
     markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost,
     uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, likeGalleryPhoto,
-    refreshEvents: fetchEvents, refreshUsers: fetchUsers, refreshMessages: fetchMessages, refreshNotifications: fetchNotifications,
+    refreshEvents: () => fetchEvents(true), refreshUsers: () => fetchUsers(true), refreshMessages: fetchMessages, refreshNotifications: fetchNotifications,
     refreshBoardPosts: fetchBoardPosts, refreshGalleryPhotos: fetchGalleryPhotos,
     setMessageThreads, setChatThreadMetadata, setNotifications, setBoardPosts,
   };

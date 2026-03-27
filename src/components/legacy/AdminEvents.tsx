@@ -5,6 +5,8 @@ import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
 import { Plus, X, Upload, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart } from 'lucide-react';
 import { toast } from 'sonner';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import type { Language } from '../../domain/types/app';
 import imgEventSample from '@/assets/c4e8899bf782af1b6b9889d032b63d8a0c141f8b.png';
 import { BulkEmailModal } from './BulkEmailModal';
@@ -231,6 +233,41 @@ export function AdminEvents({
   const saveInFlightRef = useRef(false);
   const [confirmType, setConfirmType] = useState<'create' | 'update'>('create');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
+
+  const getEventText = (event: AdminEvent, key: 'title' | 'description' | 'location', locale: 'ja' | 'en') => {
+    const jaKeyMap = {
+      title: ['titleJa', 'title'],
+      description: ['descriptionJa', 'description'],
+      location: ['locationJa', 'location'],
+    } as const;
+    const enKeyMap = {
+      title: ['titleEn', 'title'],
+      description: ['descriptionEn', 'description', 'descriptionJa'],
+      location: ['locationEn', 'location'],
+    } as const;
+    const keys = locale === 'ja' ? jaKeyMap[key] : enKeyMap[key];
+    for (const candidate of keys) {
+      const value = event?.[candidate];
+      if (typeof value === 'string' && value.trim().length > 0) return value;
+    }
+    return '';
+  };
+
+  const parseEventTime = (event: AdminEvent) => {
+    if (event?.startTime || event?.endTime) {
+      return {
+        startTime: event.startTime || '',
+        endTime: event.endTime || '',
+      };
+    }
+    const raw = typeof event?.time === 'string' ? event.time : '';
+    if (!raw) return { startTime: '', endTime: '' };
+    const parts = raw.split(/[〜~\-]/).map((p: string) => p.trim());
+    return {
+      startTime: parts[0] || '',
+      endTime: parts[1] || '',
+    };
+  };
   
   // 新規イントフォーム用の状態
   const [newEvent, setNewEvent] = useState({
@@ -289,6 +326,24 @@ export function AdminEvents({
 
   const handleEventClick = (event: AdminEvent) => {
     setSelectedEvent(event);
+    const { startTime, endTime } = parseEventTime(event);
+    setNewEvent({
+      titleJa: getEventText(event, 'title', 'ja'),
+      titleEn: getEventText(event, 'title', 'en'),
+      descriptionJa: getEventText(event, 'description', 'ja'),
+      descriptionEn: getEventText(event, 'description', 'en'),
+      date: event?.date || '',
+      startTime,
+      endTime,
+      location: getEventText(event, 'location', 'ja'),
+      locationEn: getEventText(event, 'location', 'en'),
+      googleMapUrl: event?.googleMapUrl || '',
+      maxParticipants: String(event?.maxParticipants || ''),
+      lineGroupUrl: event?.lineGroupLink || event?.lineGroupUrl || '',
+      image: event?.image || null,
+    });
+    setEditMode(true);
+    setSelectedParticipants(new Set());
     setShowNewEventForm(false);
     setCalendarCompact(true);
   };
@@ -353,20 +408,21 @@ export function AdminEvents({
 
   const handleEditEvent = () => {
     if (!selectedEvent) return;
+    const { startTime, endTime } = parseEventTime(selectedEvent);
     setEditMode(true);
     setNewEvent({
-      titleJa: selectedEvent.titleJa || '',
-      titleEn: selectedEvent.titleEn || '',
-      descriptionJa: selectedEvent.descriptionJa || '',
-      descriptionEn: selectedEvent.descriptionEn || '',
+      titleJa: getEventText(selectedEvent, 'title', 'ja'),
+      titleEn: getEventText(selectedEvent, 'title', 'en'),
+      descriptionJa: getEventText(selectedEvent, 'description', 'ja'),
+      descriptionEn: getEventText(selectedEvent, 'description', 'en'),
       date: selectedEvent.date || '',
-      startTime: selectedEvent.startTime || '',
-      endTime: selectedEvent.endTime || '',
-      location: selectedEvent.location || '',
-      locationEn: selectedEvent.locationEn || '',
+      startTime,
+      endTime,
+      location: getEventText(selectedEvent, 'location', 'ja'),
+      locationEn: getEventText(selectedEvent, 'location', 'en'),
       googleMapUrl: selectedEvent.googleMapUrl || '',
       maxParticipants: String(selectedEvent.maxParticipants || ''),
-      lineGroupUrl: selectedEvent.lineGroupUrl || '',
+      lineGroupUrl: selectedEvent.lineGroupLink || selectedEvent.lineGroupUrl || '',
       image: selectedEvent.image || null,
     });
   };
@@ -1089,7 +1145,20 @@ export function AdminEvents({
             <X className="w-4 h-4" />
           </button>
 
-          <h3 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px] mb-6">{t.editEvent}</h3>
+          <div className="flex items-start justify-between gap-3 mb-6 pr-6">
+            <div>
+              <h3 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">{t.editEvent}</h3>
+              <p className="text-[#6B6B7A] text-sm mt-1">
+                {newEvent.titleJa || newEvent.titleEn || (language === 'ja' ? '無題のイベント' : 'Untitled event')}
+              </p>
+            </div>
+            <Button
+              onClick={handleDeleteEvent}
+              className="bg-[#D4183D] hover:bg-[#B01535] text-white"
+            >
+              {t.deleteEvent}
+            </Button>
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 左側 */}
@@ -1343,12 +1412,6 @@ export function AdminEvents({
             >
               {t.save}
             </Button>
-            <Button
-              onClick={handleDeleteEvent}
-              className="flex-1 bg-[#D4183D] hover:bg-[#B01535] text-white"
-            >
-              {t.deleteEvent}
-            </Button>
           </div>
         </div>
       )}
@@ -1478,8 +1541,17 @@ export function AdminEvents({
 
       {/* 削除確認ダイアログ */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[400px] shadow-xl border border-[rgba(61,61,78,0.15)] relative max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            if (isDeletingEvent) return;
+            setShowDeleteConfirm(false);
+          }}
+        >
+          <div
+            className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[400px] shadow-xl border border-[rgba(61,61,78,0.15)] relative max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6 border-b border-[rgba(61,61,78,0.15)]">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
@@ -1500,22 +1572,14 @@ export function AdminEvents({
             </div>
 
             <div className="p-6">
-              <div className="flex gap-2">
+              <div className="flex justify-end">
                 <Button
                   disabled={isDeletingEvent}
                   onClick={handleConfirmDelete}
-                  className="flex-1 bg-[#D4183D] hover:bg-[#B01535] text-white h-9 flex items-center justify-center gap-2"
+                  className="min-w-28 bg-[#D4183D] hover:bg-[#B01535] text-white h-9 flex items-center justify-center gap-2"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <FontAwesomeIcon icon={faTrashCan} className="w-4 h-4" />
                   <span className="font-medium text-sm tracking-[-0.1504px]">{t.delete}</span>
-                </Button>
-                <Button
-                  disabled={isDeletingEvent}
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 bg-[#00A63E] hover:bg-[#008C35] text-[#F5F1E8] h-9 flex items-center justify-center gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  <span className="font-medium text-sm tracking-[-0.1504px]">{t.cancel}</span>
                 </Button>
               </div>
             </div>

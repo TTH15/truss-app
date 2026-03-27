@@ -2,7 +2,7 @@
 // Truss App - Auth Context (Supabase)
 // =============================================
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { getAppOrigin } from '../lib/app-origin';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
@@ -47,6 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [user, setUser] = useState<AppUser | null>(() => getCachedUser());
   const [loading, setLoading] = useState(true);
+  const userRef = useRef<AppUser | null>(user);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   const fetchAppUser = async (authId: string): Promise<AppUser | null> => {
     try {
@@ -126,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (mounted && appUser) {
             setUser(appUser);
             setCachedUser(appUser);
-          } else if (mounted) {
+          } else if (mounted && !userRef.current) {
             setUser(null);
             setCachedUser(null);
           }
@@ -140,26 +145,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     initAuth();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-      if (event === 'INITIAL_SESSION') return;
-      setSession(session);
-      setSupabaseUser(session?.user || null);
-      if (session?.user) {
-        const appUser = await fetchAppUser(session.user.id);
-        if (appUser && mounted) {
-          setUser(appUser);
-          setCachedUser(appUser);
-        } else if (mounted) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      void (async () => {
+        if (!mounted) return;
+        if (event === 'INITIAL_SESSION') return;
+        setSession(session);
+        setSupabaseUser(session?.user || null);
+        if (event === 'TOKEN_REFRESHED') {
+          // トークン更新時は既存ユーザー情報を維持し、不要な user クリアを避ける
+          setLoading(false);
+          return;
+        }
+        if (session?.user) {
+          const appUser = await fetchAppUser(session.user.id);
+          if (appUser && mounted) {
+            setUser(appUser);
+            setCachedUser(appUser);
+          } else if (mounted && !userRef.current) {
+            setUser(null);
+            setCachedUser(null);
+          }
+        } else if (event === 'SIGNED_OUT') {
           setUser(null);
           setCachedUser(null);
+          localStorage.removeItem(ADMIN_SESSION_KEY);
         }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setCachedUser(null);
-        localStorage.removeItem(ADMIN_SESSION_KEY);
-      }
-      setLoading(false);
+        setLoading(false);
+      })();
     });
 
     return () => {

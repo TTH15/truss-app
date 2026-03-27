@@ -184,6 +184,9 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
       const run = async () => {
         if (authLoading) return;
 
+        // セッションはあるが AppUser 復元待ちの短時間ではログアウト画面に落とさない
+        if (!authUser && session?.user) return;
+
         if (!authUser) {
           setUser(null);
           setCurrentPage('admin-login');
