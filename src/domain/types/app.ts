@@ -62,6 +62,7 @@ export interface Event {
   currentParticipants: number;
   likes: number;
   image: string;
+  eventColor?: string;
   tags: {
     friendsCanMeet: boolean;
     photoContest: boolean;

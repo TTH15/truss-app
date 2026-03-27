@@ -73,6 +73,7 @@ export function mapDbEventRowToEvent(row: DbEvent): Event {
     currentParticipants: row.current_participants,
     likes: row.likes,
     image: row.image ?? "",
+    eventColor: row.event_color ?? undefined,
     tags: {
       friendsCanMeet: row.tags_friends_can_meet,
       photoContest: row.tags_photo_contest,

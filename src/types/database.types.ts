@@ -85,6 +85,7 @@ export interface DbEvent {
   current_participants: number;
   likes: number;
   image: string | null;
+  event_color: string | null;
   tags_friends_can_meet: boolean;
   tags_photo_contest: boolean;
   status: EventStatus;

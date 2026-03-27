@@ -83,6 +83,7 @@ export function appEventToDbEvent(appEvent: Partial<Event>): Partial<DbEventInse
   if (appEvent.currentParticipants !== undefined) result.current_participants = appEvent.currentParticipants;
   if (appEvent.likes !== undefined) result.likes = appEvent.likes;
   if (appEvent.image !== undefined) result.image = appEvent.image || null;
+  if (appEvent.eventColor !== undefined) result.event_color = appEvent.eventColor || null;
   if (appEvent.tags !== undefined) {
     result.tags_friends_can_meet = appEvent.tags.friendsCanMeet;
     result.tags_photo_contest = appEvent.tags.photoContest;

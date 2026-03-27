@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
-import { Plus, X, Upload, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart } from 'lucide-react';
+import { X, Upload, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
@@ -14,6 +14,7 @@ import imgEventSample from '@/assets/c4e8899bf782af1b6b9889d032b63d8a0c141f8b.pn
 import { BulkEmailModal } from './BulkEmailModal';
 import { translateText } from '../../utils/translate';
 import { uploadEventImage } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
@@ -60,7 +61,7 @@ const translations = {
     maxParticipants: '最大参加者数',
     save: '保存',
     cancel: 'キャンセル',
-    deleteEvent: 'イベント削除',
+    deleteEvent: '削除',
     delete: '削除',
     autoTranslate: '自動翻訳',
     participants: '参加者',
@@ -215,9 +216,9 @@ export function AdminEvents({
   language,
   events: propsEvents = [],
   eventParticipants = {},
-  onCreateEvent = async () => {},
-  onUpdateEvent = async () => {},
-  onDeleteEvent = async () => {},
+  onCreateEvent = async () => { },
+  onUpdateEvent = async () => { },
+  onDeleteEvent = async () => { },
   onSendBulkEmail,
 }: AdminEventsProps) {
   const t = translations[language];
@@ -226,7 +227,6 @@ export function AdminEvents({
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<AdminEvent | null>(null);
   const [showNewEventForm, setShowNewEventForm] = useState(false);
-  const [calendarCompact, setCalendarCompact] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
@@ -273,7 +273,7 @@ export function AdminEvents({
       endTime: parts[1] || '',
     };
   };
-  
+
   // 新規イントフォーム用の状態
   const [newEvent, setNewEvent] = useState({
     titleJa: '',
@@ -289,7 +289,10 @@ export function AdminEvents({
     maxParticipants: '',
     lineGroupUrl: '',
     image: null as string | null,
+    eventColor: '#49B1E4',
   });
+
+  const eventColors = ['#49B1E4', '#4285F4', '#34A853', '#FBBC04', '#EA4335', '#A142F4'];
 
   // カレンダーの日付を生成
   const getDaysInMonth = (year: number, month: number) => {
@@ -328,7 +331,6 @@ export function AdminEvents({
     setInitialEventSnapshot(JSON.stringify(nextEvent));
     setShowNewEventForm(true);
     setSelectedEvent(null);
-    setCalendarCompact(true);
   };
 
   const handleEventClick = (event: AdminEvent) => {
@@ -348,20 +350,30 @@ export function AdminEvents({
       maxParticipants: String(event?.maxParticipants || ''),
       lineGroupUrl: event?.lineGroupLink || event?.lineGroupUrl || '',
       image: event?.image || null,
+      eventColor: event?.eventColor || '#49B1E4',
     };
     setNewEvent(nextEvent);
     setInitialEventSnapshot(JSON.stringify(nextEvent));
     setEditMode(true);
     setSelectedParticipants(new Set());
     setShowNewEventForm(false);
-    setCalendarCompact(true);
+    if (!event?.image) {
+      void (async () => {
+        const { data, error } = await supabase
+          .from('events')
+          .select('image,event_color')
+          .eq('id', event.id)
+          .maybeSingle();
+        if (error) return;
+        setNewEvent((prev) => ({ ...prev, image: data?.image || prev.image, eventColor: data?.event_color || prev.eventColor }));
+      })();
+    }
   };
 
   const handleCloseForm = () => {
     setShowNewEventForm(false);
     setSelectedEvent(null);
     setEditMode(false);
-    setCalendarCompact(false);
     setNewEvent({
       titleJa: '',
       titleEn: '',
@@ -376,6 +388,7 @@ export function AdminEvents({
       maxParticipants: '',
       lineGroupUrl: '',
       image: null,
+      eventColor: '#49B1E4',
     });
     setInitialEventSnapshot('');
   };
@@ -391,17 +404,17 @@ export function AdminEvents({
     const sourceField = field === 'title' ? 'titleJa' : 'descriptionJa';
     const targetField = field === 'title' ? 'titleEn' : 'descriptionEn';
     const sourceText = newEvent[sourceField];
-    
+
     if (!sourceText.trim()) {
       toast.error(language === 'ja' ? '翻訳する内容を入力してください' : 'Please enter text to translate');
       return;
     }
 
     toast.loading(language === 'ja' ? '翻訳中...' : 'Translating...');
-    
+
     try {
       const translatedText = await translateText(sourceText, 'en');
-      
+
       if (translatedText) {
         setNewEvent({
           ...newEvent,
@@ -434,6 +447,7 @@ export function AdminEvents({
       maxParticipants: String(selectedEvent.maxParticipants || ''),
       lineGroupUrl: selectedEvent.lineGroupLink || selectedEvent.lineGroupUrl || '',
       image: selectedEvent.image || null,
+      eventColor: selectedEvent.eventColor || '#49B1E4',
     };
     setNewEvent(nextEvent);
     setInitialEventSnapshot(JSON.stringify(nextEvent));
@@ -521,7 +535,7 @@ export function AdminEvents({
     if (updatedEvent) setSelectedEvent(updatedEvent);
   };
 
-  const monthNames = language === 'ja' 
+  const monthNames = language === 'ja'
     ? ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
     : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -573,11 +587,11 @@ export function AdminEvents({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          
+
           <h3 className="text-[#3D3D4E] text-base font-semibold">
             {currentYear}{language === 'ja' ? '年' : ''} {monthNames[currentMonth]}
           </h3>
-          
+
           <button
             onClick={handleNextMonth}
             className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors p-1 hover:bg-[#F5F1E8] rounded"
@@ -589,94 +603,60 @@ export function AdminEvents({
         </div>
 
         {/* カレンダーグリッド */}
-        <div className={`transition-all duration-300 overflow-hidden ${calendarCompact ? 'max-h-[240px]' : 'max-h-[680px]'}`}>
+        <div className="overflow-hidden">
           <div className="grid grid-cols-7 gap-px bg-[#E5E7EB] border border-[#E5E7EB] overflow-hidden">
             {/* 曜日ヘッダー */}
             {dayNames.map((day, index) => (
-              <div key={`day-${index}`} className="bg-[#F9FAFB] p-2 text-center">
-                <span className="text-[#6B6B7A] text-xs font-medium">{day}</span>
+              <div
+                key={`day-${index}`}
+                className={`p-2 text-center ${
+                  index === 0 ? 'bg-red-50' : index === 6 ? 'bg-blue-50' : 'bg-[#F9FAFB]'
+                }`}
+              >
+                <span className={`text-xs font-bold ${index === 0 ? 'text-red-600' : index === 6 ? 'text-blue-600' : 'text-[#6B6B7A]'}`}>{day}</span>
               </div>
             ))}
 
             {/* 日付セル */}
             {calendarDays.map((day, index) => {
               const dayEvents = getEventsForDate(day);
+              const column = index % 7;
+              const isSunday = column === 0;
+              const isSaturday = column === 6;
               return (
                 <div
                   key={`cell-${index}`}
-                  className={`bg-white p-2 flex flex-col relative transition-all duration-300 overflow-hidden ${
-                    calendarCompact ? 'h-[40px]' : 'h-[120px]'
-                  }`}
+                  className={`p-2 flex flex-col relative overflow-hidden h-[120px] ${
+                    isSunday ? 'bg-red-50/35' : isSaturday ? 'bg-blue-50/35' : 'bg-white'
+                  } ${day ? 'cursor-pointer hover:bg-[#F5F8FC]' : ''}`}
+                  onClick={() => handleAddEvent(day)}
                 >
                   {day && (
                     <>
                       {/* 日付番号 */}
-                      <div className={`text-[#3D3D4E] font-medium ${calendarCompact ? 'text-xs mb-0' : 'text-sm mb-2'}`}>{day}</div>
-                      
+                      <div className={`text-center text-sm font-bold mb-2 ${isSunday ? 'text-red-600' : isSaturday ? 'text-blue-600' : 'text-[#3D3D4E]'}`}>{day}</div>
+
                       {/* イベント表示 */}
-                      {!calendarCompact && dayEvents.map((event) => {
-                        // 定員に達したイベントは黄緑枠で表示
-                        const isFull = event.currentParticipants >= event.maxParticipants;
-                        
-                        if (isFull) {
-                          return (
-                            <button
-                              key={event.id}
-                              onClick={() => handleEventClick(event)}
-                              className="mb-0.5 text-left w-full"
-                            >
-                              <div className="bg-white text-[#00A63E] rounded border-2 border-[#00A63E] truncate hover:bg-[#f0fdf4] transition-colors font-medium leading-tight text-[9px] px-1.5 py-0">
-                                {language === 'ja' ? event.title : (event.titleEn || event.title)}
-                              </div>
-                            </button>
-                          );
-                        }
-                        // その他のイベントは青枠で表示
-                        return (
+                      <div className="space-y-1">
+                        {dayEvents.map((event) => (
                           <button
                             key={event.id}
-                            onClick={() => handleEventClick(event)}
-                            className="mb-0.5 text-left w-full"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEventClick(event);
+                            }}
+                            className="flex items-center gap-1 text-left w-full px-1 py-0.5 rounded hover:bg-black/5 transition-colors"
                           >
-                            <div className="bg-[#49B1E4] text-white rounded border-2 border-[#193CB8] truncate hover:bg-[#3A9FD3] transition-colors font-medium leading-tight text-[9px] px-1.5 py-0">
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: event.eventColor || '#49B1E4' }}
+                            />
+                            <span className="truncate text-[10px] text-[#3D3D4E] font-medium">
                               {language === 'ja' ? event.title : (event.titleEn || event.title)}
-                            </div>
+                            </span>
                           </button>
-                        );
-                      })}
-                      
-                      {/* コンパクト時のイベント表示 */}
-                      {calendarCompact && dayEvents.length > 0 && (
-                        <div className="flex gap-0.5 items-center mt-0.5">
-                          {dayEvents.slice(0, 3).map((event) => {
-                            const isFull = event.currentParticipants >= event.maxParticipants;
-                            return (
-                              <button
-                                key={event.id}
-                                onClick={() => handleEventClick(event)}
-                                className="shrink-0"
-                              >
-                                <div className={`w-1.5 h-1.5 rounded-full ${
-                                  isFull ? 'bg-[#00A63E]' : 'bg-[#49B1E4]'
-                                }`} />
-                              </button>
-                            );
-                          })}
-                          {dayEvents.length > 3 && (
-                            <span className="text-[8px] text-[#6B6B7A]">+{dayEvents.length - 3}</span>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* プラスボタン（コンパクト時は非表示） */}
-                      {!calendarCompact && (
-                        <button
-                          onClick={() => handleAddEvent(day)}
-                          className="mt-auto mx-auto"
-                        >
-                          <Plus className="w-8 h-8 text-[#49B1E4] hover:text-[#3A9FD3] transition-colors" strokeWidth={3} />
-                        </button>
-                      )}
+                        ))}
+                      </div>
                     </>
                   )}
                 </div>
@@ -688,7 +668,8 @@ export function AdminEvents({
 
       {/* 新規イベント作成フォーム */}
       {showNewEventForm && (
-        <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-6 relative">
+        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4" onClick={handleCloseForm}>
+          <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-6 relative w-full max-w-[1100px] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           {/* 閉じるボタン */}
           <button
             onClick={handleCloseForm}
@@ -843,6 +824,24 @@ export function AdminEvents({
                 <p className="text-[#6A7282] text-xs mt-2">{t.imageNote}</p>
               </div>
 
+              <div>
+                <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                  {language === 'ja' ? 'イベントカラー' : 'Event Color'}
+                </label>
+                <div className="flex items-center gap-2">
+                  {eventColors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      aria-label={`event-color-${color}`}
+                      onClick={() => setNewEvent({ ...newEvent, eventColor: color })}
+                      className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-105 ${newEvent.eventColor === color ? 'border-[#3D3D4E]' : 'border-transparent'}`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+
               {/* 日付・時間 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -965,15 +964,15 @@ export function AdminEvents({
             </Button>
           </div>
         </div>
+        </div>
       )}
 
       {/* イベント詳細表示 */}
       {selectedEvent && !editMode && (
-        <div className={`bg-white rounded-[14px] p-6 relative ${
-          selectedEvent.currentParticipants >= selectedEvent.maxParticipants
+        <div className={`bg-white rounded-[14px] p-6 relative ${selectedEvent.currentParticipants >= selectedEvent.maxParticipants
             ? 'border-2 border-[#00A63E]'
             : 'border-2 border-[#49B1E4]'
-        }`}>
+          }`}>
           {/* 閉じるボタン */}
           <button
             onClick={handleCloseForm}
@@ -1013,8 +1012,8 @@ export function AdminEvents({
                   {language === 'ja' ? 'イベント説明' : 'Event Description'}
                 </h4>
                 <p className="text-[#3D3D4E] text-sm leading-relaxed whitespace-pre-wrap">
-                  {language === 'ja' 
-                    ? (selectedEvent.descriptionJa || '説明文がありません') 
+                  {language === 'ja'
+                    ? (selectedEvent.descriptionJa || '説明文がありません')
                     : (selectedEvent.descriptionEn || selectedEvent.descriptionJa || 'No description')}
                 </p>
               </div>
@@ -1035,9 +1034,9 @@ export function AdminEvents({
                 </div>
                 {selectedEvent.googleMapUrl && (
                   <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
-                    <a 
-                      href={selectedEvent.googleMapUrl} 
-                      target="_blank" 
+                    <a
+                      href={selectedEvent.googleMapUrl}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#49B1E4] hover:underline flex items-center gap-1"
                     >
@@ -1048,11 +1047,10 @@ export function AdminEvents({
                 )}
                 <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
                   <Users className="w-4 h-4" />
-                  <span className={`font-semibold ${
-                    selectedEvent.currentParticipants >= selectedEvent.maxParticipants
+                  <span className={`font-semibold ${selectedEvent.currentParticipants >= selectedEvent.maxParticipants
                       ? 'text-[#00A63E]'
                       : 'text-[#49B1E4]'
-                  }`}>
+                    }`}>
                     {selectedEvent.currentParticipants} / {selectedEvent.maxParticipants}
                   </span>
                   <span>{language === 'ja' ? '参加者' : 'Participants'}</span>
@@ -1088,7 +1086,7 @@ export function AdminEvents({
                   <Mail className="w-4 h-4" />
                 </Button>
               </div>
-              
+
               {/* フィルター */}
               <Input
                 placeholder={t.nameFilter}
@@ -1172,7 +1170,8 @@ export function AdminEvents({
 
       {/* イベント編集フォーム */}
       {selectedEvent && editMode && (
-        <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-6 relative">
+        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4" onClick={handleCloseForm}>
+          <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-6 relative w-full max-w-[1100px] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           {/* 閉じるボタン */}
           <button
             onClick={handleCloseForm}
@@ -1335,6 +1334,24 @@ export function AdminEvents({
                 <p className="text-[#6A7282] text-xs mt-2">{t.imageNote}</p>
               </div>
 
+              <div>
+                <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                  {language === 'ja' ? 'イベントカラー' : 'Event Color'}
+                </label>
+                <div className="flex items-center gap-2">
+                  {eventColors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      aria-label={`event-color-${color}`}
+                      onClick={() => setNewEvent({ ...newEvent, eventColor: color })}
+                      className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-105 ${newEvent.eventColor === color ? 'border-[#3D3D4E]' : 'border-transparent'}`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+
               {/* 日付・時間 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1464,6 +1481,7 @@ export function AdminEvents({
             </Button>
           </div>
         </div>
+        </div>
       )}
 
       {/* メール送信モダル */}
@@ -1533,6 +1551,7 @@ export function AdminEvents({
                           googleMapUrl: newEvent.googleMapUrl || undefined,
                           maxParticipants: parseInt(newEvent.maxParticipants) || 30,
                           image: newEvent.image || undefined,
+                          eventColor: newEvent.eventColor || '#49B1E4',
                           tags: { friendsCanMeet: false, photoContest: false },
                           status: 'upcoming' as const,
                           lineGroupLink: newEvent.lineGroupUrl || undefined,
@@ -1555,6 +1574,7 @@ export function AdminEvents({
                             googleMapUrl: newEvent.googleMapUrl || undefined,
                             maxParticipants: parseInt(newEvent.maxParticipants) || 30,
                             image: newEvent.image || undefined,
+                            eventColor: newEvent.eventColor || '#49B1E4',
                             lineGroupLink: newEvent.lineGroupUrl || undefined,
                           };
                           console.log('Updating event with data:', updateData);
