@@ -27,6 +27,7 @@ import type {
 const USER_SELECT_COLUMNS = [
   "id",
   "email",
+  "created_at",
   "name",
   "nickname",
   "furigana",

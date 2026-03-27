@@ -27,6 +27,7 @@ export function mapDbUserRowToUser(row: DbUser): User {
   return {
     id: row.id,
     email: row.email,
+    createdAt: row.created_at,
     name: row.name ?? "",
     nickname: row.nickname ?? "",
     furigana: row.furigana ?? "",

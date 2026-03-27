@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Checkbox } from '../ui/checkbox';
 import { Skeleton } from '../ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Search, Download, Mail, MessageCircle, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import { BulkEmailModal } from './BulkEmailModal';
 import { ReuploadRequestModal } from './ReuploadRequestModal';
 import { MemberDetailModal } from './MemberDetailModal';
@@ -43,8 +46,33 @@ const translations = {
     feeUnpaid: '年会費未払い',
     feeFilterGroup: '年会費:',
     categoryFilterGroup: '区分:',
+    sortBy: '並び替え',
+    sortByFurigana: '五十音（フリガナ）',
+    sortByRegisteredAt: '登録日時',
+    sortOrderAsc: '昇順',
+    sortOrderDesc: '降順',
     exportData: 'データをエクスポート',
     sendBulkEmail: 'メールを一斉送信',
+    bulkAction: '一括操作',
+    bulkActionTitle: '一括操作',
+    feePriceSetting: '年会費・入会費の価格設定',
+    annualFee: '年会費',
+    admissionFee: '入会費',
+    applyPriceSetting: '価格を適用',
+    markPaid: '支払い済み設定',
+    targetMemberType: '対象区分',
+    downloadInfo: '情報ダウンロード',
+    downloadCsv: 'CSVダウンロード',
+    downloadXlsx: 'XLSXダウンロード',
+    bulkDelete: '削除',
+    close: '閉じる',
+    apply: '適用',
+    paidSettingApplied: '支払い済み設定を更新しました',
+    priceUpdated: '価格設定を保存しました',
+    deletedMembers: '選択メンバーを削除しました',
+    confirmBulkDelete: '選択したメンバーを削除します。よろしいですか？',
+    csvDownloaded: 'CSVをダウンロードしました',
+    xlsxDownloaded: 'XLSXをダウンロードしました',
     bulkSetRenewal: '一括: 継続会員に設定',
     bulkSetNewMember: '一括: 新規会員に設定',
     bulkMarkPaidRenewal: '一括: 継続として支払済み',
@@ -72,8 +100,33 @@ const translations = {
     feeUnpaid: 'Fee Unpaid',
     feeFilterGroup: 'Annual fee:',
     categoryFilterGroup: 'Category:',
+    sortBy: 'Sort',
+    sortByFurigana: 'Kana (A-Z)',
+    sortByRegisteredAt: 'Registered At',
+    sortOrderAsc: 'Ascending',
+    sortOrderDesc: 'Descending',
     exportData: 'Export Data',
     sendBulkEmail: 'Send Bulk Email',
+    bulkAction: 'Bulk Action',
+    bulkActionTitle: 'Bulk Actions',
+    feePriceSetting: 'Fee Price Settings',
+    annualFee: 'Annual Fee',
+    admissionFee: 'Admission Fee',
+    applyPriceSetting: 'Apply Price',
+    markPaid: 'Mark as Paid',
+    targetMemberType: 'Target Type',
+    downloadInfo: 'Download Info',
+    downloadCsv: 'Download CSV',
+    downloadXlsx: 'Download XLSX',
+    bulkDelete: 'Delete',
+    close: 'Close',
+    apply: 'Apply',
+    paidSettingApplied: 'Payment status updated',
+    priceUpdated: 'Price settings saved',
+    deletedMembers: 'Selected members deleted',
+    confirmBulkDelete: 'Delete selected members?',
+    csvDownloaded: 'CSV downloaded',
+    xlsxDownloaded: 'XLSX downloaded',
     bulkSetRenewal: 'Bulk: Set Renewal',
     bulkSetNewMember: 'Bulk: Set New Member',
     bulkMarkPaidRenewal: 'Bulk: Mark Paid (Renewal)',
@@ -95,15 +148,20 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
   const t = translations[language];
   const [activeTab, setActiveTab] = useState<'approved' | 'pending'>('approved');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectAll, setSelectAll] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showBulkActionsModal, setShowBulkActionsModal] = useState(false);
   const [showReuploadModal, setShowReuploadModal] = useState(false);
   const [reuploadUserId, setReuploadUserId] = useState<string | null>(null);
   const [reuploadUserName, setReuploadUserName] = useState<string>('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [filters, setFilters] = useState({ feePaid: false, feeUnpaid: false, japanese: false, exchange: false, regularInternational: false });
+  const [sortBy, setSortBy] = useState<'furigana' | 'createdAt'>('furigana');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [annualFeeAmount, setAnnualFeeAmount] = useState('2000');
+  const [admissionFeeAmount, setAdmissionFeeAmount] = useState('2500');
+  const [bulkPaymentTarget, setBulkPaymentTarget] = useState<'renewal' | 'new'>('renewal');
   const displayedMembers = activeTab === 'approved' ? approvedMembers : pendingUsers;
 
   const filteredMembers = displayedMembers.filter(member => {
@@ -123,14 +181,40 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     }
     return true;
   });
+  const sortedMembers = useMemo(() => {
+    const members = [...filteredMembers];
+    members.sort((a, b) => {
+      if (sortBy === 'furigana') {
+        const aKey = (a.furigana || a.name || '').normalize('NFKC');
+        const bKey = (b.furigana || b.name || '').normalize('NFKC');
+        return aKey.localeCompare(bKey, 'ja');
+      }
+      const aTime = new Date(a.createdAt ?? a.requestedAt ?? 0).getTime();
+      const bTime = new Date(b.createdAt ?? b.requestedAt ?? 0).getTime();
+      return aTime - bTime;
+    });
+    if (sortOrder === 'desc') members.reverse();
+    return members;
+  }, [filteredMembers, sortBy, sortOrder]);
   const selectedCount = selectedMembers.size;
+  const allFilteredSelected = sortedMembers.length > 0 && sortedMembers.every((member) => selectedMembers.has(member.id));
 
   const getCategoryLabel = (category: string) => category === 'japanese' ? t.japanese : category === 'regular-international' ? t.regularInternational : category === 'exchange' ? t.exchange : '';
   const getCategoryColor = (category: string) => category === 'japanese' ? 'bg-[#dbeafe] text-[#193cb8]' : category === 'regular-international' ? 'bg-[rgba(132,212,97,0.3)] text-[#00a63e]' : category === 'exchange' ? 'bg-[#fce7f3] text-[#be185d]' : 'bg-gray-100 text-gray-800';
   const handleToggleFilter = (filterKey: keyof typeof filters) => setFilters(prev => ({ ...prev, [filterKey]: !prev[filterKey] }));
-  const handleToggleMember = (memberId: string) => setSelectedMembers(prev => { const next = new Set(prev); next.has(memberId) ? next.delete(memberId) : next.add(memberId); return next; });
-  const handleToggleAll = () => { if (selectAll) setSelectedMembers(new Set()); else setSelectedMembers(new Set(filteredMembers.map(m => m.id))); setSelectAll(!selectAll); };
-  const handleExport = () => toast.success(language === 'ja' ? 'データをエクスポートしました' : 'Data exported successfully');
+  const handleToggleMember = (memberId: string) => setSelectedMembers(prev => {
+    const next = new Set(prev);
+    if (next.has(memberId)) next.delete(memberId);
+    else next.add(memberId);
+    return next;
+  });
+  const handleToggleAll = () => {
+    if (allFilteredSelected) {
+      setSelectedMembers(new Set());
+      return;
+    }
+    setSelectedMembers(new Set(sortedMembers.map((member) => member.id)));
+  };
   const handleBulkEmail = () => { if (selectedMembers.size === 0) { toast.error(language === 'ja' ? 'メンバーを選択してください' : 'Please select members'); return; } setShowEmailModal(true); };
   const requireSelectedMemberIds = () => {
     const ids = Array.from(selectedMembers);
@@ -140,13 +224,6 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     }
     return ids;
   };
-  const handleBulkSetRenewalStatus = async (isRenewal: boolean) => {
-    if (!onSetRenewalStatus) return;
-    const ids = requireSelectedMemberIds();
-    if (!ids) return;
-    await Promise.all(ids.map((id) => onSetRenewalStatus(id, isRenewal)));
-    toast.success(t.bulkUpdated);
-  };
   const handleBulkConfirmFeePayment = async (isRenewal: boolean) => {
     if (!onConfirmFeePayment) return;
     const ids = requireSelectedMemberIds();
@@ -154,8 +231,62 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     await Promise.all(ids.map((id) => onConfirmFeePayment(id, isRenewal)));
     toast.success(t.bulkUpdated);
   };
-  const handleReuploadRequestOpen = (userId: string, userName: string) => { setReuploadUserId(userId); setReuploadUserName(userName); setShowReuploadModal(true); };
-
+  const getSelectedMemberList = () => sortedMembers.filter((member) => selectedMembers.has(member.id));
+  const handleBulkDownloadCsv = () => {
+    const rows = getSelectedMemberList();
+    if (rows.length === 0) return toast.error(t.noMemberSelected);
+    const escapeCsv = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const header = ['id', 'name', 'furigana', 'email', 'category', 'feePaid', 'isRenewal', 'createdAt'];
+    const body = rows.map((m) => [
+      m.id,
+      m.name,
+      m.furigana,
+      m.email,
+      m.category,
+      m.feePaid ? 'true' : 'false',
+      m.isRenewal ? 'true' : 'false',
+      m.createdAt ?? '',
+    ]);
+    const csv = [header, ...body].map((line) => line.map(escapeCsv).join(',')).join('\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `members_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast.success(t.csvDownloaded);
+  };
+  const handleBulkDownloadXlsx = () => {
+    const rows = getSelectedMemberList();
+    if (rows.length === 0) return toast.error(t.noMemberSelected);
+    const worksheet = XLSX.utils.json_to_sheet(rows.map((m) => ({
+      ID: m.id,
+      Name: m.name,
+      Furigana: m.furigana,
+      Email: m.email,
+      Category: m.category,
+      FeePaid: m.feePaid ? 'true' : 'false',
+      IsRenewal: m.isRenewal ? 'true' : 'false',
+      CreatedAt: m.createdAt ?? '',
+    })));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Members');
+    XLSX.writeFile(workbook, `members_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success(t.xlsxDownloaded);
+  };
+  const handleBulkDelete = async () => {
+    if (!onDeleteUser) return;
+    const ids = requireSelectedMemberIds();
+    if (!ids) return;
+    if (!window.confirm(t.confirmBulkDelete)) return;
+    await Promise.all(ids.map((id) => Promise.resolve(onDeleteUser(id))));
+    setSelectedMembers(new Set());
+    setShowBulkActionsModal(false);
+    toast.success(t.deletedMembers);
+  };
   const handleReuploadRequestSend = (reasons: string[]) => {
     const reasonTexts = { ja: { reason1: '規定学生証の画像ではない。', reason2: '画質が荒く、情報が読み取れない。' }, en: { reason1: 'Not a valid student ID image.', reason2: 'Image quality is too low to read information.' } };
     const messages = reasons.map(r => reasonTexts[language][r as 'reason1' | 'reason2']);
@@ -207,20 +338,42 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
 
         {activeTab === 'approved' && (
           <div className="space-y-3 max-w-2xl mx-auto">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-4">
-                <span className="text-sm font-semibold text-[#3D3D4E]">{t.feeFilterGroup}</span>
-                <div className="flex items-center gap-2"><Checkbox id="filter-fee-paid" checked={filters.feePaid} onCheckedChange={() => handleToggleFilter('feePaid')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-fee-paid" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.feePaid}</label></div>
-                <div className="flex items-center gap-2"><Checkbox id="filter-fee-unpaid" checked={filters.feeUnpaid} onCheckedChange={() => handleToggleFilter('feeUnpaid')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-fee-unpaid" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.feeUnpaid}</label></div>
+            <div className="rounded-xl border border-[rgba(61,61,78,0.12)] bg-white p-3 space-y-3">
+              <div className="space-y-2">
+                <span className="text-sm font-semibold text-[#3D3D4E] block">{t.feeFilterGroup}</span>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2"><Checkbox id="filter-fee-paid" checked={filters.feePaid} onCheckedChange={() => handleToggleFilter('feePaid')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-fee-paid" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.feePaid}</label></div>
+                  <div className="flex items-center gap-2"><Checkbox id="filter-fee-unpaid" checked={filters.feeUnpaid} onCheckedChange={() => handleToggleFilter('feeUnpaid')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-fee-unpaid" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.feeUnpaid}</label></div>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-4">
-                <span className="text-sm font-semibold text-[#3D3D4E]">{t.categoryFilterGroup}</span>
-                <div className="flex items-center gap-2"><Checkbox id="filter-japanese" checked={filters.japanese} onCheckedChange={() => handleToggleFilter('japanese')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-japanese" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.japanese}</label></div>
-                <div className="flex items-center gap-2"><Checkbox id="filter-regular-international" checked={filters.regularInternational} onCheckedChange={() => handleToggleFilter('regularInternational')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-regular-international" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.regularInternational}</label></div>
-                <div className="flex items-center gap-2"><Checkbox id="filter-exchange" checked={filters.exchange} onCheckedChange={() => handleToggleFilter('exchange')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-exchange" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.exchange}</label></div>
+              <div className="border-t border-[rgba(61,61,78,0.12)]" />
+              <div className="space-y-2">
+                <span className="text-sm font-semibold text-[#3D3D4E] block">{t.categoryFilterGroup}</span>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2"><Checkbox id="filter-japanese" checked={filters.japanese} onCheckedChange={() => handleToggleFilter('japanese')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-japanese" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.japanese}</label></div>
+                  <div className="flex items-center gap-2"><Checkbox id="filter-regular-international" checked={filters.regularInternational} onCheckedChange={() => handleToggleFilter('regularInternational')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-regular-international" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.regularInternational}</label></div>
+                  <div className="flex items-center gap-2"><Checkbox id="filter-exchange" checked={filters.exchange} onCheckedChange={() => handleToggleFilter('exchange')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-exchange" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.exchange}</label></div>
+                </div>
               </div>
             </div>
             <div className="relative w-full max-w-xl"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#99A1AF]" /><Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t.search} className="pl-10 bg-[#EEEBE3] border-0 text-[#6B6B7A]" /></div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-[#3D3D4E]">{t.sortBy}</span>
+              <Select value={sortBy} onValueChange={(value: 'furigana' | 'createdAt') => setSortBy(value)}>
+                <SelectTrigger className="w-[210px] bg-[#EEEBE3] border-0 text-[#3D3D4E]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="furigana">{t.sortByFurigana}</SelectItem>
+                  <SelectItem value="createdAt">{t.sortByRegisteredAt}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
+                <SelectTrigger className="w-[130px] bg-[#EEEBE3] border-0 text-[#3D3D4E]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="asc">{t.sortOrderAsc}</SelectItem>
+                  <SelectItem value="desc">{t.sortOrderDesc}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
       </div>
@@ -230,8 +383,8 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
           <>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
-                <button onClick={handleToggleAll} className={`w-[18px] h-[17px] rounded border flex items-center justify-center ${selectAll ? 'bg-[#3D3D4E] border-[#3D3D4E]' : 'bg-[#EEEBE3] border-[rgba(61,61,78,0.15)]'}`}>
-                  {selectAll && (
+                <button onClick={handleToggleAll} className={`w-[18px] h-[17px] rounded border flex items-center justify-center ${allFilteredSelected ? 'bg-[#3D3D4E] border-[#3D3D4E]' : 'bg-[#EEEBE3] border-[rgba(61,61,78,0.15)]'}`}>
+                  {allFilteredSelected && (
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 14 14">
                       <path
                         d={(svgPaths2 as Record<string, string>)["p3de7e600"]}
@@ -243,18 +396,12 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                     </svg>
                   )}
                 </button>
-                <label onClick={handleToggleAll} className="text-[#3D3D4E] text-sm cursor-pointer select-none">{t.selectAll}</label>
                 <span className="text-xs text-[#6B6B7A]">
                   {t.selectedCount}: {selectedCount}
                 </span>
               </div>
               <div className="flex items-center gap-2 flex-wrap justify-end">
-                <Button onClick={() => void handleBulkSetRenewalStatus(true)} disabled={selectedCount === 0} size="sm" variant="outline" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.2)] text-[#3D3D4E] hover:bg-[#E8E4DB]">{t.bulkSetRenewal}</Button>
-                <Button onClick={() => void handleBulkSetRenewalStatus(false)} disabled={selectedCount === 0} size="sm" variant="outline" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.2)] text-[#3D3D4E] hover:bg-[#E8E4DB]">{t.bulkSetNewMember}</Button>
-                <Button onClick={() => void handleBulkConfirmFeePayment(true)} disabled={selectedCount === 0} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkMarkPaidRenewal}</Button>
-                <Button onClick={() => void handleBulkConfirmFeePayment(false)} disabled={selectedCount === 0} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkMarkPaidNew}</Button>
-                <Button onClick={handleBulkEmail} size="icon" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white h-9 w-9" title={t.sendBulkEmail}><Mail className="w-4 h-4" /></Button>
-                <Button onClick={handleExport} size="icon" variant="outline" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-9 w-9" title={t.exportData}><Download className="w-4 h-4" /></Button>
+                <Button onClick={() => setShowBulkActionsModal(true)} disabled={selectedCount === 0} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkAction}</Button>
               </div>
             </div>
 
@@ -306,7 +453,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
               </div>
             )}
 
-            {!isLoading && filteredMembers.map((member) => (
+            {!isLoading && sortedMembers.map((member) => (
               <div key={member.id} className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-4">
                 <div className="hidden md:flex items-center gap-4">
                   <button onClick={() => handleToggleMember(member.id)} className="shrink-0"><div className={`w-5 h-5 rounded border-2 border-[#49B1E4] flex items-center justify-center ${selectedMembers.has(member.id) ? 'bg-[#49B1E4]' : 'bg-white'}`}>{selectedMembers.has(member.id) && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 20 20"><path d="M4 10L8 14L16 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div></button>
@@ -371,6 +518,68 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
           </>
         )}
       </div>
+
+      {showBulkActionsModal && (
+        <Dialog open={showBulkActionsModal} onOpenChange={setShowBulkActionsModal}>
+          <DialogContent className="max-w-xl bg-[#F5F1E8]">
+            <DialogHeader>
+              <DialogTitle className="text-[#3D3D4E]">{t.bulkActionTitle}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-5 py-2">
+              <div className="text-sm text-[#6B6B7A]">{t.selectedCount}: {selectedCount}</div>
+
+              <div className="space-y-2 border rounded-lg border-[rgba(61,61,78,0.15)] p-3">
+                <p className="text-sm font-semibold text-[#3D3D4E]">{t.sendBulkEmail}</p>
+                <Button onClick={() => { setShowBulkActionsModal(false); handleBulkEmail(); }} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">
+                  <Mail className="w-4 h-4 mr-1" />
+                  {t.sendBulkEmail}
+                </Button>
+              </div>
+
+              <div className="space-y-3 border rounded-lg border-[rgba(61,61,78,0.15)] p-3">
+                <p className="text-sm font-semibold text-[#3D3D4E]">{t.feePriceSetting}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Input value={annualFeeAmount} onChange={(e) => setAnnualFeeAmount(e.target.value)} placeholder={t.annualFee} className="bg-[#EEEBE3] border-0" />
+                  <Input value={admissionFeeAmount} onChange={(e) => setAdmissionFeeAmount(e.target.value)} placeholder={t.admissionFee} className="bg-[#EEEBE3] border-0" />
+                </div>
+                <Button variant="outline" onClick={() => toast.success(`${t.priceUpdated} (年会費: ¥${annualFeeAmount}, 入会費: ¥${admissionFeeAmount})`)}>
+                  {t.applyPriceSetting}
+                </Button>
+              </div>
+
+              <div className="space-y-3 border rounded-lg border-[rgba(61,61,78,0.15)] p-3">
+                <p className="text-sm font-semibold text-[#3D3D4E]">{t.markPaid}</p>
+                <div className="flex gap-2 items-center">
+                  <span className="text-sm text-[#3D3D4E]">{t.targetMemberType}</span>
+                  <Select value={bulkPaymentTarget} onValueChange={(value: 'renewal' | 'new') => setBulkPaymentTarget(value)}>
+                    <SelectTrigger className="w-[180px] bg-[#EEEBE3] border-0"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="renewal">{t.bulkSetRenewal}</SelectItem>
+                      <SelectItem value="new">{t.bulkSetNewMember}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={() => void handleBulkConfirmFeePayment(bulkPaymentTarget === 'renewal')} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">
+                  {t.apply}
+                </Button>
+              </div>
+
+              <div className="space-y-2 border rounded-lg border-[rgba(61,61,78,0.15)] p-3">
+                <p className="text-sm font-semibold text-[#3D3D4E]">{t.downloadInfo}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={handleBulkDownloadCsv} className="gap-1"><Download className="w-4 h-4" />{t.downloadCsv}</Button>
+                  <Button variant="outline" onClick={handleBulkDownloadXlsx} className="gap-1"><Download className="w-4 h-4" />{t.downloadXlsx}</Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <Button variant="destructive" onClick={() => void handleBulkDelete()}>{t.bulkDelete}</Button>
+                <Button variant="outline" onClick={() => setShowBulkActionsModal(false)}>{t.close}</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {showEmailModal && (
         <BulkEmailModal
