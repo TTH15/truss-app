@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
-import { X, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrashCan, faUpload, faEye, faWandMagicSparkles, faFloppyDisk, faRotateLeft } from '@fortawesome/free-solid-svg-icons';
@@ -222,8 +222,9 @@ export function AdminEvents({
   onSendBulkEmail,
 }: AdminEventsProps) {
   const t = translations[language];
-  const [currentMonth, setCurrentMonth] = useState(3); // 4月 = 3 (0-indexed)
-  const [currentYear, setCurrentYear] = useState(2026);
+  const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
+  const [monthYearDisplayYear, setMonthYearDisplayYear] = useState(() => new Date().getFullYear());
   const currentMonthRef = useRef(currentMonth);
   const currentYearRef = useRef(currentYear);
   const lastMonthSwitchAtRef = useRef<number>(0);
@@ -248,10 +249,18 @@ export function AdminEvents({
   const imageHistoryRef = useRef<ImageData[]>([]);
   const [canUndoImageEdit, setCanUndoImageEdit] = useState(false);
   const [draggingEvent, setDraggingEvent] = useState<AdminEvent | null>(null);
+  const draggingEventRef = useRef<AdminEvent | null>(null);
+  const [dragOverDateStr, setDragOverDateStr] = useState<string | null>(null);
+  const [isImportingEvent, setIsImportingEvent] = useState(false);
   const saveInFlightRef = useRef(false);
   const [confirmType, setConfirmType] = useState<'create' | 'update'>('create');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
   const [initialEventSnapshot, setInitialEventSnapshot] = useState('');
+
+  const [edgeZone, setEdgeZone] = useState<'left' | 'right' | null>(null);
+  const [monthSwitching, setMonthSwitching] = useState(false);
+  const edgeSwitchTimeoutRef = useRef<number | null>(null);
+  const pendingEdgeZoneRef = useRef<'left' | 'right' | null>(null);
 
   const getEventText = (event: AdminEvent, key: 'title' | 'description' | 'location', locale: 'ja' | 'en') => {
     const jaKeyMap = {
@@ -372,6 +381,44 @@ export function AdminEvents({
     setInitialEventSnapshot(JSON.stringify(nextEvent));
     setShowNewEventForm(true);
     setSelectedEvent(null);
+  };
+
+  // ドロップした日に、モーダル無しで即時作成する（LINEグループ招待リンク以外を流用）
+  const handleCreateImportedEventToDate = async (sourceEvent: AdminEvent, day: number | null) => {
+    if (!day) return;
+    if (!onCreateEvent) return;
+    try {
+      setIsImportingEvent(true);
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const { startTime, endTime } = parseEventTime(sourceEvent);
+
+      const eventData = {
+        title: getEventText(sourceEvent, 'title', 'ja'),
+        titleEn: getEventText(sourceEvent, 'title', 'en') || undefined,
+        description: getEventText(sourceEvent, 'description', 'ja'),
+        descriptionEn: getEventText(sourceEvent, 'description', 'en') || undefined,
+        date: dateStr,
+        time: `${startTime}〜${endTime}`,
+        location: getEventText(sourceEvent, 'location', 'ja'),
+        locationEn: getEventText(sourceEvent, 'location', 'en') || undefined,
+        googleMapUrl: sourceEvent?.googleMapUrl || undefined,
+        maxParticipants: parseInt(String(sourceEvent?.maxParticipants ?? ''), 10) || 30,
+        image: sourceEvent?.image || undefined,
+        eventColor: sourceEvent?.eventColor || '#49B1E4',
+        tags: { friendsCanMeet: false, photoContest: false },
+        status: 'upcoming' as const,
+        // LINEグループ招待リンクは除外（空で作成）
+        lineGroupLink: undefined,
+      };
+
+      await onCreateEvent(eventData);
+      toast.success(language === 'ja' ? 'イベントを作成しました（インポート）' : 'Event created (import)');
+    } catch (error) {
+      console.error('Import create failed:', error);
+      toast.error(language === 'ja' ? 'インポート作成に失敗しました。' : 'Failed to create imported event.');
+    } finally {
+      setIsImportingEvent(false);
+    }
   };
 
   const handleEventClick = (event: AdminEvent) => {
@@ -710,37 +757,70 @@ export function AdminEvents({
     currentYearRef.current = currentYear;
   }, [currentYear]);
 
+  useEffect(() => {
+    setMonthYearDisplayYear(currentYear);
+  }, [currentYear]);
+
+  useEffect(() => {
+    draggingEventRef.current = draggingEvent;
+  }, [draggingEvent]);
+
   const handleCalendarDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    if (!draggingEvent) return;
+    if (!draggingEventRef.current) return;
     e.preventDefault();
+
     const el = calendarContainerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const threshold = 70; // 左右何px寄せたら切替するか
+    const threshold = 70; // 左右何px寄せたら判定するか
+
+    const zone: 'left' | 'right' | null =
+      e.clientX < rect.left + threshold ? 'left' :
+      e.clientX > rect.right - threshold ? 'right' :
+      null;
+
+    setEdgeZone(zone);
+
+    if (!zone) {
+      if (edgeSwitchTimeoutRef.current) window.clearTimeout(edgeSwitchTimeoutRef.current);
+      edgeSwitchTimeoutRef.current = null;
+      pendingEdgeZoneRef.current = null;
+      return;
+    }
+
     const now = Date.now();
     if (now - lastMonthSwitchAtRef.current < 550) return;
 
-    if (e.clientX < rect.left + threshold) {
-      lastMonthSwitchAtRef.current = now;
+    // 寄せた瞬間は色だけ変えて、少し遅らせてから切り替える
+    pendingEdgeZoneRef.current = zone;
+    if (edgeSwitchTimeoutRef.current) window.clearTimeout(edgeSwitchTimeoutRef.current);
+    edgeSwitchTimeoutRef.current = window.setTimeout(() => {
+      if (!draggingEventRef.current) return;
+      if (pendingEdgeZoneRef.current !== zone) return;
+
+      setMonthSwitching(true);
+      lastMonthSwitchAtRef.current = Date.now();
+
       const cm = currentMonthRef.current;
       const cy = currentYearRef.current;
-      if (cm === 0) {
-        setCurrentMonth(11);
-        setCurrentYear(cy - 1);
+      if (zone === 'left') {
+        if (cm === 0) {
+          setCurrentMonth(11);
+          setCurrentYear(cy - 1);
+        } else {
+          setCurrentMonth(cm - 1);
+        }
       } else {
-        setCurrentMonth(cm - 1);
+        if (cm === 11) {
+          setCurrentMonth(0);
+          setCurrentYear(cy + 1);
+        } else {
+          setCurrentMonth(cm + 1);
+        }
       }
-    } else if (e.clientX > rect.right - threshold) {
-      lastMonthSwitchAtRef.current = now;
-      const cm = currentMonthRef.current;
-      const cy = currentYearRef.current;
-      if (cm === 11) {
-        setCurrentMonth(0);
-        setCurrentYear(cy + 1);
-      } else {
-        setCurrentMonth(cm + 1);
-      }
-    }
+
+      window.setTimeout(() => setMonthSwitching(false), 260);
+    }, 260);
   };
 
   const selectedDateValue = useMemo(() => {
@@ -821,31 +901,80 @@ export function AdminEvents({
       <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-6 pb-8">
         {/* 月表示とナビゲーション */}
         <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={handlePreviousMonth}
-            className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors p-1 hover:bg-[#F5F1E8] rounded"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
+          <div className="flex-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start bg-[#EEEBE3] border-0 text-left font-normal text-[#3D3D4E] h-9"
+                >
+                  <CalendarIcon className="w-4 h-4 mr-2 text-[#6B6B7A]" />
+                  {currentYear}年 {monthNames[currentMonth]}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-[320px] p-4 bg-white shadow-xl border border-[#E5E7EB] z-80">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setMonthYearDisplayYear(monthYearDisplayYear - 1)}
+                      className="h-8 w-8"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="text-sm font-semibold">{monthYearDisplayYear}年</div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setMonthYearDisplayYear(monthYearDisplayYear + 1)}
+                      className="h-8 w-8"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
 
-          <h3 className="text-[#3D3D4E] text-base font-semibold">
-            {currentYear}{language === 'ja' ? '年' : ''} {monthNames[currentMonth]}
-          </h3>
-
-          <button
-            onClick={handleNextMonth}
-            className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors p-1 hover:bg-[#F5F1E8] rounded"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+                  <div className="grid grid-cols-3 gap-2">
+                    {monthNames.map((monthName, idx) => {
+                      const monthNumber = idx; // 0-indexed
+                      const isSelected = currentYear === monthYearDisplayYear && currentMonth === monthNumber;
+                      return (
+                        <Button
+                          key={monthName}
+                          type="button"
+                          variant={isSelected ? 'default' : 'outline'}
+                          className={`h-12 text-sm ${isSelected ? '' : 'bg-white'}`}
+                          onClick={() => {
+                            setCurrentYear(monthYearDisplayYear);
+                            setCurrentMonth(monthNumber);
+                          }}
+                        >
+                          {monthName}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
 
         {/* カレンダーグリッド */}
-        <div className="overflow-hidden" ref={calendarContainerRef} onDragOver={handleCalendarDragOver}>
+        <div
+          className={`overflow-hidden relative transition-all duration-200 ${monthSwitching ? 'opacity-70 blur-[1px]' : 'opacity-100 blur-0'}`}
+          ref={calendarContainerRef}
+          onDragOver={handleCalendarDragOver}
+        >
+          {draggingEvent && edgeZone === 'left' && (
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-20 bg-red-200/35 transition-colors duration-150" />
+          )}
+          {draggingEvent && edgeZone === 'right' && (
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-20 bg-blue-200/35 transition-colors duration-150" />
+          )}
           <div className="grid grid-cols-7 gap-px bg-[#E5E7EB] border border-[#E5E7EB] overflow-hidden">
             {/* 曜日ヘッダー */}
             {dayNames.map((day, index) => (
@@ -864,23 +993,42 @@ export function AdminEvents({
               const column = index % 7;
               const isSunday = column === 0;
               const isSaturday = column === 6;
+              const cellDateStr = day
+                ? `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                : null;
               return (
                 <div
                   key={`cell-${index}`}
                   className={`p-2 flex flex-col relative overflow-hidden h-[120px] ${isSunday ? 'bg-red-50/35' : isSaturday ? 'bg-blue-50/35' : 'bg-white'
-                    } ${day ? 'cursor-pointer hover:bg-[#F5F8FC]' : ''}`}
-                  onClick={() => handleAddEvent(day)}
+                    } ${day ? 'cursor-pointer hover:bg-[#F5F8FC]' : ''} ${
+                      day && dragOverDateStr === cellDateStr ? 'bg-[#49B1E4]/25 ring-2 ring-[#49B1E4] rounded-[10px]' : ''
+                    }`}
+                  onClick={() => {
+                    if (draggingEventRef.current) return;
+                    handleAddEvent(day);
+                  }}
                   onDragOver={(e) => {
-                    if (draggingEvent && day) {
+                    if (draggingEventRef.current && day && cellDateStr) {
                       e.preventDefault();
                       e.dataTransfer.dropEffect = 'copy';
+                      setDragOverDateStr(cellDateStr);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (draggingEventRef.current && dragOverDateStr === cellDateStr) {
+                      setDragOverDateStr(null);
                     }
                   }}
                   onDrop={(e) => {
-                    if (draggingEvent && day) {
+                    if (draggingEventRef.current && day && cellDateStr) {
                       e.preventDefault();
-                      handleImportEventToDate(draggingEvent, day);
+                      void handleCreateImportedEventToDate(draggingEventRef.current, day);
                       setDraggingEvent(null);
+                      setDragOverDateStr(null);
+                      setEdgeZone(null);
+                      pendingEdgeZoneRef.current = null;
+                      if (edgeSwitchTimeoutRef.current) window.clearTimeout(edgeSwitchTimeoutRef.current);
+                      edgeSwitchTimeoutRef.current = null;
                     }
                   }}
                 >
@@ -901,10 +1049,17 @@ export function AdminEvents({
                             }}
                             onDragStart={(e) => {
                               setDraggingEvent(event);
+                              setDragOverDateStr(null);
                               e.dataTransfer.effectAllowed = 'copy';
                             }}
                             onDragEnd={() => {
                               setDraggingEvent(null);
+                              setDragOverDateStr(null);
+                              setEdgeZone(null);
+                              setMonthSwitching(false);
+                              pendingEdgeZoneRef.current = null;
+                              if (edgeSwitchTimeoutRef.current) window.clearTimeout(edgeSwitchTimeoutRef.current);
+                              edgeSwitchTimeoutRef.current = null;
                             }}
                             className="flex items-center gap-1 text-left w-full px-1 py-0.5 rounded hover:bg-black/5 transition-colors"
                           >
