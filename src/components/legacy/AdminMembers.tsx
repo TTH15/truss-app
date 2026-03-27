@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Search, Download, Mail, MessageCircle, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { queryFeeSettings } from '../../lib/db/queries/fee-settings';
+import { upsertFeeSettingsRow } from '../../lib/db/mutations/fee-settings';
 import { BulkEmailModal } from './BulkEmailModal';
 import { ReuploadRequestModal } from './ReuploadRequestModal';
 import { MemberDetailModal } from './MemberDetailModal';
@@ -287,6 +289,28 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     setShowBulkActionsModal(false);
     toast.success(t.deletedMembers);
   };
+
+  const openBulkActionsModal = async () => {
+    try {
+      const settings = await queryFeeSettings();
+      setAnnualFeeAmount(String(settings.annualFee));
+      setAdmissionFeeAmount(String(settings.admissionFee));
+    } catch {
+      // 取得失敗時は画面上の値をそのまま使う（デフォルトあり）
+    } finally {
+      setShowBulkActionsModal(true);
+    }
+  };
+
+  const handleSaveFeeSettings = async () => {
+    const annualFee = Number(annualFeeAmount);
+    const admissionFee = Number(admissionFeeAmount);
+    if (!Number.isFinite(annualFee) || annualFee < 0) return toast.error(language === 'ja' ? '年会費の値が不正です' : 'Invalid annual fee');
+    if (!Number.isFinite(admissionFee) || admissionFee < 0) return toast.error(language === 'ja' ? '入会費の値が不正です' : 'Invalid admission fee');
+    const { error } = await upsertFeeSettingsRow({ annualFee, admissionFee, currency: 'JPY' });
+    if (error) return toast.error(error.message);
+    toast.success(t.priceUpdated);
+  };
   const handleReuploadRequestSend = (reasons: string[]) => {
     const reasonTexts = { ja: { reason1: '規定学生証の画像ではない。', reason2: '画質が荒く、情報が読み取れない。' }, en: { reason1: 'Not a valid student ID image.', reason2: 'Image quality is too low to read information.' } };
     const messages = reasons.map(r => reasonTexts[language][r as 'reason1' | 'reason2']);
@@ -401,7 +425,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                 </span>
               </div>
               <div className="flex items-center gap-2 flex-wrap justify-end">
-                <Button onClick={() => setShowBulkActionsModal(true)} disabled={selectedCount === 0} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkAction}</Button>
+                <Button onClick={() => void openBulkActionsModal()} disabled={selectedCount === 0} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkAction}</Button>
               </div>
             </div>
 
@@ -542,7 +566,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                   <Input value={annualFeeAmount} onChange={(e) => setAnnualFeeAmount(e.target.value)} placeholder={t.annualFee} className="bg-[#EEEBE3] border-0" />
                   <Input value={admissionFeeAmount} onChange={(e) => setAdmissionFeeAmount(e.target.value)} placeholder={t.admissionFee} className="bg-[#EEEBE3] border-0" />
                 </div>
-                <Button variant="outline" onClick={() => toast.success(`${t.priceUpdated} (年会費: ¥${annualFeeAmount}, 入会費: ¥${admissionFeeAmount})`)}>
+                <Button variant="outline" onClick={() => void handleSaveFeeSettings()}>
                   {t.applyPriceSetting}
                 </Button>
               </div>

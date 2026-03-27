@@ -116,6 +116,17 @@ export interface DbEventLike {
   created_at: string;
 }
 
+export interface DbFeeSettings {
+  // Supabase JS v2 GenericTable の互換性確保のため（Record<string, unknown> 前提）
+  [key: string]: unknown;
+  id: number;
+  annual_fee: number;
+  admission_fee: number;
+  currency: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DbMessage {
   // Supabase JS v2 GenericTable の互換性確保のため（Record<string, unknown> 前提）
   [key: string]: unknown;
@@ -265,6 +276,10 @@ export type DbBoardPostReplyInsert = Omit<DbBoardPostReply, 'id' | 'created_at'>
 
 export type DbGalleryPhotoInsert = Omit<DbGalleryPhoto, 'id' | 'created_at'>;
 
+export type DbFeeSettingsInsert = Omit<DbFeeSettings, 'created_at' | 'updated_at'> & {
+  id?: number;
+};
+
 // =============================================
 // Update Types (for updating records)
 // =============================================
@@ -282,6 +297,8 @@ export type DbBoardPostUpdate = Partial<Omit<DbBoardPost, 'id' | 'author_id' | '
 export type DbGalleryPhotoUpdate = Partial<Pick<DbGalleryPhoto, 'approved' | 'likes'>>;
 
 export type DbChatThreadMetadataUpdate = Partial<Pick<DbChatThreadMetadata, 'pinned' | 'flagged' | 'unread_count'>>;
+
+export type DbFeeSettingsUpdate = Partial<Omit<DbFeeSettings, 'id' | 'created_at' | 'updated_at'>>;
 
 // =============================================
 // Supabase Database Type Definition
@@ -312,6 +329,12 @@ export interface Database {
         Row: DbEventLike;
         Insert: Omit<DbEventLike, 'id' | 'created_at'>;
         Update: never;
+        Relationships: [];
+      };
+      fee_settings: {
+        Row: DbFeeSettings;
+        Insert: DbFeeSettingsInsert;
+        Update: DbFeeSettingsUpdate;
         Relationships: [];
       };
       messages: {

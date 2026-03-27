@@ -6,6 +6,7 @@ import { Heart, Users, Calendar, Camera, MapPin, Clock, MessageCircle, ExternalL
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Checkbox } from '../ui/checkbox';
 import type { Language, Event, User } from '../../domain/types/app';
+import { supabase } from '../../lib/supabase';
 
 interface EventsPageProps {
   language: Language;
@@ -33,11 +34,38 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
   const eventRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
   const [photoRefusal, setPhotoRefusal] = useState(false);
   const [registrationStep, setRegistrationStep] = useState<'confirm' | 'complete'>('confirm');
+  const [eventImages, setEventImages] = useState<Record<number, string | null>>({});
 
   useEffect(() => {
     if (!highlightEventId || !eventRefs.current[highlightEventId]) return;
     setTimeout(() => eventRefs.current[highlightEventId]?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
   }, [highlightEventId]);
+
+  useEffect(() => {
+    const eventIds = events.map((event) => event.id).filter((id): id is number => typeof id === 'number');
+    if (eventIds.length === 0) {
+      setEventImages({});
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from('events')
+        .select('id,image')
+        .in('id', eventIds);
+      if (cancelled || error) return;
+      const nextMap: Record<number, string | null> = {};
+      for (const row of data ?? []) {
+        nextMap[row.id] = row.image ?? null;
+      }
+      setEventImages(nextMap);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [events]);
 
   const handleAttendClick = (event: Event) => {
     const isAttending = attendingEvents.has(event.id);
@@ -77,12 +105,13 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
     const displayTitle = language === 'ja' ? event.title : (event.titleEn || event.title);
     const displayLocation = language === 'ja' ? event.location : (event.locationEn || event.location);
     const isHighlighted = highlightEventId === event.id;
+    const resolvedImage = eventImages[event.id] ?? event.image ?? null;
     return (
       <div key={event.id} ref={(el) => { eventRefs.current[event.id] = el; }}>
         <Card className={`overflow-hidden hover:shadow-lg transition-all duration-500 ${isHighlighted ? 'ring-4 ring-[#49B1E4] shadow-2xl' : ''}`}>
           <button onClick={() => { setDetailEvent(event); setDetailModalOpen(true); }} className="w-full h-48 sm:h-72 bg-linear-to-br from-blue-100 to-purple-100 relative cursor-pointer group">
-            {event.image ? (
-              <img src={event.image} alt={displayTitle} loading="lazy" className="w-full h-full object-cover" />
+            {resolvedImage ? (
+              <img src={resolvedImage} alt={displayTitle} loading="lazy" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-linear-to-br from-blue-100 to-purple-100" />
             )}
@@ -135,7 +164,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
             <>
               <DialogHeader><DialogTitle className="flex items-center gap-2 text-[#3D3D4E]"><Calendar className="w-5 h-5 text-[#49B1E4]" />{t.eventDetails}</DialogTitle></DialogHeader>
               <div className="space-y-4">
-                {detailEvent.image ? <div className="rounded-lg overflow-hidden"><img src={detailEvent.image} alt={language === 'ja' ? detailEvent.title : (detailEvent.titleEn || detailEvent.title)} className="w-full h-48 object-cover" /></div> : <div className="rounded-lg overflow-hidden"><div className="w-full h-48 bg-linear-to-br from-blue-100 to-purple-100" /></div>}
+                {(eventImages[detailEvent.id] ?? detailEvent.image) ? <div className="rounded-lg overflow-hidden"><img src={(eventImages[detailEvent.id] ?? detailEvent.image) as string} alt={language === 'ja' ? detailEvent.title : (detailEvent.titleEn || detailEvent.title)} className="w-full h-48 object-cover" /></div> : <div className="rounded-lg overflow-hidden"><div className="w-full h-48 bg-linear-to-br from-blue-100 to-purple-100" /></div>}
                 <h3 className="text-xl font-bold text-[#3D3D4E]">{language === 'ja' ? detailEvent.title : (detailEvent.titleEn || detailEvent.title)}</h3>
                 <div className="bg-[#F5F1E8] rounded-lg p-4 space-y-3">
                   <div className="flex items-center gap-3 text-[#3D3D4E]"><Calendar className="w-5 h-5 text-[#49B1E4]" /><span>{detailEvent.date}</span></div>
