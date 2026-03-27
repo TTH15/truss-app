@@ -3,10 +3,10 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
-import { X, Upload, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faTrashCan, faUpload, faEye, faWandMagicSparkles, faFloppyDisk } from '@fortawesome/free-solid-svg-icons';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { Language } from '../../domain/types/app';
@@ -234,7 +234,7 @@ export function AdminEvents({
   const [imageEditorOpen, setImageEditorOpen] = useState(false);
   const [imageEditorMode, setImageEditorMode] = useState<'preview' | 'mosaic'>('preview');
   const [imageEditorSource, setImageEditorSource] = useState<string | null>(null);
-  const [mosaicBrushSize, setMosaicBrushSize] = useState(36);
+  const [mosaicBrushSize, setMosaicBrushSize] = useState(20);
   const [isSavingEvent, setIsSavingEvent] = useState(false);
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -502,7 +502,7 @@ export function AdminEvents({
   const applyMosaicAtPoint = (canvas: HTMLCanvasElement, centerX: number, centerY: number, brushSize: number) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const blockSize = 8;
+    const blockSize = Math.max(2, Math.floor(brushSize / 6));
     const half = Math.floor(brushSize / 2);
     const startX = Math.max(0, Math.floor(centerX - half));
     const startY = Math.max(0, Math.floor(centerY - half));
@@ -687,7 +687,7 @@ export function AdminEvents({
           </button>
         ) : (
           <label className="cursor-pointer flex flex-col items-center">
-            <Upload className="w-4 h-4 text-[#3D3D4E] mb-1" />
+            <FontAwesomeIcon icon={faUpload} className="w-4 h-4 text-[#3D3D4E] mb-1" />
             <span className="text-[#3D3D4E] text-sm font-medium">{t.upload}</span>
             <input
               type="file"
@@ -738,9 +738,8 @@ export function AdminEvents({
             {dayNames.map((day, index) => (
               <div
                 key={`day-${index}`}
-                className={`p-2 text-center ${
-                  index === 0 ? 'bg-red-50' : index === 6 ? 'bg-blue-50' : 'bg-[#F9FAFB]'
-                }`}
+                className={`p-2 text-center ${index === 0 ? 'bg-red-50' : index === 6 ? 'bg-blue-50' : 'bg-[#F9FAFB]'
+                  }`}
               >
                 <span className={`text-xs font-bold ${index === 0 ? 'text-red-600' : index === 6 ? 'text-blue-600' : 'text-[#6B6B7A]'}`}>{day}</span>
               </div>
@@ -755,9 +754,8 @@ export function AdminEvents({
               return (
                 <div
                   key={`cell-${index}`}
-                  className={`p-2 flex flex-col relative overflow-hidden h-[120px] ${
-                    isSunday ? 'bg-red-50/35' : isSaturday ? 'bg-blue-50/35' : 'bg-white'
-                  } ${day ? 'cursor-pointer hover:bg-[#F5F8FC]' : ''}`}
+                  className={`p-2 flex flex-col relative overflow-hidden h-[120px] ${isSunday ? 'bg-red-50/35' : isSaturday ? 'bg-blue-50/35' : 'bg-white'
+                    } ${day ? 'cursor-pointer hover:bg-[#F5F8FC]' : ''}`}
                   onClick={() => handleAddEvent(day)}
                 >
                   {day && (
@@ -799,263 +797,263 @@ export function AdminEvents({
       {showNewEventForm && (
         <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4" onClick={handleCloseForm}>
           <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-6 relative w-full max-w-[1100px] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-          {/* 閉じるボタン */}
-          <button
-            onClick={handleCloseForm}
-            className="absolute top-4 right-4 text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            {/* 閉じるボタン */}
+            <button
+              onClick={handleCloseForm}
+              className="absolute top-4 right-4 text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"
+            >
+              <X className="w-4 h-4" />
+            </button>
 
-          <h3 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px] mb-6">{t.newEvent}</h3>
+            <h3 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px] mb-6">{t.newEvent}</h3>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 左側 */}
-            <div className="space-y-4">
-              {/* イベント名 */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
-                    {t.eventName}
-                  </label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleTranslate('title')}
-                    disabled={!newEvent.titleJa?.trim()}
-                    className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
-                  >
-                    <Languages className="w-3 h-3 mr-1" />
-                    {t.autoTranslate}
-                  </Button>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* 左側 */}
+              <div className="space-y-4">
+                {/* イベント名 */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
+                      {t.eventName}
+                    </label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleTranslate('title')}
+                      disabled={!newEvent.titleJa?.trim()}
+                      className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
+                    >
+                      <Languages className="w-3 h-3 mr-1" />
+                      {t.autoTranslate}
+                    </Button>
+                  </div>
+                  <Input
+                    value={newEvent.titleJa}
+                    onChange={(e) => setNewEvent({ ...newEvent, titleJa: e.target.value })}
+                    placeholder={t.eventNamePlaceholderJa}
+                    className="bg-[#EEEBE3] border-0 mb-2"
+                  />
+                  <Input
+                    value={newEvent.titleEn}
+                    onChange={(e) => setNewEvent({ ...newEvent, titleEn: e.target.value })}
+                    placeholder={t.eventNamePlaceholderEn}
+                    className="bg-[#EEEBE3] border-0"
+                  />
                 </div>
-                <Input
-                  value={newEvent.titleJa}
-                  onChange={(e) => setNewEvent({ ...newEvent, titleJa: e.target.value })}
-                  placeholder={t.eventNamePlaceholderJa}
-                  className="bg-[#EEEBE3] border-0 mb-2"
-                />
-                <Input
-                  value={newEvent.titleEn}
-                  onChange={(e) => setNewEvent({ ...newEvent, titleEn: e.target.value })}
-                  placeholder={t.eventNamePlaceholderEn}
-                  className="bg-[#EEEBE3] border-0"
-                />
-              </div>
 
-              {/* 説明 */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
-                    {t.description}
-                  </label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleTranslate('description')}
-                    disabled={!newEvent.descriptionJa?.trim()}
-                    className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
-                  >
-                    <Languages className="w-3 h-3 mr-1" />
-                    {t.autoTranslate}
-                  </Button>
-                </div>
-                <Textarea
-                  value={newEvent.descriptionJa}
-                  onChange={(e) => setNewEvent({ ...newEvent, descriptionJa: e.target.value })}
-                  placeholder={t.descriptionPlaceholderJa}
-                  className="bg-[#EEEBE3] border-0 mb-2 min-h-[64px]"
-                />
-                <Textarea
-                  value={newEvent.descriptionEn}
-                  onChange={(e) => setNewEvent({ ...newEvent, descriptionEn: e.target.value })}
-                  placeholder={t.descriptionPlaceholderEn}
-                  className="bg-[#EEEBE3] border-0 min-h-[64px]"
-                />
-              </div>
-
-              {/* LINEグループ招待リンク */}
-              <div>
-                <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                  {t.lineGroupLink}
-                </label>
-                <Input
-                  value={newEvent.lineGroupUrl}
-                  onChange={(e) => setNewEvent({ ...newEvent, lineGroupUrl: e.target.value })}
-                  placeholder={t.lineGroupPlaceholder}
-                  className="bg-[#EEEBE3] border-0"
-                />
-                <p className="text-[#6A7282] text-xs mt-2">{t.lineGroupNote}</p>
-              </div>
-
-              {/* 最大参加者数 */}
-              <div>
-                <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                  {t.maxParticipants}
-                </label>
-                <Input
-                  type="number"
-                  value={newEvent.maxParticipants}
-                  onChange={(e) => setNewEvent({ ...newEvent, maxParticipants: e.target.value })}
-                  className="bg-[#EEEBE3] border-0 w-24"
-                />
-              </div>
-            </div>
-
-            {/* 右側 */}
-            <div className="space-y-4">
-              {/* イベント画像 */}
-              {renderEventImageField()}
-
-              <div>
-                <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                  {language === 'ja' ? 'イベントカラー' : 'Event Color'}
-                </label>
-                <div className="flex items-center gap-2">
-                  {eventColors.map((color) => (
-                    <button
-                      key={color}
+                {/* 説明 */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
+                      {t.description}
+                    </label>
+                    <Button
                       type="button"
-                      aria-label={`event-color-${color}`}
-                      onClick={() => setNewEvent({ ...newEvent, eventColor: color })}
-                      className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-105 ${newEvent.eventColor === color ? 'border-[#3D3D4E]' : 'border-transparent'}`}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleTranslate('description')}
+                      disabled={!newEvent.descriptionJa?.trim()}
+                      className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
+                    >
+                      <Languages className="w-3 h-3 mr-1" />
+                      {t.autoTranslate}
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={newEvent.descriptionJa}
+                    onChange={(e) => setNewEvent({ ...newEvent, descriptionJa: e.target.value })}
+                    placeholder={t.descriptionPlaceholderJa}
+                    className="bg-[#EEEBE3] border-0 mb-2 min-h-[64px]"
+                  />
+                  <Textarea
+                    value={newEvent.descriptionEn}
+                    onChange={(e) => setNewEvent({ ...newEvent, descriptionEn: e.target.value })}
+                    placeholder={t.descriptionPlaceholderEn}
+                    className="bg-[#EEEBE3] border-0 min-h-[64px]"
+                  />
+                </div>
+
+                {/* LINEグループ招待リンク */}
+                <div>
+                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                    {t.lineGroupLink}
+                  </label>
+                  <Input
+                    value={newEvent.lineGroupUrl}
+                    onChange={(e) => setNewEvent({ ...newEvent, lineGroupUrl: e.target.value })}
+                    placeholder={t.lineGroupPlaceholder}
+                    className="bg-[#EEEBE3] border-0"
+                  />
+                  <p className="text-[#6A7282] text-xs mt-2">{t.lineGroupNote}</p>
+                </div>
+
+                {/* 最大参加者数 */}
+                <div>
+                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                    {t.maxParticipants}
+                  </label>
+                  <Input
+                    type="number"
+                    value={newEvent.maxParticipants}
+                    onChange={(e) => setNewEvent({ ...newEvent, maxParticipants: e.target.value })}
+                    className="bg-[#EEEBE3] border-0 w-24"
+                  />
                 </div>
               </div>
 
-              {/* 日付・時間 */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* 右側 */}
+              <div className="space-y-4">
+                {/* イベント画像 */}
+                {renderEventImageField()}
+
                 <div>
                   <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {t.date}
-                  </label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button type="button" variant="outline" className="w-full justify-start bg-[#EEEBE3] border-0 text-left font-normal text-[#3D3D4E]">
-                        <CalendarIcon className="w-4 h-4 mr-2 text-[#6B6B7A]" />
-                        {selectedDateValue ? format(selectedDateValue, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined }) : (language === 'ja' ? '日付を選択' : 'Select date')}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDateValue}
-                        onSelect={(date) => {
-                          if (!date) return;
-                          setNewEvent({ ...newEvent, date: format(date, 'yyyy-MM-dd') });
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div>
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {t.time}
+                    {language === 'ja' ? 'イベントカラー' : 'Event Color'}
                   </label>
                   <div className="flex items-center gap-2">
-                    <Input
-                      type="time"
-                      value={newEvent.startTime}
-                      onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
-                      className="bg-[#EEEBE3] border-0 text-sm"
-                    />
-                    <span className="text-[#6B6B7A] text-sm">〜</span>
-                    <Input
-                      type="time"
-                      value={newEvent.endTime}
-                      onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                      className="bg-[#EEEBE3] border-0 text-sm"
-                    />
+                    {eventColors.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        aria-label={`event-color-${color}`}
+                        onClick={() => setNewEvent({ ...newEvent, eventColor: color })}
+                        className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-105 ${newEvent.eventColor === color ? 'border-[#3D3D4E]' : 'border-transparent'}`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
                   </div>
                 </div>
-              </div>
 
-              {/* Google Map URL */}
-              <div>
-                <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                  {t.googleMapUrl}
-                </label>
-                <Input
-                  value={newEvent.googleMapUrl}
-                  onChange={(e) => setNewEvent({ ...newEvent, googleMapUrl: e.target.value })}
-                  placeholder={t.googleMapUrlPlaceholder}
-                  className="bg-[#EEEBE3] border-0"
-                />
-              </div>
-
-              {/* 場所名 */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
-                    {t.locationName}
-                  </label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      if (!newEvent.location?.trim()) {
-                        toast.error(language === 'ja' ? '翻訳する内容を入力してください' : 'Please enter text to translate');
-                        return;
-                      }
-                      toast.loading(language === 'ja' ? '翻訳中...' : 'Translating...');
-                      try {
-                        const translatedText = await translateText(newEvent.location, 'en');
-                        if (translatedText) {
-                          setNewEvent({ ...newEvent, locationEn: translatedText });
-                          toast.dismiss();
-                          toast.success(language === 'ja' ? '翻訳が完了しました' : 'Translation completed');
-                        }
-                      } catch (error) {
-                        toast.dismiss();
-                        toast.error(language === 'ja' ? '翻訳に失敗しました' : 'Translation failed');
-                      }
-                    }}
-                    disabled={!newEvent.location?.trim()}
-                    className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
-                  >
-                    <Languages className="w-3 h-3 mr-1" />
-                    {t.autoTranslate}
-                  </Button>
+                {/* 日付・時間 */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                      {t.date}
+                    </label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button type="button" variant="outline" className="w-full justify-start bg-[#EEEBE3] border-0 text-left font-normal text-[#3D3D4E]">
+                          <CalendarIcon className="w-4 h-4 mr-2 text-[#6B6B7A]" />
+                          {selectedDateValue ? format(selectedDateValue, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined }) : (language === 'ja' ? '日付を選択' : 'Select date')}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDateValue}
+                          onSelect={(date) => {
+                            if (!date) return;
+                            setNewEvent({ ...newEvent, date: format(date, 'yyyy-MM-dd') });
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div>
+                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                      {t.time}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="time"
+                        value={newEvent.startTime}
+                        onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
+                        className="bg-[#EEEBE3] border-0 text-sm"
+                      />
+                      <span className="text-[#6B6B7A] text-sm">〜</span>
+                      <Input
+                        type="time"
+                        value={newEvent.endTime}
+                        onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
+                        className="bg-[#EEEBE3] border-0 text-sm"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <Input
-                  value={newEvent.location}
-                  onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                  placeholder={t.locationNamePlaceholderJa}
-                  className="bg-[#EEEBE3] border-0 mb-2"
-                />
-                <Input
-                  value={newEvent.locationEn}
-                  onChange={(e) => setNewEvent({ ...newEvent, locationEn: e.target.value })}
-                  placeholder={t.locationNamePlaceholderEn}
-                  className="bg-[#EEEBE3] border-0"
-                />
+
+                {/* Google Map URL */}
+                <div>
+                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                    {t.googleMapUrl}
+                  </label>
+                  <Input
+                    value={newEvent.googleMapUrl}
+                    onChange={(e) => setNewEvent({ ...newEvent, googleMapUrl: e.target.value })}
+                    placeholder={t.googleMapUrlPlaceholder}
+                    className="bg-[#EEEBE3] border-0"
+                  />
+                </div>
+
+                {/* 場所名 */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
+                      {t.locationName}
+                    </label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        if (!newEvent.location?.trim()) {
+                          toast.error(language === 'ja' ? '翻訳する内容を入力してください' : 'Please enter text to translate');
+                          return;
+                        }
+                        toast.loading(language === 'ja' ? '翻訳中...' : 'Translating...');
+                        try {
+                          const translatedText = await translateText(newEvent.location, 'en');
+                          if (translatedText) {
+                            setNewEvent({ ...newEvent, locationEn: translatedText });
+                            toast.dismiss();
+                            toast.success(language === 'ja' ? '翻訳が完了しました' : 'Translation completed');
+                          }
+                        } catch (error) {
+                          toast.dismiss();
+                          toast.error(language === 'ja' ? '翻訳に失敗しました' : 'Translation failed');
+                        }
+                      }}
+                      disabled={!newEvent.location?.trim()}
+                      className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
+                    >
+                      <Languages className="w-3 h-3 mr-1" />
+                      {t.autoTranslate}
+                    </Button>
+                  </div>
+                  <Input
+                    value={newEvent.location}
+                    onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                    placeholder={t.locationNamePlaceholderJa}
+                    className="bg-[#EEEBE3] border-0 mb-2"
+                  />
+                  <Input
+                    value={newEvent.locationEn}
+                    onChange={(e) => setNewEvent({ ...newEvent, locationEn: e.target.value })}
+                    placeholder={t.locationNamePlaceholderEn}
+                    className="bg-[#EEEBE3] border-0"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* ボタン */}
-          <div className="flex gap-3 pt-4 justify-center">
-            <Button
-              onClick={editMode ? handleSaveEditedEvent : handleSaveEvent}
-              className="w-32 bg-[#00A63E] hover:bg-[#008C35] text-white"
-            >
-              {editMode ? t.save : t.save}
-            </Button>
+            {/* ボタン */}
+            <div className="flex gap-3 pt-4 justify-center">
+              <Button
+                onClick={editMode ? handleSaveEditedEvent : handleSaveEvent}
+                className="w-32 bg-[#00A63E] hover:bg-[#008C35] text-white"
+              >
+                {editMode ? t.save : t.save}
+              </Button>
+            </div>
           </div>
-        </div>
         </div>
       )}
 
       {/* イベント詳細表示 */}
       {selectedEvent && !editMode && (
         <div className={`bg-white rounded-[14px] p-6 relative ${selectedEvent.currentParticipants >= selectedEvent.maxParticipants
-            ? 'border-2 border-[#00A63E]'
-            : 'border-2 border-[#49B1E4]'
+          ? 'border-2 border-[#00A63E]'
+          : 'border-2 border-[#49B1E4]'
           }`}>
           {/* 閉じるボタン */}
           <button
@@ -1132,8 +1130,8 @@ export function AdminEvents({
                 <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
                   <Users className="w-4 h-4" />
                   <span className={`font-semibold ${selectedEvent.currentParticipants >= selectedEvent.maxParticipants
-                      ? 'text-[#00A63E]'
-                      : 'text-[#49B1E4]'
+                    ? 'text-[#00A63E]'
+                    : 'text-[#49B1E4]'
                     }`}>
                     {selectedEvent.currentParticipants} / {selectedEvent.maxParticipants}
                   </span>
@@ -1256,270 +1254,270 @@ export function AdminEvents({
       {selectedEvent && editMode && (
         <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4" onClick={handleCloseForm}>
           <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-6 relative w-full max-w-[1100px] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-          {/* 閉じるボタン */}
-          <button
-            onClick={handleCloseForm}
-            className="absolute top-4 right-4 text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            {/* 閉じるボタン */}
+            <button
+              onClick={handleCloseForm}
+              className="absolute top-4 right-4 text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"
+            >
+              <X className="w-4 h-4" />
+            </button>
 
-          <div className="flex items-start justify-between gap-3 mb-6 pr-6">
-            <div>
-              <h3 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">{t.editEvent}</h3>
-              <p className="text-[#6B6B7A] text-sm mt-1">
-                {newEvent.titleJa || newEvent.titleEn || (language === 'ja' ? '無題のイベント' : 'Untitled event')}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 左側 */}
-            <div className="space-y-4">
-              {/* イベント名 */}
+            <div className="flex items-start justify-between gap-3 mb-6 pr-6">
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
-                    {t.eventName}
-                  </label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleTranslate('title')}
-                    disabled={!newEvent.titleJa?.trim()}
-                    className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
-                  >
-                    <Languages className="w-3 h-3 mr-1" />
-                    {t.autoTranslate}
-                  </Button>
-                </div>
-                <Input
-                  value={newEvent.titleJa}
-                  onChange={(e) => setNewEvent({ ...newEvent, titleJa: e.target.value })}
-                  placeholder={t.eventNamePlaceholderJa}
-                  className="bg-[#EEEBE3] border-0 mb-2"
-                />
-                <Input
-                  value={newEvent.titleEn}
-                  onChange={(e) => setNewEvent({ ...newEvent, titleEn: e.target.value })}
-                  placeholder={t.eventNamePlaceholderEn}
-                  className="bg-[#EEEBE3] border-0"
-                />
-              </div>
-
-              {/* 説明 */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
-                    {t.description}
-                  </label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleTranslate('description')}
-                    disabled={!newEvent.descriptionJa?.trim()}
-                    className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
-                  >
-                    <Languages className="w-3 h-3 mr-1" />
-                    {t.autoTranslate}
-                  </Button>
-                </div>
-                <Textarea
-                  value={newEvent.descriptionJa}
-                  onChange={(e) => setNewEvent({ ...newEvent, descriptionJa: e.target.value })}
-                  placeholder={t.descriptionPlaceholderJa}
-                  className="bg-[#EEEBE3] border-0 mb-2 min-h-[64px]"
-                />
-                <Textarea
-                  value={newEvent.descriptionEn}
-                  onChange={(e) => setNewEvent({ ...newEvent, descriptionEn: e.target.value })}
-                  placeholder={t.descriptionPlaceholderEn}
-                  className="bg-[#EEEBE3] border-0 min-h-[64px]"
-                />
-              </div>
-
-              {/* LINEグループ招待リンク */}
-              <div>
-                <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                  {t.lineGroupLink}
-                </label>
-                <Input
-                  value={newEvent.lineGroupUrl}
-                  onChange={(e) => setNewEvent({ ...newEvent, lineGroupUrl: e.target.value })}
-                  placeholder={t.lineGroupPlaceholder}
-                  className="bg-[#EEEBE3] border-0"
-                />
-                <p className="text-[#6A7282] text-xs mt-2">{t.lineGroupNote}</p>
-              </div>
-
-              {/* 最大参加者数 */}
-              <div>
-                <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                  {t.maxParticipants}
-                </label>
-                <Input
-                  type="number"
-                  value={newEvent.maxParticipants}
-                  onChange={(e) => setNewEvent({ ...newEvent, maxParticipants: e.target.value })}
-                  className="bg-[#EEEBE3] border-0 w-24"
-                />
+                <h3 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">{t.editEvent}</h3>
+                <p className="text-[#6B6B7A] text-sm mt-1">
+                  {newEvent.titleJa || newEvent.titleEn || (language === 'ja' ? '無題のイベント' : 'Untitled event')}
+                </p>
               </div>
             </div>
 
-            {/* 右側 */}
-            <div className="space-y-4">
-              {/* イベント画像 */}
-              {renderEventImageField()}
-
-              <div>
-                <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                  {language === 'ja' ? 'イベントカラー' : 'Event Color'}
-                </label>
-                <div className="flex items-center gap-2">
-                  {eventColors.map((color) => (
-                    <button
-                      key={color}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* 左側 */}
+              <div className="space-y-4">
+                {/* イベント名 */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
+                      {t.eventName}
+                    </label>
+                    <Button
                       type="button"
-                      aria-label={`event-color-${color}`}
-                      onClick={() => setNewEvent({ ...newEvent, eventColor: color })}
-                      className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-105 ${newEvent.eventColor === color ? 'border-[#3D3D4E]' : 'border-transparent'}`}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleTranslate('title')}
+                      disabled={!newEvent.titleJa?.trim()}
+                      className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
+                    >
+                      <Languages className="w-3 h-3 mr-1" />
+                      {t.autoTranslate}
+                    </Button>
+                  </div>
+                  <Input
+                    value={newEvent.titleJa}
+                    onChange={(e) => setNewEvent({ ...newEvent, titleJa: e.target.value })}
+                    placeholder={t.eventNamePlaceholderJa}
+                    className="bg-[#EEEBE3] border-0 mb-2"
+                  />
+                  <Input
+                    value={newEvent.titleEn}
+                    onChange={(e) => setNewEvent({ ...newEvent, titleEn: e.target.value })}
+                    placeholder={t.eventNamePlaceholderEn}
+                    className="bg-[#EEEBE3] border-0"
+                  />
+                </div>
+
+                {/* 説明 */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
+                      {t.description}
+                    </label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleTranslate('description')}
+                      disabled={!newEvent.descriptionJa?.trim()}
+                      className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
+                    >
+                      <Languages className="w-3 h-3 mr-1" />
+                      {t.autoTranslate}
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={newEvent.descriptionJa}
+                    onChange={(e) => setNewEvent({ ...newEvent, descriptionJa: e.target.value })}
+                    placeholder={t.descriptionPlaceholderJa}
+                    className="bg-[#EEEBE3] border-0 mb-2 min-h-[64px]"
+                  />
+                  <Textarea
+                    value={newEvent.descriptionEn}
+                    onChange={(e) => setNewEvent({ ...newEvent, descriptionEn: e.target.value })}
+                    placeholder={t.descriptionPlaceholderEn}
+                    className="bg-[#EEEBE3] border-0 min-h-[64px]"
+                  />
+                </div>
+
+                {/* LINEグループ招待リンク */}
+                <div>
+                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                    {t.lineGroupLink}
+                  </label>
+                  <Input
+                    value={newEvent.lineGroupUrl}
+                    onChange={(e) => setNewEvent({ ...newEvent, lineGroupUrl: e.target.value })}
+                    placeholder={t.lineGroupPlaceholder}
+                    className="bg-[#EEEBE3] border-0"
+                  />
+                  <p className="text-[#6A7282] text-xs mt-2">{t.lineGroupNote}</p>
+                </div>
+
+                {/* 最大参加者数 */}
+                <div>
+                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                    {t.maxParticipants}
+                  </label>
+                  <Input
+                    type="number"
+                    value={newEvent.maxParticipants}
+                    onChange={(e) => setNewEvent({ ...newEvent, maxParticipants: e.target.value })}
+                    className="bg-[#EEEBE3] border-0 w-24"
+                  />
                 </div>
               </div>
 
-              {/* 日付・時間 */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* 右側 */}
+              <div className="space-y-4">
+                {/* イベント画像 */}
+                {renderEventImageField()}
+
                 <div>
                   <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {t.date}
-                  </label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button type="button" variant="outline" className="w-full justify-start bg-[#EEEBE3] border-0 text-left font-normal text-[#3D3D4E]">
-                        <CalendarIcon className="w-4 h-4 mr-2 text-[#6B6B7A]" />
-                        {selectedDateValue ? format(selectedDateValue, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined }) : (language === 'ja' ? '日付を選択' : 'Select date')}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDateValue}
-                        onSelect={(date) => {
-                          if (!date) return;
-                          setNewEvent({ ...newEvent, date: format(date, 'yyyy-MM-dd') });
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div>
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {t.time}
+                    {language === 'ja' ? 'イベントカラー' : 'Event Color'}
                   </label>
                   <div className="flex items-center gap-2">
-                    <Input
-                      type="time"
-                      value={newEvent.startTime}
-                      onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
-                      className="bg-[#EEEBE3] border-0 text-sm"
-                    />
-                    <span className="text-[#6B6B7A] text-sm">〜</span>
-                    <Input
-                      type="time"
-                      value={newEvent.endTime}
-                      onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                      className="bg-[#EEEBE3] border-0 text-sm"
-                    />
+                    {eventColors.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        aria-label={`event-color-${color}`}
+                        onClick={() => setNewEvent({ ...newEvent, eventColor: color })}
+                        className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-105 ${newEvent.eventColor === color ? 'border-[#3D3D4E]' : 'border-transparent'}`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
                   </div>
                 </div>
-              </div>
 
-              {/* Google Map URL */}
-              <div>
-                <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                  {t.googleMapUrl}
-                </label>
-                <Input
-                  value={newEvent.googleMapUrl}
-                  onChange={(e) => setNewEvent({ ...newEvent, googleMapUrl: e.target.value })}
-                  placeholder={t.googleMapUrlPlaceholder}
-                  className="bg-[#EEEBE3] border-0"
-                />
-              </div>
-
-              {/* 場所名 */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
-                    {t.locationName}
-                  </label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      if (!newEvent.location?.trim()) {
-                        toast.error(language === 'ja' ? '翻訳する内容を入力してください' : 'Please enter text to translate');
-                        return;
-                      }
-                      toast.loading(language === 'ja' ? '翻訳中...' : 'Translating...');
-                      try {
-                        const translatedText = await translateText(newEvent.location, 'en');
-                        if (translatedText) {
-                          setNewEvent({ ...newEvent, locationEn: translatedText });
-                          toast.dismiss();
-                          toast.success(language === 'ja' ? '翻訳が完了しました' : 'Translation completed');
-                        }
-                      } catch (error) {
-                        toast.dismiss();
-                        toast.error(language === 'ja' ? '翻訳に失敗しました' : 'Translation failed');
-                      }
-                    }}
-                    disabled={!newEvent.location?.trim()}
-                    className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
-                  >
-                    <Languages className="w-3 h-3 mr-1" />
-                    {t.autoTranslate}
-                  </Button>
+                {/* 日付・時間 */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                      {t.date}
+                    </label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button type="button" variant="outline" className="w-full justify-start bg-[#EEEBE3] border-0 text-left font-normal text-[#3D3D4E]">
+                          <CalendarIcon className="w-4 h-4 mr-2 text-[#6B6B7A]" />
+                          {selectedDateValue ? format(selectedDateValue, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined }) : (language === 'ja' ? '日付を選択' : 'Select date')}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDateValue}
+                          onSelect={(date) => {
+                            if (!date) return;
+                            setNewEvent({ ...newEvent, date: format(date, 'yyyy-MM-dd') });
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div>
+                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                      {t.time}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="time"
+                        value={newEvent.startTime}
+                        onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
+                        className="bg-[#EEEBE3] border-0 text-sm"
+                      />
+                      <span className="text-[#6B6B7A] text-sm">〜</span>
+                      <Input
+                        type="time"
+                        value={newEvent.endTime}
+                        onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
+                        className="bg-[#EEEBE3] border-0 text-sm"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <Input
-                  value={newEvent.location}
-                  onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                  placeholder={t.locationNamePlaceholderJa}
-                  className="bg-[#EEEBE3] border-0 mb-2"
-                />
-                <Input
-                  value={newEvent.locationEn}
-                  onChange={(e) => setNewEvent({ ...newEvent, locationEn: e.target.value })}
-                  placeholder={t.locationNamePlaceholderEn}
-                  className="bg-[#EEEBE3] border-0"
-                />
+
+                {/* Google Map URL */}
+                <div>
+                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                    {t.googleMapUrl}
+                  </label>
+                  <Input
+                    value={newEvent.googleMapUrl}
+                    onChange={(e) => setNewEvent({ ...newEvent, googleMapUrl: e.target.value })}
+                    placeholder={t.googleMapUrlPlaceholder}
+                    className="bg-[#EEEBE3] border-0"
+                  />
+                </div>
+
+                {/* 場所名 */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
+                      {t.locationName}
+                    </label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        if (!newEvent.location?.trim()) {
+                          toast.error(language === 'ja' ? '翻訳する内容を入力してください' : 'Please enter text to translate');
+                          return;
+                        }
+                        toast.loading(language === 'ja' ? '翻訳中...' : 'Translating...');
+                        try {
+                          const translatedText = await translateText(newEvent.location, 'en');
+                          if (translatedText) {
+                            setNewEvent({ ...newEvent, locationEn: translatedText });
+                            toast.dismiss();
+                            toast.success(language === 'ja' ? '翻訳が完了しました' : 'Translation completed');
+                          }
+                        } catch (error) {
+                          toast.dismiss();
+                          toast.error(language === 'ja' ? '翻訳に失敗しました' : 'Translation failed');
+                        }
+                      }}
+                      disabled={!newEvent.location?.trim()}
+                      className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
+                    >
+                      <Languages className="w-3 h-3 mr-1" />
+                      {t.autoTranslate}
+                    </Button>
+                  </div>
+                  <Input
+                    value={newEvent.location}
+                    onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                    placeholder={t.locationNamePlaceholderJa}
+                    className="bg-[#EEEBE3] border-0 mb-2"
+                  />
+                  <Input
+                    value={newEvent.locationEn}
+                    onChange={(e) => setNewEvent({ ...newEvent, locationEn: e.target.value })}
+                    placeholder={t.locationNamePlaceholderEn}
+                    className="bg-[#EEEBE3] border-0"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* ボタン */}
-          <div className="flex gap-2 mt-6 justify-end">
-            <Button
-              onClick={handleDeleteEvent}
-              className="min-w-28 bg-[#D4183D] hover:bg-[#B01535] text-white"
-            >
-              {t.deleteEvent}
-            </Button>
-            <Button
-              onClick={handleSaveEditedEvent}
-              disabled={!hasUnsavedChanges || isSavingEvent || isUploadingImage}
-              className="min-w-28 bg-[#00A63E] hover:bg-[#008C35] text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {t.save}
-            </Button>
+            {/* ボタン */}
+            <div className="flex gap-2 mt-6 justify-end">
+              <Button
+                onClick={handleDeleteEvent}
+                className="min-w-28 bg-[#D4183D] hover:bg-[#B01535] text-white"
+              >
+                {t.deleteEvent}
+              </Button>
+              <Button
+                onClick={handleSaveEditedEvent}
+                disabled={!hasUnsavedChanges || isSavingEvent || isUploadingImage}
+                className="min-w-28 bg-[#00A63E] hover:bg-[#008C35] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t.save}
+              </Button>
+            </div>
           </div>
-        </div>
         </div>
       )}
 
@@ -1551,68 +1549,65 @@ export function AdminEvents({
         >
           <div className="relative w-full max-w-[95vw] max-h-[95vh] bg-[#111827] rounded-xl border border-white/10 p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3 gap-3">
-              <div className="flex items-center gap-2">
-                <Button
+              <div className="flex items-center gap-3">
+                <button
                   type="button"
-                  size="sm"
-                  variant={imageEditorMode === 'preview' ? 'default' : 'outline'}
-                  className={imageEditorMode === 'preview' ? 'bg-white text-[#111827] hover:bg-white/90' : 'bg-transparent text-white border-white/40 hover:bg-white/10'}
+                  title={language === 'ja' ? 'プレビュー' : 'Preview'}
+                  className={`text-lg transition-colors ${imageEditorMode === 'preview' ? 'text-white' : 'text-white/60 hover:text-white'}`}
                   onClick={() => setImageEditorMode('preview')}
                 >
-                  {language === 'ja' ? 'プレビュー' : 'Preview'}
-                </Button>
-                <Button
+                  <FontAwesomeIcon icon={faEye} />
+                </button>
+                <button
                   type="button"
-                  size="sm"
-                  variant={imageEditorMode === 'mosaic' ? 'default' : 'outline'}
-                  className={imageEditorMode === 'mosaic' ? 'bg-[#49B1E4] text-white hover:bg-[#3EA3D4]' : 'bg-transparent text-white border-white/40 hover:bg-white/10'}
+                  title={language === 'ja' ? 'モザイクブラシ' : 'Mosaic Brush'}
+                  className={`text-lg transition-colors ${imageEditorMode === 'mosaic' ? 'text-white' : 'text-white/60 hover:text-white'}`}
                   onClick={() => setImageEditorMode('mosaic')}
                 >
-                  {language === 'ja' ? 'モザイクブラシ' : 'Mosaic Brush'}
-                </Button>
+                  <FontAwesomeIcon icon={faWandMagicSparkles} />
+                </button>
                 {imageEditorMode === 'mosaic' && (
                   <div className="flex items-center gap-2 text-white text-xs">
                     <span>{language === 'ja' ? 'ブラシ' : 'Brush'}</span>
                     <input
                       type="range"
-                      min={16}
-                      max={84}
+                      min={6}
+                      max={48}
                       value={mosaicBrushSize}
                       onChange={(e) => setMosaicBrushSize(Number(e.target.value))}
                     />
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <label className="cursor-pointer">
+              <div className="flex items-center gap-3">
+                <label className="cursor-pointer text-white/60 hover:text-white transition-colors text-lg">
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                  <span className="inline-flex h-8 items-center rounded-md border border-white/40 px-3 text-xs text-white hover:bg-white/10">
-                    {language === 'ja' ? 'アップロード' : 'Upload'}
+                  <span title={language === 'ja' ? 'アップロード' : 'Upload'}>
+                    <FontAwesomeIcon icon={faUpload} />
                   </span>
                 </label>
-                <Button
+                <button
                   type="button"
-                  size="sm"
-                  variant="outline"
-                  className="bg-transparent text-red-300 border-red-300/70 hover:bg-red-500/20"
+                  title={language === 'ja' ? '画像削除' : 'Remove Image'}
+                  className="text-lg text-white/60 hover:text-red-400 transition-colors"
                   onClick={() => {
                     setNewEvent((prev) => ({ ...prev, image: null }));
                     closeImageEditor();
                   }}
                 >
-                  {language === 'ja' ? '画像削除' : 'Remove Image'}
-                </Button>
-                <Button
+                  <FontAwesomeIcon icon={faTrashCan} />
+                </button>
+                <button
                   type="button"
-                  size="sm"
-                  className="bg-[#49B1E4] hover:bg-[#3EA3D4] text-white"
+                  title={language === 'ja' ? '反映して保存' : 'Apply & Save'}
+                  className="text-lg text-white/60 hover:text-[#49B1E4] transition-colors disabled:opacity-40 disabled:hover:text-white/60"
                   disabled={isImageProcessing}
                   onClick={() => {
                     void saveEditedImage();
                   }}
                 >
-                  {isImageProcessing ? (language === 'ja' ? '保存中...' : 'Saving...') : (language === 'ja' ? '反映して保存' : 'Apply & Save')}
-                </Button>
+                  <FontAwesomeIcon icon={faFloppyDisk} className={isImageProcessing ? 'animate-pulse' : ''} />
+                </button>
               </div>
             </div>
             <div className="overflow-auto max-h-[78vh] rounded-lg bg-black/50 flex items-center justify-center">
