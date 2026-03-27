@@ -32,10 +32,9 @@ export async function queryEvents(): Promise<Event[]> {
     .order("date", { ascending: false });
   if (error) throw error;
   const rows = data ?? [];
-  const dataUrlImages = rows.filter((row) => typeof row.image === "string" && row.image.startsWith("data:image")).length;
   const endedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
   console.info(
-    `[perf] queryEvents: ${Math.round(endedAt - startedAt)}ms, rows=${rows.length}, dataUrlImages=${dataUrlImages}`
+    `[perf] queryEvents: ${Math.round(endedAt - startedAt)}ms, rows=${rows.length}, image=not-selected`
   );
   return rows.map(mapDbEventRowToEvent);
 }
