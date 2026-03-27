@@ -567,8 +567,9 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
     toast.success(language === 'ja' ? `${userIds.length}人に${messageType}を送信しました` : `Sent ${messageType} to ${userIds.length} members`);
   };
 
-  // session あり・App ユーザー未取得は「初回 Google ログインで users 未作成」があり得るためローディングにしない
-  const isLoadingUser = !standaloneAdmin && authLoading;
+  // 管理者画面でもセッション復元が完了するまではローディング表示にする
+  // （admin-login の一瞬表示による「自動ログアウトされたように見える」体験を防ぐ）
+  const isLoadingUser = authLoading;
   if (isLoadingUser) {
     return (
       <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center px-6">

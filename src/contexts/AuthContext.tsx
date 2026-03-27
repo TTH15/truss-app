@@ -145,7 +145,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'INITIAL_SESSION') return;
       setSession(session);
       setSupabaseUser(session?.user || null);
-      if (event === 'TOKEN_REFRESHED') return;
       if (session?.user) {
         const appUser = await fetchAppUser(session.user.id);
         if (appUser && mounted) {

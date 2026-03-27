@@ -156,7 +156,25 @@ export async function POST(req: Request) {
   const refreshToken = tokenAttempt.refreshToken;
   const authUserId = tokenAttempt.authUserId;
 
-  // 4) Ensure `public.users` row exists for RLS.
+  const userSelectColumns =
+    "id,email,name,nickname,furigana,birthday,languages,country,category,approved,is_admin,registration_step,email_verified,initial_registered,profile_completed,fee_paid";
+
+  // 4) Fast path: user row が既に admin として存在すれば、そのまま返す。
+  const { data: existingDbUser } = await adminClient
+    .from("users")
+    .select(userSelectColumns)
+    .eq("auth_id", authUserId)
+    .maybeSingle();
+
+  if (existingDbUser?.is_admin) {
+    return NextResponse.json({
+      accessToken,
+      refreshToken,
+      user: existingDbUser,
+    });
+  }
+
+  // 5) Ensure `public.users` row exists for RLS.
   const displayName =
     (adminAccount.display_name as string | null | undefined) ?? "Admin";
 
@@ -179,38 +197,24 @@ export async function POST(req: Request) {
     fee_paid: true,
   };
 
-  const { error: upsertUserError } = await adminClient
+  const { data: syncedDbUser, error: upsertUserError } = await adminClient
     .from("users")
-    .upsert(upsertPayload, { onConflict: "auth_id" });
+    .upsert(upsertPayload, { onConflict: "auth_id" })
+    .select(userSelectColumns)
+    .single();
 
   if (upsertUserError) {
     return NextResponse.json({ error: "Failed to sync users row" }, { status: 500 });
   }
 
-  // 5) Return user row for client-side `User` mapping.
-  let dbUser: any = null;
-  try {
-    const { data, error } = await adminClient
-      .from("users")
-      .select(
-        "id,email,name,nickname,furigana,birthday,languages,country,category,approved,is_admin,registration_step,email_verified,initial_registered,profile_completed,fee_paid"
-      )
-      .eq("auth_id", authUserId)
-      .maybeSingle();
-    dbUser = data;
-    if (error) throw error;
-  } catch (e) {
-    return NextResponse.json({ error: "Admin permission required" }, { status: 403 });
-  }
-
-  if (!dbUser || !dbUser.is_admin) {
+  if (!syncedDbUser || !syncedDbUser.is_admin) {
     return NextResponse.json({ error: "Admin permission required" }, { status: 403 });
   }
 
   return NextResponse.json({
     accessToken,
     refreshToken,
-    user: dbUser,
+    user: syncedDbUser,
   });
 }
 
