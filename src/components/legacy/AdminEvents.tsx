@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
-import { X, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrashCan, faUpload, faEye, faWandMagicSparkles, faFloppyDisk, faRotateLeft } from '@fortawesome/free-solid-svg-icons';
@@ -222,9 +222,8 @@ export function AdminEvents({
   onSendBulkEmail,
 }: AdminEventsProps) {
   const t = translations[language];
-  const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
-  const [monthYearDisplayYear, setMonthYearDisplayYear] = useState(() => new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(3); // 4月 = 3 (0-indexed)
+  const [currentYear, setCurrentYear] = useState(2026);
   const currentMonthRef = useRef(currentMonth);
   const currentYearRef = useRef(currentYear);
   const lastMonthSwitchAtRef = useRef<number>(0);
@@ -388,8 +387,12 @@ export function AdminEvents({
     if (!day) return;
     if (!onCreateEvent) return;
     try {
-      setIsImportingEvent(true);
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      // 同じ日付にドロップした場合は複製せずキャンセル
+      if (typeof sourceEvent?.date === 'string' && sourceEvent.date === dateStr) {
+        return;
+      }
+      setIsImportingEvent(true);
       const { startTime, endTime } = parseEventTime(sourceEvent);
 
       const eventData = {
@@ -758,10 +761,6 @@ export function AdminEvents({
   }, [currentYear]);
 
   useEffect(() => {
-    setMonthYearDisplayYear(currentYear);
-  }, [currentYear]);
-
-  useEffect(() => {
     draggingEventRef.current = draggingEvent;
   }, [draggingEvent]);
 
@@ -901,66 +900,27 @@ export function AdminEvents({
       <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-6 pb-8">
         {/* 月表示とナビゲーション */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex-1">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full justify-start bg-[#EEEBE3] border-0 text-left font-normal text-[#3D3D4E] h-9"
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2 text-[#6B6B7A]" />
-                  {currentYear}年 {monthNames[currentMonth]}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-[320px] p-4 bg-white shadow-xl border border-[#E5E7EB] z-80">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setMonthYearDisplayYear(monthYearDisplayYear - 1)}
-                      className="h-8 w-8"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="text-sm font-semibold">{monthYearDisplayYear}年</div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setMonthYearDisplayYear(monthYearDisplayYear + 1)}
-                      className="h-8 w-8"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+          <button
+            onClick={handlePreviousMonth}
+            className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors p-1 hover:bg-[#F5F1E8] rounded"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    {monthNames.map((monthName, idx) => {
-                      const monthNumber = idx; // 0-indexed
-                      const isSelected = currentYear === monthYearDisplayYear && currentMonth === monthNumber;
-                      return (
-                        <Button
-                          key={monthName}
-                          type="button"
-                          variant={isSelected ? 'default' : 'outline'}
-                          className={`h-12 text-sm ${isSelected ? '' : 'bg-white'}`}
-                          onClick={() => {
-                            setCurrentYear(monthYearDisplayYear);
-                            setCurrentMonth(monthNumber);
-                          }}
-                        >
-                          {monthName}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
+          <h3 className="text-[#3D3D4E] text-base font-semibold">
+            {currentYear}{language === 'ja' ? '年' : ''} {monthNames[currentMonth]}
+          </h3>
+
+          <button
+            onClick={handleNextMonth}
+            className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors p-1 hover:bg-[#F5F1E8] rounded"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
 
         {/* カレンダーグリッド */}
@@ -1001,7 +961,7 @@ export function AdminEvents({
                   key={`cell-${index}`}
                   className={`p-2 flex flex-col relative overflow-hidden h-[120px] ${isSunday ? 'bg-red-50/35' : isSaturday ? 'bg-blue-50/35' : 'bg-white'
                     } ${day ? 'cursor-pointer hover:bg-[#F5F8FC]' : ''} ${
-                      day && dragOverDateStr === cellDateStr ? 'bg-[#49B1E4]/25 ring-2 ring-[#49B1E4] rounded-[10px]' : ''
+                      day && dragOverDateStr === cellDateStr ? 'bg-[#49B1E4]/25' : ''
                     }`}
                   onClick={() => {
                     if (draggingEventRef.current) return;
