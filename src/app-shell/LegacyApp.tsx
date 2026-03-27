@@ -79,6 +79,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
     notifications,
     boardPosts,
     eventParticipants,
+    usersLoading,
     loading: dataLoading,
     createEvent,
     updateEvent,
@@ -623,6 +624,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
           user={user} onLogout={handleLogout} language={language} onLanguageChange={setLanguage} events={events}
           eventParticipants={eventParticipants} onCreateEvent={handleCreateEvent} onUpdateEvent={handleUpdateEvent} onDeleteEvent={handleDeleteEvent}
           pendingUsers={pendingUsers} approvedMembers={approvedMembers} onApproveUser={handleApproveUser} onRejectUser={handleRejectUser}
+          membersLoading={usersLoading}
           onRequestReupload={handleRequestReupload} onConfirmFeePayment={confirmFeePayment} onSetRenewalStatus={setRenewalStatus}
           onDeleteUser={deleteUser} messageThreads={messageThreads} onUpdateMessageThreads={setMessageThreads} onSendMessage={sendMessage}
           chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={setChatThreadMetadata} selectedChatUserId={selectedChatUserId}

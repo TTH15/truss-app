@@ -72,6 +72,7 @@ interface DataContextType {
   eventParticipants: { [eventId: number]: EventParticipant[] };
   galleryPhotos: GalleryPhoto[];
   loading: boolean;
+  usersLoading: boolean;
   createEvent: (event: Omit<Event, 'id' | 'currentParticipants' | 'likes'>) => Promise<void>;
   updateEvent: (eventId: number, updates: Partial<Event>) => Promise<void>;
   deleteEvent: (eventId: number) => Promise<void>;
@@ -127,6 +128,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [eventParticipants, setEventParticipants] = useState<{ [eventId: number]: EventParticipant[] }>({});
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [usersLoading, setUsersLoading] = useState(true);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -137,12 +139,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchUsers = useCallback(async () => {
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    setUsersLoading(true);
     try {
       const { pending, approved } = await queryPendingAndApprovedUsers();
       setPendingUsers(pending);
       setApprovedMembers(approved);
     } catch (error) {
       console.error('Error fetching users:', error);
+    } finally {
+      setUsersLoading(false);
+      const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      console.info(`[perf] fetchUsers: ${Math.round(endedAt - startedAt)}ms`);
     }
   }, []);
 
@@ -192,10 +200,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initData = async () => {
+      const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
       setLoading(true);
-      await fetchEvents();
-      await Promise.all([fetchUsers(), fetchBoardPosts(), fetchEventParticipants(), fetchGalleryPhotos()]);
+      await Promise.all([fetchEvents(), fetchUsers()]);
       setLoading(false);
+      void Promise.all([fetchBoardPosts(), fetchEventParticipants(), fetchGalleryPhotos()]);
+      const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      console.info(`[perf] initData(core): ${Math.round(endedAt - startedAt)}ms`);
     };
     initData();
   }, [fetchEvents, fetchUsers, fetchBoardPosts, fetchEventParticipants, fetchGalleryPhotos]);
@@ -581,7 +592,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const value: DataContextType = {
-    events, pendingUsers, approvedMembers, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading,
+    events, pendingUsers, approvedMembers, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading,
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
     approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, resetMembershipForNewYear, deleteUser,
     sendMessage, sendBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, updateChatMetadata,

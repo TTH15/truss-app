@@ -22,6 +22,7 @@ interface AdminPageProps {
   onDeleteEvent: (eventId: number) => void;
   pendingUsers: UserType[];
   approvedMembers: UserType[];
+  membersLoading?: boolean;
   onApproveUser: (userId: string) => void;
   onRejectUser: (userId: string) => void;
   onRequestReupload: (userId: string, reasons?: string[]) => void;
@@ -67,7 +68,7 @@ const translations = {
   }
 };
 
-export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onDeleteBoardPost, onSendBulkEmail }: AdminPageProps) {
+export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, membersLoading = false, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onDeleteBoardPost, onSendBulkEmail }: AdminPageProps) {
   const t = translations[language];
   const [currentTab, setCurrentTab] = useState<AdminTab>('members');
 
@@ -136,7 +137,7 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
         </aside>
 
         <main className="flex-1 container mx-auto px-4 py-8 pb-24 lg:pb-8">
-          {currentTab === 'members' && <AdminMembersManagement language={language} pendingUsers={pendingUsers} approvedMembers={approvedMembers} onApproveUser={onApproveUser} onRejectUser={onRejectUser} onRequestReupload={onRequestReupload} onOpenChat={onOpenMemberChat} onSendBulkEmail={onSendBulkEmail} onConfirmFeePayment={onConfirmFeePayment} onSetRenewalStatus={onSetRenewalStatus} onDeleteUser={onDeleteUser} />}
+          {currentTab === 'members' && <AdminMembersManagement language={language} pendingUsers={pendingUsers} approvedMembers={approvedMembers} isLoading={membersLoading} onApproveUser={onApproveUser} onRejectUser={onRejectUser} onRequestReupload={onRequestReupload} onOpenChat={onOpenMemberChat} onSendBulkEmail={onSendBulkEmail} onConfirmFeePayment={onConfirmFeePayment} onSetRenewalStatus={onSetRenewalStatus} onDeleteUser={onDeleteUser} />}
           {currentTab === 'events' && <AdminEvents language={language} events={events} eventParticipants={eventParticipants} onCreateEvent={onCreateEvent} onUpdateEvent={onUpdateEvent} onDeleteEvent={onDeleteEvent} onSendBulkEmail={onSendBulkEmail} />}
           {currentTab === 'gallery' && <AdminGallery language={language} />}
           {currentTab === 'boards' && <AdminBoards language={language} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onDeleteBoardPost={onDeleteBoardPost} />}

@@ -5,6 +5,7 @@ interface AdminMembersManagementProps {
   language: Language;
   pendingUsers: User[];
   approvedMembers: User[];
+  isLoading?: boolean;
   onApproveUser: (userId: string) => void;
   onRejectUser: (userId: string) => void;
   onRequestReupload?: (userId: string, reasons?: string[]) => void;
@@ -15,12 +16,13 @@ interface AdminMembersManagementProps {
   onDeleteUser?: (userId: string) => void;
 }
 
-export function AdminMembersManagement({ language, pendingUsers, approvedMembers, onApproveUser, onRejectUser, onRequestReupload, onOpenChat, onSendBulkEmail, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser }: AdminMembersManagementProps) {
+export function AdminMembersManagement({ language, pendingUsers, approvedMembers, isLoading = false, onApproveUser, onRejectUser, onRequestReupload, onOpenChat, onSendBulkEmail, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser }: AdminMembersManagementProps) {
   return (
     <AdminMembers
       language={language}
       approvedMembers={approvedMembers}
       pendingUsers={pendingUsers}
+      isLoading={isLoading}
       onApproveUser={onApproveUser}
       onRejectUser={onRejectUser}
       onRequestReupload={onRequestReupload}

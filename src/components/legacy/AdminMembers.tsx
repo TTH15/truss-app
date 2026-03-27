@@ -4,6 +4,7 @@ import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Checkbox } from '../ui/checkbox';
+import { Skeleton } from '../ui/skeleton';
 import { Search, Download, Mail, MessageCircle, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { BulkEmailModal } from './BulkEmailModal';
@@ -18,6 +19,7 @@ interface AdminMembersProps {
   language: Language;
   approvedMembers: User[];
   pendingUsers: User[];
+  isLoading?: boolean;
   onApproveUser?: (userId: string) => void;
   onRejectUser?: (userId: string) => void;
   onRequestReupload?: (userId: string, reasons?: string[]) => void;
@@ -89,7 +91,7 @@ const translations = {
   }
 };
 
-export function AdminMembers({ language, approvedMembers, pendingUsers, onApproveUser, onRejectUser, onRequestReupload, onOpenChat, onSendBulkEmail, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser }: AdminMembersProps) {
+export function AdminMembers({ language, approvedMembers, pendingUsers, isLoading = false, onApproveUser, onRejectUser, onRequestReupload, onOpenChat, onSendBulkEmail, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser }: AdminMembersProps) {
   const t = translations[language];
   const [activeTab, setActiveTab] = useState<'approved' | 'pending'>('approved');
   const [searchQuery, setSearchQuery] = useState('');
@@ -262,7 +264,49 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, onApprov
               </p>
             )}
 
-            {filteredMembers.map((member) => (
+            {isLoading && (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={`member-skeleton-${index}`} className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-4">
+                    <div className="hidden md:flex items-center gap-4">
+                      <Skeleton className="h-5 w-5 rounded-sm" />
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-3 w-56" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <Skeleton className="h-6 w-28 rounded-full" />
+                        <Skeleton className="h-6 w-24 rounded-full" />
+                      </div>
+                      <Skeleton className="h-8 w-24 rounded-md" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </div>
+                    <div className="md:hidden space-y-3">
+                      <div className="flex items-start gap-3">
+                        <Skeleton className="h-4 w-4 rounded-sm mt-1" />
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-28" />
+                          <Skeleton className="h-3 w-40" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                      </div>
+                      <div className="ml-9 flex items-center justify-between">
+                        <div className="space-y-2">
+                          <Skeleton className="h-5 w-24 rounded-full" />
+                          <Skeleton className="h-5 w-24 rounded-full" />
+                        </div>
+                        <Skeleton className="h-8 w-20 rounded-md" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!isLoading && filteredMembers.map((member) => (
               <div key={member.id} className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-4">
                 <div className="hidden md:flex items-center gap-4">
                   <button onClick={() => handleToggleMember(member.id)} className="shrink-0"><div className={`w-5 h-5 rounded border-2 border-[#49B1E4] flex items-center justify-center ${selectedMembers.has(member.id) ? 'bg-[#49B1E4]' : 'bg-white'}`}>{selectedMembers.has(member.id) && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 20 20"><path d="M4 10L8 14L16 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div></button>
@@ -297,12 +341,34 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, onApprov
               </div>
             ))}
 
-            {filteredMembers.length === 0 && <div className="text-center py-12 text-[#6B6B7A]">{language === 'ja' ? 'メンバーが見つかりません' : 'No members found'}</div>}
+            {!isLoading && filteredMembers.length === 0 && <div className="text-center py-12 text-[#6B6B7A]">{language === 'ja' ? 'メンバーが見つかりません' : 'No members found'}</div>}
           </>
         )}
 
         {activeTab === 'pending' && (
-          <AdminApprovals language={language} pendingUsers={pendingUsers} onApproveUser={onApproveUser!} onRejectUser={onRejectUser!} onRequestReupload={onRequestReupload} />
+          <>
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={`pending-skeleton-${index}`} className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-36" />
+                        <Skeleton className="h-3 w-44" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Skeleton className="h-8 w-24 rounded-md" />
+                      <Skeleton className="h-8 w-24 rounded-md" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <AdminApprovals language={language} pendingUsers={pendingUsers} onApproveUser={onApproveUser!} onRejectUser={onRejectUser!} onRequestReupload={onRequestReupload} />
+            )}
+          </>
         )}
       </div>
 

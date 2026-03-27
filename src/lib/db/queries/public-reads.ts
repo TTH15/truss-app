@@ -37,19 +37,18 @@ export async function queryPendingAndApprovedUsers(): Promise<{
   pending: User[];
   approved: User[];
 }> {
-  const [pendingResult, approvedResult] = await Promise.all([
-    supabase
-      .from("users")
-      .select("*")
-      .eq("approved", false)
-      .eq("registration_step", "waiting_approval"),
-    supabase.from("users").select("*").eq("approved", true),
-  ]);
-  if (pendingResult.error) throw pendingResult.error;
-  if (approvedResult.error) throw approvedResult.error;
+  const { data, error } = await supabase.from("users").select("*");
+  if (error) throw error;
+
+  const rows = data ?? [];
+  const pendingRows = rows.filter(
+    (row) => row.approved === false && row.registration_step === "waiting_approval"
+  );
+  const approvedRows = rows.filter((row) => row.approved === true);
+
   return {
-    pending: (pendingResult.data ?? []).map(mapDbUserRowToUser),
-    approved: (approvedResult.data ?? []).map(mapDbUserRowToUser),
+    pending: pendingRows.map(mapDbUserRowToUser),
+    approved: approvedRows.map(mapDbUserRowToUser),
   };
 }
 
