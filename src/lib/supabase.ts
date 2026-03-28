@@ -148,13 +148,18 @@ export async function uploadEventImage(eventId: number, file: File) {
 }
 
 export async function uploadGalleryPhoto(userId: string, eventId: number, file: File) {
-  const fileExt = file.name.split('.').pop();
+  const fileExt = file.name.split('.').pop() || 'jpg';
   const timestamp = Date.now();
-  const fileName = `${eventId}/${userId}-${timestamp}.${fileExt}`;
+  const suffix =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+  const fileName = `${eventId}/${userId}-${timestamp}-${suffix}.${fileExt}`;
 
-  const { error } = await supabase.storage
-    .from(BUCKETS.GALLERY_PHOTOS)
-    .upload(fileName, file);
+  const { error } = await supabase.storage.from(BUCKETS.GALLERY_PHOTOS).upload(fileName, file, {
+    contentType: file.type || `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
+    upsert: false,
+  });
 
   if (error) return { url: null, error };
 

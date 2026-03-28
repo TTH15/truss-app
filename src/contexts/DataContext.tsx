@@ -43,6 +43,7 @@ import {
   deleteGalleryPhotoRow,
   approveGalleryPhotoRow,
   likeGalleryPhotoRow,
+  type UploadGalleryPhotoInput,
 } from '../lib/db/mutations/gallery';
 import {
   sendMessageRow,
@@ -98,7 +99,7 @@ interface DataContextType {
   addReply: (postId: number, reply: Omit<BoardPostReply, 'id'>) => Promise<void>;
   toggleInterest: (postId: number) => Promise<void>;
   deleteBoardPost: (postId: number) => Promise<void>;
-  uploadGalleryPhoto: (photo: Omit<GalleryPhoto, 'id' | 'likes' | 'uploadedAt' | 'approved'>) => Promise<void>;
+  uploadGalleryPhoto: (photo: UploadGalleryPhotoInput) => Promise<void>;
   deleteGalleryPhoto: (photoId: number) => Promise<void>;
   approveGalleryPhoto: (photoId: number) => Promise<void>;
   likeGalleryPhoto: (photoId: number) => Promise<void>;
@@ -625,7 +626,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const uploadGalleryPhoto = async (photoData: Omit<GalleryPhoto, 'id' | 'likes' | 'uploadedAt' | 'approved'>) => {
+  const uploadGalleryPhoto = async (photoData: UploadGalleryPhotoInput) => {
     try {
       const { error } = await uploadGalleryPhotoRow(photoData);
       if (error) throw error;

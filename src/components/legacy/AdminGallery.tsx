@@ -4,6 +4,7 @@ import { Upload, X, Trash2, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Language } from '../../domain/types/app';
 import { useData } from '../../contexts/DataContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface AdminGalleryProps {
   language: Language;
@@ -50,6 +51,7 @@ const translations = {
 
 export function AdminGallery({ language }: AdminGalleryProps) {
   const t = translations[language];
+  const { user: authUser } = useAuth();
   const { galleryPhotos, events: supabaseEvents, uploadGalleryPhoto, deleteGalleryPhoto } = useData();
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
@@ -77,28 +79,26 @@ export function AdminGallery({ language }: AdminGalleryProps) {
   const handleUpload = async () => {
     if (!selectedEventId) return toast.error(language === 'ja' ? 'イベントを選択してください' : 'Please select an event');
     if (selectedFiles.length === 0) return toast.error(language === 'ja' ? '写真を選択してください' : 'Please select photos');
+    if (!authUser?.id) {
+      return toast.error(language === 'ja' ? 'ログイン情報を取得できませんでした' : 'Could not resolve your user id');
+    }
     setIsUploading(true);
     const event = events.find((e) => e.id === selectedEventId);
+    const eventIdNum = parseInt(selectedEventId, 10);
+    if (Number.isNaN(eventIdNum)) {
+      setIsUploading(false);
+      return toast.error(language === 'ja' ? '有効なイベントを選択してください' : 'Please choose a valid event');
+    }
     try {
       for (const file of selectedFiles) {
-        const reader = new FileReader();
-        await new Promise<void>((resolve, reject) => {
-          reader.onloadend = async () => {
-            try {
-              await uploadGalleryPhoto({
-                eventId: parseInt(selectedEventId) || 0,
-                eventName: language === 'ja' ? (event?.titleJa || '') : (event?.titleEn || ''),
-                eventDate: event?.date || new Date().toISOString().split('T')[0],
-                image: reader.result as string,
-                height: 200,
-                userId: 'admin-001',
-                userName: '運営管理者',
-              });
-              resolve();
-            } catch (error) { reject(error); }
-          };
-          reader.onerror = () => reject(reader.error);
-          reader.readAsDataURL(file);
+        await uploadGalleryPhoto({
+          eventId: eventIdNum,
+          eventName: language === 'ja' ? (event?.titleJa || '') : (event?.titleEn || ''),
+          eventDate: event?.date || new Date().toISOString().split('T')[0],
+          imageFile: file,
+          height: 200,
+          userId: authUser.id,
+          userName: authUser.nickname || authUser.name || (language === 'ja' ? '運営管理者' : 'Admin'),
         });
       }
       toast.success(t.uploadSuccess);

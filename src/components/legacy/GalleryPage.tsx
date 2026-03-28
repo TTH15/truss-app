@@ -75,12 +75,24 @@ export function GalleryPage({ language, currentUser }: GalleryPageProps) {
     setIsUploading(true);
     try {
       for (const file of selectedFiles) {
-        const base64 = await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onloadend = () => resolve(r.result as string); r.onerror = () => reject(r.error); r.readAsDataURL(file); });
-        await uploadGalleryPhoto({ eventId: selectedEventData.id, eventName: selectedEventData.name, eventDate: selectedEventData.date, image: base64, height: 200, userId: currentUser.id, userName: currentUser.nickname || currentUser.name || 'Unknown' });
+        await uploadGalleryPhoto({
+          eventId: selectedEventData.id,
+          eventName: selectedEventData.name,
+          eventDate: selectedEventData.date,
+          imageFile: file,
+          height: 200,
+          userId: currentUser.id,
+          userName: currentUser.nickname || currentUser.name || 'Unknown',
+        });
       }
       setIsAddPhotoOpen(false); setSelectedEvent(''); setSelectedFiles([]); setPreviewUrls([]);
       toast.success(language === 'ja' ? '写真をアップロードしました。運営の承認をお待ちください。' : 'Photos uploaded. Waiting for admin approval.');
-    } finally { setIsUploading(false); }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(language === 'ja' ? `アップロードに失敗しました: ${msg}` : `Upload failed: ${msg}`);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const columns = typeof window !== 'undefined' ? (window.innerWidth < 768 ? 2 : window.innerWidth < 1024 ? 3 : 4) : 4;
