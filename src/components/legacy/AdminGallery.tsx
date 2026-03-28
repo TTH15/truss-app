@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import type { Language } from '../../domain/types/app';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { GALLERY_PHOTO_ACCEPT, isGalleryPhotoMimeAllowed } from '../../lib/db/mutations/gallery';
 
 interface AdminGalleryProps {
   language: Language;
@@ -72,8 +73,13 @@ export function AdminGallery({ language }: AdminGalleryProps) {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setSelectedFiles(files);
-    setPreviewUrls(files.map((file) => URL.createObjectURL(file)));
+    const ok = files.filter(isGalleryPhotoMimeAllowed);
+    const bad = files.length - ok.length;
+    if (bad > 0) {
+      toast.error(language === 'ja' ? `対応していない形式が ${bad} 件あります（JPEG / PNG / WebP / GIF / HEIC・HEIF）` : `${bad} file(s) skipped — only JPEG, PNG, WebP, GIF, HEIC/HEIF`);
+    }
+    setSelectedFiles(ok);
+    setPreviewUrls(ok.map((file) => URL.createObjectURL(file)));
   };
 
   const handleUpload = async () => {
@@ -134,7 +140,7 @@ export function AdminGallery({ language }: AdminGalleryProps) {
           </div>
           <div>
             <label className="text-[#3D3D4E] text-sm font-medium block mb-2">{t.choosePhotos}</label>
-            <label className="cursor-pointer"><div className="bg-[#F5F1E8] border-2 border-dashed border-[rgba(61,61,78,0.2)] rounded-[8px] p-8 flex flex-col items-center justify-center hover:bg-[#EEEBE3] transition-colors"><Upload className="w-8 h-8 text-[#3D3D4E] mb-2" /><span className="text-[#3D3D4E] text-sm">{selectedFiles.length > 0 ? `${selectedFiles.length} ${t.photos}` : t.choosePhotos}</span></div><input type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" /></label>
+            <label className="cursor-pointer"><div className="bg-[#F5F1E8] border-2 border-dashed border-[rgba(61,61,78,0.2)] rounded-[8px] p-8 flex flex-col items-center justify-center hover:bg-[#EEEBE3] transition-colors"><Upload className="w-8 h-8 text-[#3D3D4E] mb-2" /><span className="text-[#3D3D4E] text-sm">{selectedFiles.length > 0 ? `${selectedFiles.length} ${t.photos}` : t.choosePhotos}</span></div><input type="file" accept={GALLERY_PHOTO_ACCEPT} multiple onChange={handleFileSelect} className="hidden" /></label>
           </div>
           {previewUrls.length > 0 && <div className="grid grid-cols-4 gap-4">{previewUrls.map((url, index) => <div key={index} className="aspect-square rounded-[8px] overflow-hidden"><img src={url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" /></div>)}</div>}
           <div className="flex gap-2"><Button onClick={handleUpload} disabled={isUploading} className="flex-1 bg-[#00A63E] hover:bg-[#008C35] text-white">{isUploading ? (language === 'ja' ? 'アップロード中...' : 'Uploading...') : t.upload}</Button><Button onClick={handleCancelUpload} variant="outline" className="flex-1 bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB]">{t.cancel}</Button></div>

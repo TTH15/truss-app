@@ -147,6 +147,21 @@ export async function uploadEventImage(eventId: number, file: File) {
   return { url: urlData.publicUrl, error: null };
 }
 
+function inferGalleryImageContentType(file: File): string {
+  if (file.type) return file.type;
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  const byExt: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif',
+    heic: 'image/heic',
+    heif: 'image/heif',
+  };
+  return (ext && byExt[ext]) || 'image/jpeg';
+}
+
 export async function uploadGalleryPhoto(userId: string, eventId: number, file: File) {
   const fileExt = file.name.split('.').pop() || 'jpg';
   const timestamp = Date.now();
@@ -157,7 +172,7 @@ export async function uploadGalleryPhoto(userId: string, eventId: number, file: 
   const fileName = `${eventId}/${userId}-${timestamp}-${suffix}.${fileExt}`;
 
   const { error } = await supabase.storage.from(BUCKETS.GALLERY_PHOTOS).upload(fileName, file, {
-    contentType: file.type || `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
+    contentType: inferGalleryImageContentType(file),
     upsert: false,
   });
 
