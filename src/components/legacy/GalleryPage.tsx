@@ -6,19 +6,13 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { toast } from 'sonner';
 import Masonry from 'react-responsive-masonry';
-import type { Language, GalleryPhoto, User } from '../../domain/types/app';
+import type { Language, User } from '../../domain/types/app';
 import { useData } from '../../contexts/DataContext';
 import {
   GALLERY_PHOTO_ACCEPT,
   GALLERY_UPLOAD_UNSUPPORTED_MIME_MESSAGE,
   isGalleryPhotoMimeAllowed,
 } from '../../lib/db/mutations/gallery';
-import galleryImage1 from '@/assets/5bec45231966eb516b1ff876bdd9c01730a2ea71.png';
-import galleryImage2 from '@/assets/d597fc6f73c7dcc01c7cca1b364724822218cb54.png';
-import galleryImage3 from '@/assets/34d4087d851f43f06c21d5465b0a4d56d285bb92.png';
-import galleryImage4 from '@/assets/2d9bf927c62cc06d0020b6f26acd6837c585a02b.png';
-import galleryImage5 from '@/assets/15ffc9f80e1e8c69b52479ff82b3869e1fe96e15.png';
-import galleryImage6 from '@/assets/5c88bfa752b169cbf87848a61f07459b431f0d47.png';
 
 interface GalleryPageProps { language: Language; currentUser?: User | null; }
 const translations = {
@@ -50,23 +44,9 @@ export function GalleryPage({ language, currentUser }: GalleryPageProps) {
     );
   }
 
-  const sampleEvents = [
-    { id: 1, name: language === 'ja' ? 'お花見パーティー' : 'Cherry Blossom Party', date: '2025-03-28' },
-    { id: 2, name: language === 'ja' ? '国際料理大会' : 'International Cooking Contest', date: '2025-04-15' },
-    { id: 3, name: language === 'ja' ? '言語交換カフェ' : 'Language Exchange Cafe', date: '2025-03-20' },
-    { id: 4, name: language === 'ja' ? '夏祭り' : 'Summer Festival', date: '2024-08-10' },
-  ];
-  const events = supabaseEvents.length > 0 ? supabaseEvents.map((e) => ({ id: e.id, name: language === 'ja' ? e.title : (e.titleEn || e.title), date: e.date })) : sampleEvents;
-  const samplePhotos: GalleryPhoto[] = [
-    { id: 1, eventId: 4, eventName: language === 'ja' ? '夏祭り' : 'Summer Festival', eventDate: '2024-08-10', image: galleryImage1, likes: 24, height: 180, userId: 'u1', userName: 'A', uploadedAt: '2024', approved: true },
-    { id: 2, eventId: 1, eventName: language === 'ja' ? 'お花見パーティー' : 'Cherry Blossom Party', eventDate: '2025-03-28', image: galleryImage2, likes: 18, height: 240, userId: 'u2', userName: 'B', uploadedAt: '2025', approved: true },
-    { id: 3, eventId: 2, eventName: language === 'ja' ? '国際料理大会' : 'International Cooking Contest', eventDate: '2025-04-15', image: galleryImage3, likes: 32, height: 200, userId: 'u3', userName: 'C', uploadedAt: '2025', approved: true },
-    { id: 4, eventId: 3, eventName: language === 'ja' ? '言語交換カフェ' : 'Language Exchange Cafe', eventDate: '2025-03-20', image: galleryImage4, likes: 15, height: 160, userId: 'u4', userName: 'D', uploadedAt: '2025', approved: true },
-    { id: 5, eventId: 4, eventName: language === 'ja' ? '夏祭り' : 'Summer Festival', eventDate: '2024-08-10', image: galleryImage5, likes: 28, height: 220, userId: 'u5', userName: 'E', uploadedAt: '2024', approved: true },
-    { id: 6, eventId: 1, eventName: language === 'ja' ? 'お花見パーティー' : 'Cherry Blossom Party', eventDate: '2025-03-28', image: galleryImage6, likes: 21, height: 190, userId: 'u6', userName: 'F', uploadedAt: '2025', approved: true },
-  ];
+  const events = supabaseEvents.map((e) => ({ id: e.id, name: language === 'ja' ? e.title : (e.titleEn || e.title), date: e.date }));
   const approvedPhotos = galleryPhotos.filter((p) => p.approved);
-  const photos = approvedPhotos.length > 0 ? approvedPhotos : samplePhotos;
+  const photos = approvedPhotos;
 
   const toggleLike = async (photoId: number) => {
     if (approvedPhotos.some((p) => p.id === photoId) && !likedPhotos.has(photoId)) await likeGalleryPhoto(photoId);

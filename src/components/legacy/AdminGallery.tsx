@@ -7,6 +7,7 @@ import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { GALLERY_PHOTO_ACCEPT, isGalleryPhotoMimeAllowed } from '../../lib/db/mutations/gallery';
 import { applyMosaicAtPoint } from '../../lib/mosaicCanvas';
+import { AdminGalleryApprovals } from './AdminGalleryApprovals';
 
 interface AdminGalleryProps {
   language: Language;
@@ -94,6 +95,7 @@ export function AdminGallery({ language }: AdminGalleryProps) {
   const events = supabaseEvents.map((e) => ({ id: e.id.toString(), titleJa: e.title, titleEn: e.titleEn || e.title, date: e.date }));
 
   const photos = galleryPhotos;
+  const pendingCount = photos.filter((p) => !p.approved).length;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -321,6 +323,12 @@ export function AdminGallery({ language }: AdminGalleryProps) {
 
   return (
     <div className="space-y-6">
+      {pendingCount > 0 && (
+        <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-4">
+          <AdminGalleryApprovals language={language} />
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div><p className="text-[#6B6B7A] text-sm">{filteredPhotos.length} {t.photos}</p></div>
         {!showUploadForm && <Button onClick={() => setShowUploadForm(true)} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-2"><Upload className="w-4 h-4" />{t.uploadPhotos}</Button>}
