@@ -12,6 +12,44 @@ interface Message { id: number; sender: 'user' | 'admin'; text: string; time: st
 
 const translations = { ja: { adminName: '運営', typeMessage: 'メッセージを入力...' }, en: { adminName: 'Admin', typeMessage: 'Type a message...' } };
 const initialAdminMessages: Message[] = [{ id: 1, sender: 'admin', subject: '【重要】春の交流会について', text: '春の交流会の開催日程が決定しました。', time: '10:30' }];
+const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
+const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const parseMessageDate = (raw: string) => {
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) return parsed;
+  const hm = raw.match(/^(\d{1,2}):(\d{2})$/);
+  if (hm) {
+    const now = new Date();
+    now.setHours(Number(hm[1]), Number(hm[2]), 0, 0);
+    return now;
+  }
+  return new Date();
+};
+
+const toDateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+const formatDateLabel = (date: Date, language: Language) => {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTarget = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((startOfToday.getTime() - startOfTarget.getTime()) / 86400000);
+  if (diffDays === 0) return language === 'ja' ? '今日' : 'Today';
+  if (diffDays === 1) return language === 'ja' ? '昨日' : 'Yesterday';
+  const weekdays = language === 'ja' ? WEEKDAYS_JA : WEEKDAYS_EN;
+  const weekday = weekdays[date.getDay()];
+  if (date.getFullYear() < now.getFullYear()) {
+    return language === 'ja'
+      ? `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, '0')}月${String(date.getDate()).padStart(2, '0')}日 ${weekday}`
+      : `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${weekday}`;
+  }
+  return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${weekday}`;
+};
+
+const formatMessageTime = (raw: string) => {
+  const parsed = parseMessageDate(raw);
+  return `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`;
+};
 
 export function AdminChatPage({ language, user, onBack }: AdminChatPageProps) {
   const t = translations[language];
@@ -46,9 +84,6 @@ export function AdminChatPage({ language, user, onBack }: AdminChatPageProps) {
   };
   const togglePin = (messageId: number) => setMessages(messages.map((m) => m.id === messageId ? { ...m, pinned: !m.pinned } : m));
   const toggleFlag = (messageId: number) => setMessages(messages.map((m) => m.id === messageId ? { ...m, flagged: !m.flagged } : m));
-  const pinnedMessages = messages.filter((m) => m.pinned);
-  const regularMessages = messages.filter((m) => !m.pinned);
-
   const renderMessage = (message: Message) => (
     <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} group`}>
       <div className={`max-w-[75%] ${message.sender === 'user' ? 'order-2' : 'order-1'} relative`}>
@@ -59,7 +94,7 @@ export function AdminChatPage({ language, user, onBack }: AdminChatPageProps) {
           <p className="wrap-break-word whitespace-pre-wrap">{message.text}</p>
         </div>
         <div className={`flex items-center gap-1 mt-1 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-          <p className="text-xs text-[#6B6B7A]">{message.time}</p>
+          <p className="text-xs text-[#6B6B7A]">{formatMessageTime(message.time)}</p>
           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ml-2">
             <button onClick={() => togglePin(message.id)} className={`p-1 rounded hover:bg-[#E8E4DB] transition-colors ${message.pinned ? 'text-yellow-500' : 'text-gray-400'}`}><Pin className="w-3 h-3" /></button>
             <button onClick={() => toggleFlag(message.id)} className={`p-1 rounded hover:bg-[#E8E4DB] transition-colors ${message.flagged ? 'text-red-500' : 'text-gray-400'}`}><Flag className="w-3 h-3" /></button>
@@ -77,8 +112,23 @@ export function AdminChatPage({ language, user, onBack }: AdminChatPageProps) {
         <div className="flex-1"><h2 className="font-semibold text-[#3D3D4E]">{t.adminName}</h2></div>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 mt-[73px] mb-[73px]">
-        {pinnedMessages.length > 0 && <div className="bg-yellow-50 rounded-lg p-3 mb-4 border border-yellow-200"><div className="space-y-3">{pinnedMessages.map(renderMessage)}</div></div>}
-        {regularMessages.map(renderMessage)}
+        {messages.map((message, index) => {
+          const currentDate = parseMessageDate(message.time);
+          const prevDate = index > 0 ? parseMessageDate(messages[index - 1].time) : null;
+          const shouldShowDate = !prevDate || toDateKey(currentDate) !== toDateKey(prevDate);
+          return (
+            <div key={message.id}>
+              {shouldShowDate && (
+                <div className="flex justify-center my-4">
+                  <span className="text-xs text-[#6B6B7A] bg-[#EEEBE3] px-3 py-1 rounded-full">
+                    {formatDateLabel(currentDate, language)}
+                  </span>
+                </div>
+              )}
+              {renderMessage(message)}
+            </div>
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 z-50">
