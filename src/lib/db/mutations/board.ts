@@ -29,8 +29,29 @@ export async function createBoardPostRow(
     is_deleted: false,
     category: post.category || null,
     date: post.date || null,
+    is_pinned: false,
   });
 
+  return { error: toErrorOrNull(error) };
+}
+
+export async function setPinnedBoardPostRow(
+  postId: number | null
+): Promise<{ error: Error | null }> {
+  const { error: resetError } = await supabase
+    .from("board_posts")
+    .update({ is_pinned: false })
+    .eq("is_pinned", true);
+  if (resetError) return { error: new Error(resetError.message) };
+
+  if (postId === null) {
+    return { error: null };
+  }
+
+  const { error } = await supabase
+    .from("board_posts")
+    .update({ is_pinned: true })
+    .eq("id", postId);
   return { error: toErrorOrNull(error) };
 }
 

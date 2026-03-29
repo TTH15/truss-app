@@ -6,9 +6,6 @@ import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Globe2, MapPin, Mail, Edit, Phone, Users, Save, X, GraduationCap, IdCard } from 'lucide-react';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
-import trussImage from '@/assets/8fbefa8d40d592af0e3f6e45ca9c793cfbb1b1c6.png';
-import { Barcode } from './Barcode';
 import type { Language, User } from '../../domain/types/app';
 
 interface ProfilePageProps { language: Language; user: User; isCompact?: boolean; isProfileComplete: boolean; onClose?: () => void; }
@@ -30,7 +27,7 @@ export function ProfilePage({ language, user, isCompact = false, isProfileComple
 
   if (isCompact) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 bg-white">
         <div className="flex items-center gap-4 p-2">
           <Avatar className="w-16 h-16 bg-linear-to-br from-[#3D3D4E] to-[#6B6B7A]"><AvatarFallback className="text-white">{user.name.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
           <div className="flex-1"><p className="text-[#3D3D4E]">{user.name}</p>{user.nickname && <p className="text-[#6B6B7A] text-sm">{user.nickname}</p>}<Badge className={`${getCategoryColor(user.category)} mt-1`}>{getCategoryLabel(user.category)}</Badge></div>
@@ -42,16 +39,11 @@ export function ProfilePage({ language, user, isCompact = false, isProfileComple
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="text-white">{t.title}</h1>
+        <h1 className="text-[#3D3D4E]">{t.title}</h1>
         <div className="flex items-center gap-2">
           {!isEditing ? <Button className="bg-[#49B1E4] hover:bg-[#3A9FD3]" onClick={() => setIsEditing(true)}><Edit className="w-4 h-4 mr-2" />{t.editProfile}</Button> : <div className="flex gap-2"><Button variant="outline" onClick={handleCancel}><X className="w-4 h-4 mr-2" />{t.cancel}</Button><Button className="bg-[#49B1E4] hover:bg-[#3A9FD3]" onClick={handleSave}><Save className="w-4 h-4 mr-2" />{t.saveProfile}</Button></div>}
-          {onClose && <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/10"><X className="w-5 h-5" /></Button>}
+          {onClose && <Button variant="ghost" size="icon" onClick={onClose} className="text-[#3D3D4E] hover:bg-[#E8E4DB]"><X className="w-5 h-5" /></Button>}
         </div>
-      </div>
-
-      <div className="relative h-[120px] md:h-[150px] rounded-xl overflow-hidden shadow-md bg-[#F5F1E8]">
-        <ImageWithFallback src={trussImage} alt="Truss" loading="eager" className="w-full h-full object-contain" />
-        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-1.5 md:p-2"><Barcode value={user.id || 'TRUSS000'} width={1} height={30} displayValue={false} className="w-16 h-auto md:w-20" /></div>
       </div>
 
       {isWaitingApproval && <Card className="border-[#49B1E4] bg-blue-50"><CardContent className="p-6"><div className="flex items-start gap-3"><div className="w-10 h-10 rounded-full bg-[#49B1E4] flex items-center justify-center shrink-0"><Mail className="w-5 h-5 text-white" /></div><div><h3 className="font-semibold text-[#3D3D4E] mb-1">{t.awaitingApproval}</h3><p className="text-sm text-gray-600">{t.approvalMessage}</p></div></div></CardContent></Card>}

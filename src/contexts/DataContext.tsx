@@ -37,6 +37,7 @@ import {
   addReplyRow,
   togglePostInterestForUser,
   deleteBoardPostRow,
+  setPinnedBoardPostRow,
 } from '../lib/db/mutations/board';
 import {
   uploadGalleryPhotoRow,
@@ -99,6 +100,7 @@ interface DataContextType {
   addReply: (postId: number, reply: Omit<BoardPostReply, 'id'>) => Promise<void>;
   toggleInterest: (postId: number) => Promise<void>;
   deleteBoardPost: (postId: number) => Promise<void>;
+  setPinnedBoardPost: (postId: number | null) => Promise<void>;
   uploadGalleryPhoto: (photo: UploadGalleryPhotoInput) => Promise<void>;
   deleteGalleryPhoto: (photoId: number) => Promise<void>;
   approveGalleryPhoto: (photoId: number) => Promise<void>;
@@ -288,8 +290,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (user) {
       fetchMessages();
       fetchNotifications();
+      // 管理者ログイン直後に承認待ち写真も取り直す（初回取得が一般権限だった場合を補正）
+      fetchGalleryPhotos();
     }
-  }, [user, fetchMessages, fetchNotifications]);
+  }, [user, fetchMessages, fetchNotifications, fetchGalleryPhotos]);
 
   useEffect(() => {
     const eventsChannel = supabase.channel('events-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => fetchEvents(true)).subscribe();
@@ -626,6 +630,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setPinnedBoardPost = async (postId: number | null) => {
+    try {
+      const { error } = await setPinnedBoardPostRow(postId);
+      if (error) throw error;
+      await fetchBoardPosts();
+    } catch (error) {
+      console.error('Error setting pinned board post:', error);
+    }
+  };
+
   const uploadGalleryPhoto = async (photoData: UploadGalleryPhotoInput) => {
     try {
       const { error } = await uploadGalleryPhotoRow(photoData);
@@ -675,7 +689,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
     approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, resetMembershipForNewYear, deleteUser,
     sendMessage, sendBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, updateChatMetadata,
-    markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost,
+    markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost, setPinnedBoardPost,
     uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, likeGalleryPhoto,
     refreshEvents: () => fetchEvents(true), refreshUsers: () => fetchUsers(true), refreshMessages: fetchMessages, refreshNotifications: fetchNotifications,
     refreshBoardPosts: fetchBoardPosts, refreshGalleryPhotos: fetchGalleryPhotos,

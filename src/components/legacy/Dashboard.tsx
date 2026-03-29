@@ -46,6 +46,8 @@ interface DashboardProps {
   onCreateBoardPost?: (post: Omit<BoardPost, 'id' | 'replies'>) => Promise<void>;
   onAddReply?: (postId: number, reply: Omit<BoardPostReply, 'id'>) => Promise<void>;
   onToggleInterest?: (postId: number) => Promise<void>;
+  onDeleteBoardPost?: (postId: number) => Promise<void>;
+  approvedMembers: User[];
 }
 
 type Page = 'home' | 'events' | 'members' | 'bulletin' | 'gallery' | 'profile' | 'notifications' | 'messages' | 'message-detail';
@@ -115,6 +117,8 @@ export function Dashboard({
   onCreateBoardPost,
   onAddReply,
   onToggleInterest,
+  onDeleteBoardPost,
+  approvedMembers,
 }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
@@ -315,7 +319,7 @@ export function Dashboard({
                       </Avatar>
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0" align="end">
+                  <PopoverContent className="w-80 p-0 bg-white border border-[#E5E7EB] shadow-lg" align="end">
                     <ProfilePage language={language} user={user} isCompact={true} isProfileComplete={user.profileCompleted} />
                     <div className="p-4 border-t">
                       <Button
@@ -344,7 +348,7 @@ export function Dashboard({
         </div>
       </header>
 
-      <main className={`${currentPage === 'messages' ? 'px-0 py-0 pb-0 h-[calc(100vh-4rem)]' : currentPage === 'notifications' ? 'container mx-auto px-4 py-8 pb-32 h-[calc(100vh-4rem-8rem)]' : 'container mx-auto px-4 py-8 pb-32'} ${currentPage === 'profile' ? 'bg-[#3D3D4E] min-h-screen' : ''}`}>
+      <main className={`${currentPage === 'messages' ? 'px-0 py-0 pb-0 h-[calc(100vh-4rem)]' : currentPage === 'notifications' ? 'container mx-auto px-4 py-8 pb-32 h-[calc(100vh-4rem-8rem)]' : 'container mx-auto px-4 py-8 pb-32'} min-h-screen`}>
         {user.registrationStep === 'waiting_approval' && currentPage !== 'messages' && (
           <div className="mb-6 space-y-4">
             {user.studentIdReuploadRequested && (
@@ -499,8 +503,8 @@ export function Dashboard({
 
         {currentPage === 'home' && <HomePage language={language} user={user} events={events} onNavigateToEvent={handleNavigateToEvent} onOpenProfile={onOpenProfile} onReopenInitialRegistration={onReopenInitialRegistration} onDismissReuploadNotification={onDismissReuploadNotification} onOpenFeePayment={() => setFeePaymentDialogOpen(true)} />}
         {currentPage === 'events' && <EventsPage language={language} events={events} attendingEvents={attendingEvents} likedEvents={likedEvents} onToggleAttending={onToggleAttending} onToggleLike={onToggleLike} highlightEventId={highlightEventId} onAddEventParticipant={onAddEventParticipant} user={user} />}
-        {currentPage === 'members' && <MembersPage language={language} />}
-        {currentPage === 'bulletin' && <BulletinBoard language={language} user={user} onInterested={handleInterested} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onAddReply={onAddReply} onToggleInterest={onToggleInterest} />}
+        {currentPage === 'members' && <MembersPage language={language} members={approvedMembers.filter((member) => !member.isAdmin)} />}
+        {currentPage === 'bulletin' && <BulletinBoard language={language} user={user} onInterested={handleInterested} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onAddReply={onAddReply} onToggleInterest={onToggleInterest} onDeleteBoardPost={onDeleteBoardPost} />}
         {currentPage === 'gallery' && <GalleryPage language={language} currentUser={user} />}
         {currentPage === 'profile' && <ProfilePage language={language} user={user} isProfileComplete={user.profileCompleted} onClose={() => setCurrentPage('home')} />}
         {currentPage === 'notifications' && <NotificationsPage language={language} user={user} onMessageClick={handleMessageClick} interestedPosts={interestedPosts} notifications={notifications} onDismissNotification={onDismissNotification} unreadAdminMessagesCount={unreadMessageCount()} onAdminChatClick={handleAdminChatClick} />}

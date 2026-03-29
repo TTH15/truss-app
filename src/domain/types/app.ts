@@ -126,6 +126,8 @@ export interface Notification {
 
 export interface BoardPost {
   id: number;
+  authorId?: string;
+  isPinned?: boolean;
   author: string;
   authorAvatar: string;
   title: string;

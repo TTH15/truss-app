@@ -100,6 +100,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
     addReply,
     toggleInterest,
     deleteBoardPost,
+    setPinnedBoardPost,
     setMessageThreads,
     setChatThreadMetadata,
     setNotifications,
@@ -625,7 +626,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
           onUpdateMessageThreads={setMessageThreads} onSendMessage={sendMessage} chatThreadMetadata={chatThreadMetadata}
           onUpdateChatThreadMetadata={setChatThreadMetadata} notifications={notifications} onDismissNotification={handleDismissNotification}
           boardPosts={boardPosts} onUpdateBoardPosts={setBoardPosts} onCreateBoardPost={createBoardPost} onAddReply={addReply}
-          onToggleInterest={toggleInterest}
+          onToggleInterest={toggleInterest} onDeleteBoardPost={deleteBoardPost} approvedMembers={approvedMembers}
         />
       )}
       {currentPage === 'admin' && user && (
@@ -638,7 +639,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
           onDeleteUser={deleteUser} messageThreads={messageThreads} onUpdateMessageThreads={setMessageThreads} onSendMessage={sendMessage}
           chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={setChatThreadMetadata} selectedChatUserId={selectedChatUserId}
           onOpenMemberChat={handleOpenMemberChat} onUpdateNotifications={setNotifications} boardPosts={boardPosts}
-          onUpdateBoardPosts={setBoardPosts} onDeleteBoardPost={deleteBoardPost} onSendBulkEmail={handleSendBulkEmail}
+          onUpdateBoardPosts={setBoardPosts} onCreateBoardPost={createBoardPost} onDeleteBoardPost={deleteBoardPost} onSetPinnedBoardPost={setPinnedBoardPost} onSendBulkEmail={handleSendBulkEmail}
         />
       )}
       {currentPage === 'admin-login' && (

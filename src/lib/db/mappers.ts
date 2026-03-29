@@ -144,6 +144,8 @@ export function mapDbBoardPostRowToBoardPost(
 ): BoardPost {
   return {
     id: row.id,
+    authorId: row.author_id,
+    isPinned: row.is_pinned,
     author: row.author,
     authorAvatar: row.author_avatar ?? "",
     title: row.title,

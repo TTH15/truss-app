@@ -198,6 +198,7 @@ export interface DbBoardPost {
   is_deleted: boolean;
   category: string | null;
   date: string | null;
+  is_pinned: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -24,13 +24,25 @@ export function AdminGalleryApprovals({ language }: AdminGalleryApprovalsProps) 
 
   const handleApprove = async (photoId: number) => {
     setIsProcessing(true);
-    try { await approveGalleryPhoto(photoId); toast.success(t.approved); setSelectedPhoto(null); }
-    finally { setIsProcessing(false); }
+    try {
+      await approveGalleryPhoto(photoId);
+      toast.success(t.approved);
+      setSelectedPhoto(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(language === 'ja' ? `承認に失敗しました: ${message}` : `Failed to approve: ${message}`);
+    } finally { setIsProcessing(false); }
   };
   const handleReject = async (photoId: number) => {
     setIsProcessing(true);
-    try { await deleteGalleryPhoto(photoId); toast.error(t.rejected); setSelectedPhoto(null); }
-    finally { setIsProcessing(false); }
+    try {
+      await deleteGalleryPhoto(photoId);
+      toast.error(t.rejected);
+      setSelectedPhoto(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(language === 'ja' ? `拒否に失敗しました: ${message}` : `Failed to reject: ${message}`);
+    } finally { setIsProcessing(false); }
   };
 
   if (pendingPhotos.length === 0) return <div className="text-center py-12"><CheckCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" /><p className="text-gray-600">{t.noApprovals}</p></div>;

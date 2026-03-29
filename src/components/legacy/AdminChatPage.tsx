@@ -5,6 +5,7 @@ import { Input } from '../ui/input';
 import { ArrowLeft, Send, Pin, Flag, Mail } from 'lucide-react';
 import type { Language, User } from '../../domain/types/app';
 import { useData } from '../../contexts/DataContext';
+import { toast } from 'sonner';
 
 interface AdminChatPageProps { language: Language; user: User; onBack: () => void; }
 interface Message { id: number; sender: 'user' | 'admin'; text: string; time: string; pinned?: boolean; flagged?: boolean; subject?: string; }
@@ -14,7 +15,8 @@ const initialAdminMessages: Message[] = [{ id: 1, sender: 'admin', subject: '【
 
 export function AdminChatPage({ language, user, onBack }: AdminChatPageProps) {
   const t = translations[language];
-  const { messageThreads, sendMessage, markAllMessagesAsReadForUser } = useData();
+  const { messageThreads, sendMessage, markAllMessagesAsReadForUser, approvedMembers } = useData();
+  const adminUserId = approvedMembers.find((member) => member.isAdmin)?.id ?? null;
   useEffect(() => { if (user.id) markAllMessagesAsReadForUser(user.id); }, [user.id, markAllMessagesAsReadForUser]);
   const getMessagesFromSupabase = (): Message[] => {
     const thread = messageThreads[user.id];
@@ -31,9 +33,13 @@ export function AdminChatPage({ language, user, onBack }: AdminChatPageProps) {
 
   const handleSendMessage = async () => {
     if (!(newMessage.trim() && !isSending)) return;
+    if (!adminUserId) {
+      toast.error(language === 'ja' ? '運営アカウントが見つかりませんでした' : 'Admin account was not found');
+      return;
+    }
     setIsSending(true);
     try {
-      await sendMessage('admin-001', newMessage, false);
+      await sendMessage(adminUserId, newMessage, false);
       setMessages((prev) => [...prev, { id: Date.now(), sender: 'user', text: newMessage, time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) }]);
       setNewMessage('');
     } finally { setIsSending(false); }

@@ -91,13 +91,7 @@ export function AdminGallery({ language }: AdminGalleryProps) {
   const imageHistoryRef = useRef<ImageData[]>([]);
   const [canUndoImageEdit, setCanUndoImageEdit] = useState(false);
 
-  const events = supabaseEvents.length > 0
-    ? supabaseEvents.map((e) => ({ id: e.id.toString(), titleJa: e.title, titleEn: e.titleEn || e.title, date: e.date }))
-    : [
-        { id: 'event-1', titleJa: '国際料理大会', titleEn: 'International Cooking Contest', date: '2026-04-01' },
-        { id: 'event-2', titleJa: 'スポーツ大会', titleEn: 'Sports Day', date: '2026-04-01' },
-        { id: 'event-3', titleJa: 'お花見大会', titleEn: 'Cherry Blossom Party', date: '2026-04-15' },
-      ];
+  const events = supabaseEvents.map((e) => ({ id: e.id.toString(), titleJa: e.title, titleEn: e.titleEn || e.title, date: e.date }));
 
   const photos = galleryPhotos;
 

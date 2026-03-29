@@ -70,10 +70,38 @@ export function AdminChat({ language, messageThreads, onUpdateMessageThreads, on
     }
   };
 
-  const handleSendBroadcast = () => {
+  const handleSendBroadcast = async () => {
+    if (!onSendMessage || !approvedMembers || approvedMembers.length === 0) {
+      toast.error(language === 'ja' ? '送信先メンバーが見つかりません' : 'No recipients found');
+      return;
+    }
+    const recipients = approvedMembers.filter((member) => {
+      if (member.isAdmin) return false;
+      if (selectedRecipients.includes('all') || selectedRecipients.length === 0) return true;
+      return (
+        (selectedRecipients.includes('japanese') && member.category === 'japanese') ||
+        (selectedRecipients.includes('exchange') && member.category === 'exchange') ||
+        (selectedRecipients.includes('regularInternational') && member.category === 'regular-international')
+      );
+    });
+    if (recipients.length === 0) {
+      toast.error(language === 'ja' ? '送信先を選択してください' : 'Please select recipients');
+      return;
+    }
+    const payload = [subjectJa || subjectEn, messageJa || messageEn].filter(Boolean).join('\n\n');
+    if (!payload.trim()) {
+      toast.error(language === 'ja' ? '件名またはメッセージを入力してください' : 'Please enter a subject or message');
+      return;
+    }
+    try {
+      await Promise.all(recipients.map((member) => onSendMessage(member.id, payload, true)));
+    } catch {
+      toast.error(language === 'ja' ? '送信に失敗しました' : 'Failed to send');
+      return;
+    }
     const isScheduled = year && monthDay && time && new Date(`${year}-${monthDay}T${time}`) > new Date();
     const notifType = notificationTypes.includes('inApp') && notificationTypes.includes('email') ? 'both' : notificationTypes.includes('email') ? 'email' : 'inApp';
-    const newBroadcast: BroadcastMessage = { id: broadcasts.length + 1, subject: subjectJa || subjectEn, message: messageJa || messageEn, recipients: selectedRecipients.join(', '), recipientCount: selectedRecipients.length === 1 && selectedRecipients[0] === 'all' ? (approvedMembers?.length || 0) : 0, status: isScheduled ? 'scheduled' : 'sent', sentTime: isScheduled ? `${year}-${monthDay}T${time}` : new Date().toLocaleString('ja-JP'), notificationType: notifType as BroadcastMessage['notificationType'] };
+    const newBroadcast: BroadcastMessage = { id: broadcasts.length + 1, subject: subjectJa || subjectEn, message: messageJa || messageEn, recipients: selectedRecipients.join(', '), recipientCount: recipients.length, status: isScheduled ? 'scheduled' : 'sent', sentTime: isScheduled ? `${year}-${monthDay}T${time}` : new Date().toLocaleString('ja-JP'), notificationType: notifType as BroadcastMessage['notificationType'] };
     setBroadcasts([newBroadcast, ...broadcasts]);
     setSubjectJa(''); setSubjectEn(''); setMessageJa(''); setMessageEn(''); setSelectedRecipients(['all']); setNotificationTypes(['inApp']); setYear('2026'); setMonthDay(''); setTime(''); setIsDialogOpen(false);
     toast.success(language === 'ja' ? '送信しました' : 'Sent');
