@@ -8,6 +8,9 @@ import { Skeleton } from '../ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Search, Download, Mail, MessageCircle, MoreVertical, Pencil, Plus } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faWallet } from '@fortawesome/free-solid-svg-icons';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { queryFeeSettings } from '../../lib/db/queries/fee-settings';
@@ -81,10 +84,7 @@ const translations = {
     bulkUpdated: '一括更新しました',
     selectMembersToBulkAction: '一括操作を行うにはメンバーを選択してください',
     selectedCount: '選択中',
-    feePaidBadge: '会費: 支払済み',
-    feeUnpaidBadge: '会費: 未払い',
-    renewalBadge: '区分: 継続',
-    newMemberBadge: '区分: 新規',
+    feeUnpaidTooltip: '会費が未払いです',
   },
   en: {
     title: 'Member Management',
@@ -131,12 +131,24 @@ const translations = {
     bulkUpdated: 'Bulk update completed',
     selectMembersToBulkAction: 'Select members to enable bulk actions',
     selectedCount: 'Selected',
-    feePaidBadge: 'Fee: Paid',
-    feeUnpaidBadge: 'Fee: Unpaid',
-    renewalBadge: 'Type: Renewal',
-    newMemberBadge: 'Type: New',
+    feeUnpaidTooltip: 'Membership fee unpaid',
   }
 };
+
+function FeeUnpaidWalletIcon({ tooltip }: { tooltip: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex shrink-0 cursor-default items-center align-middle text-[#dc2626]" aria-label={tooltip} tabIndex={0}>
+          <FontAwesomeIcon icon={faWallet} className="h-[1.05rem] w-[1.05rem]" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={6} className="max-w-[240px] border-0 bg-[#1f2937] px-3 py-2 text-xs font-normal text-balance text-white shadow-lg">
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 export function AdminMembers({ language, approvedMembers, pendingUsers, isLoading = false, onApproveUser, onRejectUser, onRequestReupload, onOpenChat, onSendBulkEmail, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser }: AdminMembersProps) {
   const t = translations[language];
@@ -155,7 +167,11 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [annualFeeAmount, setAnnualFeeAmount] = useState('2000');
   const [admissionFeeAmount, setAdmissionFeeAmount] = useState('2500');
-  const displayedMembers = activeTab === 'approved' ? approvedMembers : pendingUsers;
+  const approvedMembersList = useMemo(
+    () => approvedMembers.filter((m) => !m.isAdmin),
+    [approvedMembers]
+  );
+  const displayedMembers = activeTab === 'approved' ? approvedMembersList : pendingUsers;
 
   const filteredMembers = displayedMembers.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchQuery.toLowerCase()) || member.email.toLowerCase().includes(searchQuery.toLowerCase());
@@ -351,7 +367,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                     <path d={svgPaths.pc9c280} stroke={activeTab === 'approved' ? '#3D3D4E' : '#6B6B7A'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
                   </svg>
                 </div>
-                <span className={`font-normal leading-[24px] text-[16px] tracking-[-0.3125px] ${activeTab === 'approved' ? 'text-[#3D3D4E]' : 'text-[#6B6B7A]'}`}>{t.membersTab}（{approvedMembers.length}）</span>
+                <span className={`font-normal leading-[24px] text-[16px] tracking-[-0.3125px] ${activeTab === 'approved' ? 'text-[#3D3D4E]' : 'text-[#6B6B7A]'}`}>{t.membersTab}（{approvedMembersList.length}）</span>
               </div>
             </button>
             <button onClick={() => setActiveTab('pending')} className="h-[50px] relative">
@@ -455,10 +471,9 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                         <Skeleton className="h-3 w-24" />
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                        <Skeleton className="h-6 w-28 rounded-full" />
-                        <Skeleton className="h-6 w-24 rounded-full" />
+                        <Skeleton className="h-8 w-28 rounded-full" />
+                        <Skeleton className="h-8 w-24 rounded-md" />
                       </div>
-                      <Skeleton className="h-8 w-24 rounded-md" />
                       <Skeleton className="h-8 w-8 rounded-md" />
                     </div>
                     <div className="md:hidden space-y-3">
@@ -471,12 +486,9 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                           <Skeleton className="h-3 w-20" />
                         </div>
                       </div>
-                      <div className="ml-9 flex items-center justify-between">
-                        <div className="space-y-2">
-                          <Skeleton className="h-5 w-24 rounded-full" />
-                          <Skeleton className="h-5 w-24 rounded-full" />
-                        </div>
-                        <Skeleton className="h-8 w-20 rounded-md" />
+                      <div className="ml-9 flex flex-col items-start gap-2">
+                        <Skeleton className="h-5 w-24 rounded-full" />
+                        <Skeleton className="h-8 w-28 rounded-md" />
                       </div>
                     </div>
                   </div>
@@ -489,31 +501,40 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                 <div className="hidden md:flex items-center gap-4">
                   <button onClick={() => handleToggleMember(member.id)} className="shrink-0"><div className={`w-5 h-5 rounded border-2 border-[#49B1E4] flex items-center justify-center ${selectedMembers.has(member.id) ? 'bg-[#49B1E4]' : 'bg-white'}`}>{selectedMembers.has(member.id) && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 20 20"><path d="M4 10L8 14L16 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div></button>
                   <Avatar className="w-12 h-12 shrink-0" style={{ backgroundImage: 'linear-gradient(135deg, rgb(21, 93, 252) 0%, rgb(152, 16, 250) 100%)' }}><AvatarFallback className="bg-transparent text-white font-normal">{getInitials(member.name)}</AvatarFallback></Avatar>
-                  <div className="flex-1 min-w-0"><h3 className="text-[#101828] text-base font-normal truncate">{member.name}</h3><p className="text-[#4A5565] text-sm truncate">{member.email}</p><p className="text-[#6A7282] text-xs">ID: {member.id}</p></div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <Badge className={`${getCategoryColor(member.category)} border-0 font-medium text-xs px-2 py-1 h-8 flex items-center shrink-0`}>{getCategoryLabel(member.category)}</Badge>
-                    <Badge className={`${member.feePaid ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fee2e2] text-[#991b1b]'} border-0 font-medium text-xs px-2 py-1`}>{member.feePaid ? t.feePaidBadge : t.feeUnpaidBadge}</Badge>
-                    <Badge className="bg-[#eef2ff] text-[#3730a3] border-0 font-medium text-xs px-2 py-1">{member.isRenewal ? t.renewalBadge : t.newMemberBadge}</Badge>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <h3 className="truncate text-base font-normal text-[#101828]">{member.name}</h3>
+                      {!member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
+                    </div>
+                    <p className="truncate text-sm text-[#4A5565]">{member.email}</p>
+                    <p className="text-xs text-[#6A7282]">ID: {member.id}</p>
                   </div>
-                  <Button onClick={() => onOpenChat && onOpenChat(member.id)} variant="outline" size="sm" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] gap-2 shrink-0 h-8"><MessageCircle className="w-4 h-4" />{t.chat}</Button>
-                  <button onClick={() => { setSelectedUser(member); setShowDetailModal(true); }} className="text-[#3D3D4E] shrink-0 hover:bg-[#F5F1E8] rounded p-1 transition-colors"><MoreVertical className="w-5 h-5" /></button>
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <Badge className={`${getCategoryColor(member.category)} flex h-8 shrink-0 items-center border-0 px-2 py-1 text-xs font-medium`}>{getCategoryLabel(member.category)}</Badge>
+                    <Button onClick={() => onOpenChat && onOpenChat(member.id)} variant="outline" size="sm" className="h-8 shrink-0 gap-2 border-[rgba(61,61,78,0.15)] bg-[#F5F1E8] text-[#3D3D4E] hover:bg-[#E8E4DB]"><MessageCircle className="w-4 h-4" />{t.chat}</Button>
+                  </div>
+                  <button type="button" onClick={() => { setSelectedUser(member); setShowDetailModal(true); }} className="shrink-0 rounded p-1 text-[#3D3D4E] transition-colors hover:bg-[#F5F1E8]"><MoreVertical className="w-5 h-5" /></button>
                 </div>
 
                 <div className="md:hidden space-y-3">
                   <div className="flex items-start gap-3">
                     <button onClick={() => handleToggleMember(member.id)} className="shrink-0 mt-1"><div className={`w-4 h-4 rounded border border-[#49B1E4] flex items-center justify-center ${selectedMembers.has(member.id) ? 'bg-[#49B1E4]' : 'bg-white'}`}>{selectedMembers.has(member.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 20 20"><path d="M4 10L8 14L16 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div></button>
                     <Avatar className="w-10 h-10 shrink-0" style={{ backgroundImage: 'linear-gradient(135deg, rgb(21, 93, 252) 0%, rgb(152, 16, 250) 100%)' }}><AvatarFallback className="bg-transparent text-white font-normal text-sm">{getInitials(member.name)}</AvatarFallback></Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2"><h3 className="text-[#101828] text-sm font-normal">{member.name}</h3><button onClick={() => { setSelectedUser(member); setShowDetailModal(true); }} className="text-[#3D3D4E] shrink-0 hover:bg-[#F5F1E8] rounded p-0.5 transition-colors"><MoreVertical className="w-4 h-4" /></button></div>
-                      <p className="text-[#4A5565] text-xs truncate">{member.email}</p><p className="text-[#6A7282] text-xs">ID: {member.id}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                          <h3 className="truncate text-sm font-normal text-[#101828]">{member.name}</h3>
+                          {!member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
+                        </div>
+                        <button type="button" onClick={() => { setSelectedUser(member); setShowDetailModal(true); }} className="shrink-0 rounded p-0.5 text-[#3D3D4E] transition-colors hover:bg-[#F5F1E8]"><MoreVertical className="w-4 h-4" /></button>
+                      </div>
+                      <p className="truncate text-xs text-[#4A5565]">{member.email}</p>
+                      <p className="text-xs text-[#6A7282]">ID: {member.id}</p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between gap-2 ml-9">
-                    <div className="flex flex-col gap-1">
-                      <Badge className={`${getCategoryColor(member.category)} border-0 font-medium text-xs px-2 py-1`}>{getCategoryLabel(member.category)}</Badge>
-                      <Badge className={`${member.feePaid ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fee2e2] text-[#991b1b]'} border-0 font-medium text-xs px-2 py-1`}>{member.feePaid ? t.feePaidBadge : t.feeUnpaidBadge}</Badge>
-                    </div>
-                    <Button onClick={() => onOpenChat && onOpenChat(member.id)} variant="outline" size="sm" className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] gap-1.5 h-8 text-xs"><MessageCircle className="w-3.5 h-3.5" />{t.chat}</Button>
+                  <div className="ml-9 flex flex-col items-start gap-2">
+                    <Badge className={`${getCategoryColor(member.category)} border-0 px-2 py-1 text-xs font-medium`}>{getCategoryLabel(member.category)}</Badge>
+                    <Button onClick={() => onOpenChat && onOpenChat(member.id)} variant="outline" size="sm" className="h-8 gap-1.5 border-[rgba(61,61,78,0.15)] bg-[#F5F1E8] text-xs text-[#3D3D4E] hover:bg-[#E8E4DB]"><MessageCircle className="h-3.5 w-3.5" />{t.chat}</Button>
                   </div>
                 </div>
               </div>
