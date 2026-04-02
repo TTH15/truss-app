@@ -157,7 +157,7 @@ export async function POST(req: Request) {
   const authUserId = tokenAttempt.authUserId;
 
   const userSelectColumns =
-    "id,email,name,nickname,furigana,birthday,languages,country,category,approved,is_admin,registration_step,email_verified,initial_registered,profile_completed,fee_paid";
+    "id,email,name,nickname,furigana,birthday,languages,country,category,approved,is_admin,registration_step,email_verified,initial_registered,profile_completed,fee_paid,avatar_path";
 
   // 4) Fast path: user row が既に admin として存在すれば、そのまま返す。
   const { data: existingDbUser } = await adminClient

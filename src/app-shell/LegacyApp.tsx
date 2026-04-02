@@ -304,6 +304,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
           initial_registered: boolean;
           profile_completed: boolean;
           fee_paid: boolean;
+          avatar_path?: string | null;
         };
       };
 
@@ -354,6 +355,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
         initialRegistered: dbUser.initial_registered,
         profileCompleted: dbUser.profile_completed,
         feePaid: dbUser.fee_paid,
+        avatarPath: dbUser.avatar_path ?? undefined,
       };
       setUser(adminUser);
       navigateTo('admin');
@@ -619,7 +621,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
       )}
       {currentPage === 'dashboard' && user && (
         <Dashboard
-          user={user} onLogout={handleLogout} language={language} onLanguageChange={setLanguage} events={events}
+          user={user} onLogout={handleLogout} language={language} onLanguageChange={setLanguage} onUpdateProfile={updateAuthUser} events={events}
           attendingEvents={attendingEvents} likedEvents={likedEvents} onToggleAttending={toggleAttending} onToggleLike={toggleLike}
           onAddEventParticipant={addEventParticipant} onOpenProfile={handleOpenProfile} onReopenInitialRegistration={handleReopenInitialRegistration}
           onDismissReuploadNotification={handleDismissReuploadNotification} messageThreads={messageThreads}

@@ -12,6 +12,7 @@ import type {
   DbBoardPostReply,
   DbGalleryPhoto,
 } from "../../types/database.types";
+import { DEFAULT_EVENT_ICON_KEY } from "../event-icons";
 import type {
   User,
   Event,
@@ -38,6 +39,7 @@ export function mapDbUserRowToUser(row: DbUser): User {
     category: row.category,
     approved: row.approved,
     isAdmin: row.is_admin,
+    avatarPath: row.avatar_path ?? undefined,
     studentIdImage: row.student_id_image ?? undefined,
     studentNumber: row.student_number ?? undefined,
     grade: row.grade ?? undefined,
@@ -75,6 +77,10 @@ export function mapDbEventRowToEvent(row: DbEvent): Event {
     likes: row.likes,
     image: row.image ?? "",
     eventColor: row.event_color ?? undefined,
+    eventIconKey: (() => {
+      const v = (row as { event_icon?: string | null }).event_icon;
+      return typeof v === 'string' && v.trim() ? v.trim() : DEFAULT_EVENT_ICON_KEY;
+    })(),
     tags: {
       friendsCanMeet: row.tags_friends_can_meet,
       photoContest: row.tags_photo_contest,

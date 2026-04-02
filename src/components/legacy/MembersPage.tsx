@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
-import { Avatar, AvatarFallback } from '../ui/avatar';
+import { UserAvatarImage } from './UserAvatarImage';
 import { Search, Globe2 } from 'lucide-react';
 import type { Language, User } from '../../domain/types/app';
 
@@ -19,7 +19,6 @@ const translations = {
 export function MembersPage({ language, members }: MembersPageProps) {
   const t = translations[language];
   const [searchQuery, setSearchQuery] = useState('');
-  const getAvatar = (name: string) => name.slice(0, 2).toUpperCase();
   const getCategoryLabel = (category: string) => category === 'japanese' ? t.japanese : category === 'regular-international' ? t.regularInternational : category === 'exchange' ? t.exchange : '';
   const getCategoryColor = (category: string) => category === 'japanese' ? 'bg-blue-100 text-blue-800' : category === 'regular-international' ? 'bg-purple-100 text-purple-800' : category === 'exchange' ? 'bg-pink-100 text-pink-800' : 'bg-gray-100 text-gray-800';
   const filteredMembers = members.filter((member) =>
@@ -37,7 +36,12 @@ export function MembersPage({ language, members }: MembersPageProps) {
           <Card key={member.id} className="hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
-                <Avatar className="w-16 h-16 bg-linear-to-br from-blue-600 to-purple-600"><AvatarFallback className="text-white text-xl">{getAvatar(member.name)}</AvatarFallback></Avatar>
+                <UserAvatarImage
+                  avatarPath={member.avatarPath}
+                  name={member.name}
+                  className="h-16 w-16"
+                  fallbackClassName="bg-linear-to-br from-blue-600 to-purple-600 text-white text-xl"
+                />
                 <div className="flex-1 min-w-0"><h3 className="text-gray-900 truncate">{member.name}</h3><p className="text-gray-600 text-sm">{member.nickname || '-'} ({member.furigana || '-'})</p><Badge className={`mt-2 text-xs ${getCategoryColor(member.category)}`}>{getCategoryLabel(member.category)}</Badge></div>
               </div>
               <div className="mt-4 space-y-2">

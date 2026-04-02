@@ -25,6 +25,8 @@ export interface User {
   category: "japanese" | "regular-international" | "exchange";
   approved: boolean;
   isAdmin?: boolean;
+  /** Storage path in bucket `user-avatars`（例: `{uuid}/avatar.jpg`）。表示は署名付きURL */
+  avatarPath?: string;
   studentIdImage?: string;
   studentNumber?: string;
   grade?: string;
@@ -64,6 +66,8 @@ export interface Event {
   likes: number;
   image: string;
   eventColor?: string;
+  /** カレンダー表示用アイコン（DB: event_icon） */
+  eventIconKey?: string;
   tags: {
     friendsCanMeet: boolean;
     photoContest: boolean;

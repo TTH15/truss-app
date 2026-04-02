@@ -37,6 +37,7 @@ const USER_SELECT_COLUMNS = [
   "category",
   "approved",
   "is_admin",
+  "avatar_path",
   "student_id_image",
   "student_number",
   "grade",
@@ -60,7 +61,7 @@ export async function queryEvents(): Promise<Event[]> {
   const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
   const { data, error } = await supabase
     .from("events")
-    .select("id,title,title_en,description,description_en,date,time,location,location_en,google_map_url,max_participants,current_participants,likes,event_color,tags_friends_can_meet,tags_photo_contest,status,photos_count,line_group_link")
+    .select("id,title,title_en,description,description_en,date,time,location,location_en,google_map_url,max_participants,current_participants,likes,event_color,event_icon,tags_friends_can_meet,tags_photo_contest,status,photos_count,line_group_link")
     .order("date", { ascending: false });
   if (error) throw error;
   const rows = data ?? [];

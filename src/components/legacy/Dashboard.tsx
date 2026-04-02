@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Home, Calendar, Users, Image, Mail, Bell, LogOut, X, Check, Clock, AlertCircle, Upload, FileText, CreditCard, MessageCircle } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Avatar, AvatarFallback } from '../ui/avatar';
+import { UserAvatarImage } from './UserAvatarImage';
 import { Badge } from '../ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
@@ -32,6 +32,7 @@ interface DashboardProps {
   onToggleLike: (eventId: number) => void;
   onAddEventParticipant: (eventId: number, photoRefusal: boolean) => void;
   onOpenProfile: () => void;
+  onUpdateProfile?: (updates: Partial<User>) => Promise<{ error: Error | null }>;
   onReopenInitialRegistration: () => void;
   onDismissReuploadNotification?: () => void;
   messageThreads: MessageThread;
@@ -104,6 +105,7 @@ export function Dashboard({
   onToggleLike,
   onAddEventParticipant,
   onOpenProfile,
+  onUpdateProfile,
   onReopenInitialRegistration,
   onDismissReuploadNotification,
   messageThreads,
@@ -312,15 +314,22 @@ export function Dashboard({
                       size="sm"
                       className="rounded-full p-0 hover:bg-[#E8E4DB]"
                     >
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-[#3D3D4E] text-white text-sm">
-                          {user.name.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <UserAvatarImage
+                        avatarPath={user.avatarPath}
+                        name={user.name}
+                        className="h-8 w-8"
+                        fallbackClassName="bg-[#3D3D4E] text-white text-sm"
+                      />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-80 p-0 bg-white border border-[#E5E7EB] shadow-lg" align="end">
-                    <ProfilePage language={language} user={user} isCompact={true} isProfileComplete={user.profileCompleted} />
+                    <ProfilePage
+                      language={language}
+                      user={user}
+                      isCompact={true}
+                      isProfileComplete={user.profileCompleted}
+                      onUpdateProfile={onUpdateProfile}
+                    />
                     <div className="p-4 border-t">
                       <Button
                         onClick={() => {
@@ -506,7 +515,15 @@ export function Dashboard({
         {currentPage === 'members' && <MembersPage language={language} members={approvedMembers.filter((member) => !member.isAdmin)} />}
         {currentPage === 'bulletin' && <BulletinBoard language={language} user={user} onInterested={handleInterested} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onAddReply={onAddReply} onToggleInterest={onToggleInterest} onDeleteBoardPost={onDeleteBoardPost} />}
         {currentPage === 'gallery' && <GalleryPage language={language} currentUser={user} />}
-        {currentPage === 'profile' && <ProfilePage language={language} user={user} isProfileComplete={user.profileCompleted} onClose={() => setCurrentPage('home')} />}
+        {currentPage === 'profile' && (
+          <ProfilePage
+            language={language}
+            user={user}
+            isProfileComplete={user.profileCompleted}
+            onClose={() => setCurrentPage('home')}
+            onUpdateProfile={onUpdateProfile}
+          />
+        )}
         {currentPage === 'notifications' && <NotificationsPage language={language} user={user} onMessageClick={handleMessageClick} interestedPosts={interestedPosts} notifications={notifications} onDismissNotification={onDismissNotification} unreadAdminMessagesCount={unreadMessageCount()} onAdminChatClick={handleAdminChatClick} />}
         {currentPage === 'messages' && selectedNotification && (
           <MessagesPage

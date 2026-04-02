@@ -47,6 +47,7 @@ export interface DbUser {
   category: UserCategory;
   approved: boolean;
   is_admin: boolean;
+  avatar_path: string | null;
   student_id_image: string | null;
   student_number: string | null;
   grade: string | null;
@@ -91,6 +92,8 @@ export interface DbEvent {
   status: EventStatus;
   photos_count: number;
   line_group_link: string | null;
+  /** Font Awesome キー（例: calendar, sakura） */
+  event_icon: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -45,6 +45,7 @@ export function appUserToDbUser(appUser: User, authId?: string): DbUserInsert {
     category: appUser.category,
     approved: appUser.approved,
     is_admin: appUser.isAdmin || false,
+    avatar_path: appUser.avatarPath ?? null,
     student_id_image: appUser.studentIdImage || null,
     student_number: appUser.studentNumber || null,
     grade: appUser.grade || null,
@@ -84,6 +85,7 @@ export function appEventToDbEvent(appEvent: Partial<Event>): Partial<DbEventInse
   if (appEvent.likes !== undefined) result.likes = appEvent.likes;
   if (appEvent.image !== undefined) result.image = appEvent.image || null;
   if (appEvent.eventColor !== undefined) result.event_color = appEvent.eventColor || null;
+  if (appEvent.eventIconKey !== undefined) result.event_icon = appEvent.eventIconKey || null;
   if (appEvent.tags !== undefined) {
     result.tags_friends_can_meet = appEvent.tags.friendsCanMeet;
     result.tags_photo_contest = appEvent.tags.photoContest;

@@ -192,23 +192,25 @@ export async function deleteGalleryPhoto(filePath: string) {
   return { error };
 }
 
+/** クロップ後は JPEG として `avatar.jpg` に保存（パス固定） */
 export async function uploadUserAvatar(userId: string, file: File) {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${userId}/avatar.${fileExt}`;
+  const fileName = `${userId}/avatar.jpg`;
 
-  const { error } = await supabase.storage
+  const { error } = await supabase.storage.from(BUCKETS.USER_AVATARS).upload(fileName, file, {
+    upsert: true,
+    contentType: "image/jpeg",
+  });
+
+  if (error) return { path: null as string | null, error };
+
+  return { path: fileName, error: null };
+}
+
+export async function getAvatarSignedUrl(path: string, expiresIn = 3600) {
+  const { data, error } = await supabase.storage
     .from(BUCKETS.USER_AVATARS)
-    .upload(fileName, file, {
-      upsert: true,
-    });
-
-  if (error) return { url: null, error };
-
-  const { data: urlData } = supabase.storage
-    .from(BUCKETS.USER_AVATARS)
-    .getPublicUrl(fileName);
-
-  return { url: urlData.publicUrl, error: null };
+    .createSignedUrl(path, expiresIn);
+  return { url: data?.signedUrl ?? null, error };
 }
 
 export function subscribeToMessages(

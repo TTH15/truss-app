@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
-import { Avatar, AvatarFallback } from '../ui/avatar';
+import { UserAvatarImage } from './UserAvatarImage';
 import { Checkbox } from '../ui/checkbox';
 import { Skeleton } from '../ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -350,8 +350,6 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     console.log(`Reupload request to ${reuploadUserName} (${reuploadUserId}):`, message);
   };
 
-  const getInitials = (name: string) => { const parts = name.split(' '); if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase(); return name.substring(0, 2).toUpperCase(); };
-
   return (
     <div className="space-y-6">
       <div className="space-y-6">
@@ -500,7 +498,13 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
               <div key={member.id} className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-4">
                 <div className="hidden md:flex items-center gap-4">
                   <button onClick={() => handleToggleMember(member.id)} className="shrink-0"><div className={`w-5 h-5 rounded border-2 border-[#49B1E4] flex items-center justify-center ${selectedMembers.has(member.id) ? 'bg-[#49B1E4]' : 'bg-white'}`}>{selectedMembers.has(member.id) && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 20 20"><path d="M4 10L8 14L16 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div></button>
-                  <Avatar className="w-12 h-12 shrink-0" style={{ backgroundImage: 'linear-gradient(135deg, rgb(21, 93, 252) 0%, rgb(152, 16, 250) 100%)' }}><AvatarFallback className="bg-transparent text-white font-normal">{getInitials(member.name)}</AvatarFallback></Avatar>
+                  <UserAvatarImage
+                    avatarPath={member.avatarPath}
+                    name={member.name}
+                    className="h-12 w-12 shrink-0"
+                    fallbackClassName="bg-transparent font-normal text-white"
+                    style={{ backgroundImage: 'linear-gradient(135deg, rgb(21, 93, 252) 0%, rgb(152, 16, 250) 100%)' }}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <h3 className="truncate text-base font-normal text-[#101828]">{member.name}</h3>
@@ -519,7 +523,13 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                 <div className="md:hidden space-y-3">
                   <div className="flex items-start gap-3">
                     <button onClick={() => handleToggleMember(member.id)} className="shrink-0 mt-1"><div className={`w-4 h-4 rounded border border-[#49B1E4] flex items-center justify-center ${selectedMembers.has(member.id) ? 'bg-[#49B1E4]' : 'bg-white'}`}>{selectedMembers.has(member.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 20 20"><path d="M4 10L8 14L16 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div></button>
-                    <Avatar className="w-10 h-10 shrink-0" style={{ backgroundImage: 'linear-gradient(135deg, rgb(21, 93, 252) 0%, rgb(152, 16, 250) 100%)' }}><AvatarFallback className="bg-transparent text-white font-normal text-sm">{getInitials(member.name)}</AvatarFallback></Avatar>
+                    <UserAvatarImage
+                      avatarPath={member.avatarPath}
+                      name={member.name}
+                      className="h-10 w-10 shrink-0"
+                      fallbackClassName="bg-transparent font-normal text-sm text-white"
+                      style={{ backgroundImage: 'linear-gradient(135deg, rgb(21, 93, 252) 0%, rgb(152, 16, 250) 100%)' }}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex min-w-0 flex-1 items-center gap-1.5">

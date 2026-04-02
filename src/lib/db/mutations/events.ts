@@ -3,6 +3,7 @@
  */
 import { supabase } from "../../supabase";
 import type { Event } from "../../../domain/types/app";
+import { DEFAULT_EVENT_ICON_KEY } from "../../event-icons";
 
 export type EventCreateInput = Omit<Event, "id" | "currentParticipants" | "likes">;
 
@@ -24,6 +25,7 @@ export async function insertEventRow(
     likes: 0,
     image: eventData.image || null,
     event_color: eventData.eventColor ?? "#49B1E4",
+    event_icon: eventData.eventIconKey ?? DEFAULT_EVENT_ICON_KEY,
     tags_friends_can_meet: eventData.tags.friendsCanMeet,
     tags_photo_contest: eventData.tags.photoContest,
     status: eventData.status,
@@ -51,6 +53,7 @@ export function buildEventUpdatePatch(
   }
   if (updates.image !== undefined) dbUpdates.image = updates.image;
   if (updates.eventColor !== undefined) dbUpdates.event_color = updates.eventColor;
+  if (updates.eventIconKey !== undefined) dbUpdates.event_icon = updates.eventIconKey;
   if (updates.tags !== undefined) {
     dbUpdates.tags_friends_can_meet = updates.tags.friendsCanMeet;
     dbUpdates.tags_photo_contest = updates.tags.photoContest;

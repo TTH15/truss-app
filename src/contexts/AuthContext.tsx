@@ -73,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         category: data.category,
         approved: data.approved,
         isAdmin: data.is_admin,
+        avatarPath: data.avatar_path || undefined,
         studentIdImage: data.student_id_image || undefined,
         studentNumber: data.student_number || undefined,
         grade: data.grade || undefined,
@@ -236,6 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (updates.birthCountry !== undefined) dbUpdates.country = updates.birthCountry;
       if (updates.category !== undefined) dbUpdates.category = updates.category;
       if (updates.approved !== undefined) dbUpdates.approved = updates.approved;
+      if (updates.avatarPath !== undefined) dbUpdates.avatar_path = updates.avatarPath || null;
       if (updates.studentIdImage !== undefined) dbUpdates.student_id_image = updates.studentIdImage || null;
       if (updates.studentNumber !== undefined) dbUpdates.student_number = updates.studentNumber || null;
       if (updates.grade !== undefined) dbUpdates.grade = updates.grade || null;

@@ -16,6 +16,7 @@ import { translateText } from '../../utils/translate';
 import { uploadEventImage } from '../../lib/supabase';
 import { applyMosaicAtPoint } from '../../lib/mosaicCanvas';
 import { supabase } from '../../lib/supabase';
+import { EVENT_ICON_OPTIONS, getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '../../lib/event-icons';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
@@ -313,6 +314,7 @@ export function AdminEvents({
     lineGroupUrl: '',
     image: null as string | null,
     eventColor: '#49B1E4',
+    eventIconKey: DEFAULT_EVENT_ICON_KEY,
   });
 
   const eventColors = ['#49B1E4', '#4285F4', '#34A853', '#FBBC04', '#EA4335', '#A142F4'];
@@ -376,6 +378,7 @@ export function AdminEvents({
       lineGroupUrl: '',
       image: sourceEvent?.image || null,
       eventColor: sourceEvent?.eventColor || '#49B1E4',
+      eventIconKey: sourceEvent?.eventIconKey || sourceEvent?.event_icon || DEFAULT_EVENT_ICON_KEY,
     };
     setNewEvent(nextEvent);
     setInitialEventSnapshot(JSON.stringify(nextEvent));
@@ -409,6 +412,7 @@ export function AdminEvents({
         maxParticipants: parseInt(String(sourceEvent?.maxParticipants ?? ''), 10) || 30,
         image: sourceEvent?.image || undefined,
         eventColor: sourceEvent?.eventColor || '#49B1E4',
+        eventIconKey: sourceEvent?.eventIconKey || sourceEvent?.event_icon || DEFAULT_EVENT_ICON_KEY,
         tags: { friendsCanMeet: false, photoContest: false },
         status: 'upcoming' as const,
         // LINEグループ招待リンクは除外（空で作成）
@@ -443,6 +447,7 @@ export function AdminEvents({
       lineGroupUrl: event?.lineGroupLink || event?.lineGroupUrl || '',
       image: event?.image || null,
       eventColor: event?.eventColor || '#49B1E4',
+      eventIconKey: event?.eventIconKey || event?.event_icon || DEFAULT_EVENT_ICON_KEY,
     };
     setNewEvent(nextEvent);
     setInitialEventSnapshot(JSON.stringify(nextEvent));
@@ -453,11 +458,16 @@ export function AdminEvents({
       void (async () => {
         const { data, error } = await supabase
           .from('events')
-          .select('image,event_color')
+          .select('image,event_color,event_icon')
           .eq('id', event.id)
           .maybeSingle();
         if (error) return;
-        setNewEvent((prev) => ({ ...prev, image: data?.image || prev.image, eventColor: data?.event_color || prev.eventColor }));
+        setNewEvent((prev) => ({
+          ...prev,
+          image: data?.image || prev.image,
+          eventColor: data?.event_color || prev.eventColor,
+          eventIconKey: (data?.event_icon as string) || prev.eventIconKey,
+        }));
       })();
     }
   };
@@ -481,6 +491,7 @@ export function AdminEvents({
       lineGroupUrl: '',
       image: null,
       eventColor: '#49B1E4',
+      eventIconKey: DEFAULT_EVENT_ICON_KEY,
     });
     setInitialEventSnapshot('');
   };
@@ -540,6 +551,7 @@ export function AdminEvents({
       lineGroupUrl: selectedEvent.lineGroupLink || selectedEvent.lineGroupUrl || '',
       image: selectedEvent.image || null,
       eventColor: selectedEvent.eventColor || '#49B1E4',
+      eventIconKey: selectedEvent.eventIconKey || selectedEvent.event_icon || DEFAULT_EVENT_ICON_KEY,
     };
     setNewEvent(nextEvent);
     setInitialEventSnapshot(JSON.stringify(nextEvent));
@@ -862,6 +874,31 @@ export function AdminEvents({
     </div>
   );
 
+  const renderEventIconPicker = () => (
+    <div>
+      <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+        {language === 'ja' ? 'カレンダー表示アイコン' : 'Calendar icon'}
+      </label>
+      <div className="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto pr-1">
+        {EVENT_ICON_OPTIONS.map((opt) => (
+          <button
+            key={opt.key}
+            type="button"
+            title={language === 'ja' ? opt.labelJa : opt.labelEn}
+            onClick={() => setNewEvent({ ...newEvent, eventIconKey: opt.key })}
+            className={`h-9 w-9 rounded-lg flex items-center justify-center border transition-colors ${
+              newEvent.eventIconKey === opt.key
+                ? 'border-[#49B1E4] bg-[#49B1E4]/15'
+                : 'border-[rgba(61,61,78,0.15)] bg-[#EEEBE3] hover:bg-[#E8E4DB]'
+            }`}
+          >
+            <FontAwesomeIcon icon={opt.icon} className="text-[#3D3D4E] text-sm" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* カレンダー */}
@@ -991,9 +1028,10 @@ export function AdminEvents({
                             }}
                             className="flex items-center gap-1 text-left w-full px-1 py-0.5 rounded hover:bg-black/5 transition-colors"
                           >
-                            <span
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{ backgroundColor: event.eventColor || '#49B1E4' }}
+                            <FontAwesomeIcon
+                              icon={getEventIconDefinition(event.eventIconKey || event.event_icon)}
+                              className="shrink-0 text-[10px]"
+                              style={{ color: event.eventColor || '#49B1E4' }}
                             />
                             <span className="truncate text-[10px] text-[#3D3D4E] font-medium">
                               {language === 'ja' ? event.title : (event.titleEn || event.title)}
@@ -1140,6 +1178,8 @@ export function AdminEvents({
                     ))}
                   </div>
                 </div>
+
+                {renderEventIconPicker()}
 
                 {/* 日付・時間 */}
                 <div className="grid grid-cols-2 gap-4">
@@ -1606,6 +1646,8 @@ export function AdminEvents({
                   </div>
                 </div>
 
+                {renderEventIconPicker()}
+
                 {/* 日付・時間 */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1917,6 +1959,7 @@ export function AdminEvents({
                           maxParticipants: parseInt(newEvent.maxParticipants) || 30,
                           image: newEvent.image || undefined,
                           eventColor: newEvent.eventColor || '#49B1E4',
+                          eventIconKey: newEvent.eventIconKey || DEFAULT_EVENT_ICON_KEY,
                           tags: { friendsCanMeet: false, photoContest: false },
                           status: 'upcoming' as const,
                           lineGroupLink: newEvent.lineGroupUrl || undefined,
@@ -1940,6 +1983,7 @@ export function AdminEvents({
                             maxParticipants: parseInt(newEvent.maxParticipants) || 30,
                             image: newEvent.image || undefined,
                             eventColor: newEvent.eventColor || '#49B1E4',
+                            eventIconKey: newEvent.eventIconKey || DEFAULT_EVENT_ICON_KEY,
                             lineGroupLink: newEvent.lineGroupUrl || undefined,
                           };
                           console.log('Updating event with data:', updateData);
