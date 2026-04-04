@@ -627,7 +627,7 @@ export function Dashboard({
                   <p>{language === 'ja' ? '支店名：六甲支店（421）' : 'Branch: XX Branch'}</p>
                   <p>{language === 'ja' ? '口座種別：普通' : 'Account Type: Savings'}</p>
                   <p>{language === 'ja' ? '口座番号：4392061' : 'Account No: 1234567'}</p>
-                  <p>{language === 'ja' ? '口座名義：トラス　ダイヒョウシャ　クロダ　チハル' : 'Account Name: TRUSS'}</p>
+                  <p>{language === 'ja' ? '口座名義：ﾄﾗｽ ﾀﾞｲﾋｮｳｼｬ ｸﾛﾀﾞ ﾁﾊﾙ' : 'Account Name: ﾄﾗｽ ﾀﾞｲﾋｮｳｼｬ ｸﾛﾀﾞ ﾁﾊﾙ'}</p>
                 </div>
                 <div className="border-t border-gray-200 pt-2 mt-2">
                   <p className="text-xs text-[#6B6B7A]">
