@@ -623,17 +623,17 @@ export function Dashboard({
               <div className="bg-gray-50 p-3 rounded-lg space-y-2">
                 <div className="text-sm text-[#3D3D4E] space-y-1">
                   <p className="font-medium">{language === 'ja' ? '【振込先】' : '【Bank Account】'}</p>
-                  <p>{language === 'ja' ? '銀行名：〇〇銀行' : 'Bank: XX Bank'}</p>
-                  <p>{language === 'ja' ? '支店名：〇〇支店' : 'Branch: XX Branch'}</p>
+                  <p>{language === 'ja' ? '銀行名：三井住友銀行' : 'Bank: XX Bank'}</p>
+                  <p>{language === 'ja' ? '支店名：六甲支店（421）' : 'Branch: XX Branch'}</p>
                   <p>{language === 'ja' ? '口座種別：普通' : 'Account Type: Savings'}</p>
-                  <p>{language === 'ja' ? '口座番号：1234567' : 'Account No: 1234567'}</p>
-                  <p>{language === 'ja' ? '口座名義：トラス' : 'Account Name: TRUSS'}</p>
+                  <p>{language === 'ja' ? '口座番号：4392061' : 'Account No: 1234567'}</p>
+                  <p>{language === 'ja' ? '口座名義：トラス　ダイヒョウシャ　クロダ　チハル' : 'Account Name: TRUSS'}</p>
                 </div>
                 <div className="border-t border-gray-200 pt-2 mt-2">
                   <p className="text-xs text-[#6B6B7A]">
                     {language === 'ja'
-                      ? '※振込名義は「学籍番号＋氏名」でお願いします'
-                      : '※ Please use "Student ID + Name" as the transfer name'
+                      ? '※振込名義は「学籍番号＋フリガナ」でお願いします。振込手数料は各自ご負担ください。'
+                      : '※ Please use "Student ID + Furigana" as the transfer name. Please bear the transfer fee yourself.'
                     }
                   </p>
                 </div>
@@ -687,11 +687,10 @@ function NavButton({
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center justify-center py-3 px-4 transition-all duration-300 group ${
-        active
-          ? 'text-[#3D3D4E]'
-          : 'text-[#6B6B7A] hover:text-[#3D3D4E]'
-      }`}
+      className={`relative flex flex-col items-center justify-center py-3 px-4 transition-all duration-300 group ${active
+        ? 'text-[#3D3D4E]'
+        : 'text-[#6B6B7A] hover:text-[#3D3D4E]'
+        }`}
     >
       <div className={`
         transition-all duration-300 ease-out
