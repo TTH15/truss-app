@@ -623,10 +623,10 @@ export function Dashboard({
               <div className="bg-gray-50 p-3 rounded-lg space-y-2">
                 <div className="text-sm text-[#3D3D4E] space-y-1">
                   <p className="font-medium">{language === 'ja' ? '【振込先】' : '【Bank Account】'}</p>
-                  <p>{language === 'ja' ? '銀行名：三井住友銀行' : 'Bank: XX Bank'}</p>
-                  <p>{language === 'ja' ? '支店名：六甲支店（421）' : 'Branch: XX Branch'}</p>
+                  <p>{language === 'ja' ? '銀行名：三井住友銀行' : 'Bank: Sumitomo Mitsui Banking Corporation'}</p>
+                  <p>{language === 'ja' ? '支店名：六甲支店（421）' : 'Branch: Rokko Branch (421)'}</p>
                   <p>{language === 'ja' ? '口座種別：普通' : 'Account Type: Savings'}</p>
-                  <p>{language === 'ja' ? '口座番号：4392061' : 'Account No: 1234567'}</p>
+                  <p>{language === 'ja' ? '口座番号：4392061' : 'Account No: 4392061'}</p>
                   <p>{language === 'ja' ? '口座名義：ﾄﾗｽ ﾀﾞｲﾋｮｳｼｬ ｸﾛﾀﾞ ﾁﾊﾙ' : 'Account Name: ﾄﾗｽ ﾀﾞｲﾋｮｳｼｬ ｸﾛﾀﾞ ﾁﾊﾙ'}</p>
                 </div>
                 <div className="border-t border-gray-200 pt-2 mt-2">
