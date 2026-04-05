@@ -4,7 +4,6 @@ import { Heart, Users, Calendar, Camera, MapPin, Clock, MessageCircle, ExternalL
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Checkbox } from '../ui/checkbox';
 import type { Language, Event, User } from '../../domain/types/app';
-import { supabase } from '../../lib/supabase';
 import { isProfileCompleteForParticipation } from '../../lib/profile-completion';
 import { googleMapsHrefForEvent } from '../../lib/event-map-link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -36,7 +35,6 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
   const eventRefs = useRef<{ [key: number]: HTMLElement | null }>({});
   const [photoRefusal, setPhotoRefusal] = useState(false);
   const [registrationStep, setRegistrationStep] = useState<'confirm' | 'complete'>('confirm');
-  const [eventImages, setEventImages] = useState<Record<number, string | null>>({});
 
   const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
@@ -84,32 +82,6 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
     if (!highlightEventId || !eventRefs.current[highlightEventId]) return;
     setTimeout(() => eventRefs.current[highlightEventId]?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
   }, [highlightEventId, calendarMonth, calendarYear]);
-
-  useEffect(() => {
-    const eventIds = events.map((event) => event.id).filter((id): id is number => typeof id === 'number');
-    if (eventIds.length === 0) {
-      setEventImages({});
-      return;
-    }
-
-    let cancelled = false;
-    void (async () => {
-      const { data, error } = await supabase
-        .from('events')
-        .select('id,image')
-        .in('id', eventIds);
-      if (cancelled || error) return;
-      const nextMap: Record<number, string | null> = {};
-      for (const row of data ?? []) {
-        nextMap[row.id] = row.image ?? null;
-      }
-      setEventImages(nextMap);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [events]);
 
   const handlePreviousMonth = () => {
     if (calendarMonth === 0) {
@@ -218,32 +190,34 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
               return (
                 <div
                   key={`cell-${index}`}
-                  className={`p-2 flex flex-col relative overflow-hidden min-h-[120px] ${isSunday ? 'bg-red-50/35' : isSaturday ? 'bg-blue-50/35' : 'bg-white'}`}
+                  className={`p-2 flex flex-col relative overflow-hidden min-h-[88px] ${isSunday ? 'bg-red-50/35' : isSaturday ? 'bg-blue-50/35' : 'bg-white'}`}
                 >
                   {day && (
                     <>
-                      <div className={`text-center text-sm font-bold mb-2 ${isSunday ? 'text-red-600' : isSaturday ? 'text-blue-600' : 'text-[#3D3D4E]'}`}>{day}</div>
-                      <div className="space-y-1">
-                        {dayEvents.map((event) => (
-                          <button
-                            key={event.id}
-                            type="button"
-                            ref={(el) => {
-                              eventRefs.current[event.id] = el;
-                            }}
-                            onClick={() => handleCalendarEventClick(event)}
-                            className={`flex items-center gap-1 text-left w-full px-1 py-0.5 rounded hover:bg-black/5 transition-colors ${highlightEventId === event.id ? 'ring-2 ring-[#49B1E4] bg-[#49B1E4]/10' : ''}`}
-                          >
-                            <FontAwesomeIcon
-                              icon={getEventIconDefinition(event.eventIconKey || DEFAULT_EVENT_ICON_KEY)}
-                              className="shrink-0 text-[11px]"
-                              style={{ color: event.eventColor || '#49B1E4' }}
-                            />
-                            <span className="truncate text-[10px] text-[#3D3D4E] font-medium">
-                              {language === 'ja' ? event.title : (event.titleEn || event.title)}
-                            </span>
-                          </button>
-                        ))}
+                      <div className={`text-center text-sm font-bold mb-1.5 ${isSunday ? 'text-red-600' : isSaturday ? 'text-blue-600' : 'text-[#3D3D4E]'}`}>{day}</div>
+                      <div className="flex flex-wrap gap-1 justify-center content-start flex-1">
+                        {dayEvents.map((event) => {
+                          const label = language === 'ja' ? event.title : (event.titleEn || event.title);
+                          return (
+                            <button
+                              key={event.id}
+                              type="button"
+                              ref={(el) => {
+                                eventRefs.current[event.id] = el;
+                              }}
+                              onClick={() => handleCalendarEventClick(event)}
+                              title={label}
+                              aria-label={label}
+                              className={`flex items-center justify-center w-8 h-8 shrink-0 rounded-lg hover:bg-black/5 transition-colors ${highlightEventId === event.id ? 'ring-2 ring-[#49B1E4] bg-[#49B1E4]/15' : ''}`}
+                            >
+                              <FontAwesomeIcon
+                                icon={getEventIconDefinition(event.eventIconKey || DEFAULT_EVENT_ICON_KEY)}
+                                className="text-base"
+                                style={{ color: event.eventColor || '#49B1E4' }}
+                              />
+                            </button>
+                          );
+                        })}
                       </div>
                     </>
                   )}
@@ -263,8 +237,8 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
                 <DialogTitle className="flex items-center gap-2 text-[#3D3D4E]"><Calendar className="w-5 h-5 text-[#49B1E4]" />{t.eventDetails}</DialogTitle>
               </DialogHeader>
               <div className="rounded-lg overflow-hidden bg-linear-to-br from-blue-100 to-purple-100">
-                {(eventImages[detailEvent.id] ?? detailEvent.image) ? (
-                  <img src={(eventImages[detailEvent.id] ?? detailEvent.image) as string} alt={language === 'ja' ? detailEvent.title : (detailEvent.titleEn || detailEvent.title)} className="w-full h-48 object-cover" />
+                {detailEvent.image?.trim() ? (
+                  <img src={detailEvent.image} alt={language === 'ja' ? detailEvent.title : (detailEvent.titleEn || detailEvent.title)} className="w-full h-48 object-cover" />
                 ) : (
                   <div className="w-full h-48 flex items-center justify-center">
                     <FontAwesomeIcon icon={getEventIconDefinition(detailEvent.eventIconKey)} className="text-6xl text-[#49B1E4]/90" />

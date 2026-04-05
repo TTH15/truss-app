@@ -116,8 +116,8 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
             const displayTitle = language === 'ja' ? event.title : (event.titleEn || event.title);
             return (
               <div key={`${event.id}-${index}`} onClick={() => onNavigateToEvent(event.id)} className="shrink-0 w-40 h-28 md:w-52 md:h-36 rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer relative group">
-                {event.image ? (
-                  <img src={event.image} alt={displayTitle} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                {event.image?.trim() ? (
+                  <img src={event.image.trim()} alt={displayTitle} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
                 ) : (
                   <div className="w-full h-full bg-linear-to-br from-blue-100 to-purple-100" />
                 )}

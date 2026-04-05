@@ -118,7 +118,7 @@ interface DataContextType {
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
-const EVENTS_CACHE_KEY = 'truss-cache-events-v1';
+const EVENTS_CACHE_KEY = 'truss-cache-events-v2';
 const USERS_CACHE_KEY = 'truss-cache-users-v1';
 const CACHE_TTL_MS = 60 * 1000;
 
