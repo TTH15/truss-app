@@ -17,6 +17,7 @@ import { LimitedAccessBanner } from './LimitedAccessBanner';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
 import type { User as UserType, Language, Event, MessageThread, ChatThreadMetadata, Notification, BoardPost, BoardPostReply } from '../../domain/types/app';
+import { isProfileCompleteForParticipation } from '../../lib/profile-completion';
 
 type User = UserType;
 
@@ -132,6 +133,7 @@ export function Dashboard({
   const [messageHistory, setMessageHistory] = useState<MessageHistory>({});
   const [feePaymentDialogOpen, setFeePaymentDialogOpen] = useState(false);
   const t = translations[language];
+  const profileDone = isProfileCompleteForParticipation(user);
 
   const unreadMessageCount = () => {
     const userMessages = messageThreads[user.id] || [];
@@ -327,7 +329,7 @@ export function Dashboard({
                       language={language}
                       user={user}
                       isCompact={true}
-                      isProfileComplete={user.profileCompleted}
+                      isProfileComplete={profileDone}
                       onUpdateProfile={onUpdateProfile}
                     />
                     <div className="p-4 border-t">
@@ -440,7 +442,7 @@ export function Dashboard({
           </div>
         )}
 
-        {user.registrationStep === 'approved_limited' && (!user.profileCompleted || !user.feePaid) && (
+        {user.registrationStep === 'approved_limited' && (!profileDone || !user.feePaid) && (
           <div className="mb-6 bg-linear-to-r from-[#49B1E4] to-[#3A9BD4] rounded-lg p-6 shadow-lg text-white">
             <div className="flex items-start gap-4">
               <div className="flex-1">
@@ -448,9 +450,9 @@ export function Dashboard({
                   {language === 'ja' ? '運営による承認が完了しました。以下のステップを完了してください。' : 'Your registration has been approved. Please complete the following steps.'}
                 </h3>
                 <div className="space-y-3">
-                  <div className={`flex items-center gap-3 p-3 rounded-lg ${user.profileCompleted ? 'bg-white/20' : 'bg-white/30'}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${user.profileCompleted ? 'bg-green-500' : 'bg-white'}`}>
-                      {user.profileCompleted ? (
+                  <div className={`flex items-center gap-3 p-3 rounded-lg ${profileDone ? 'bg-white/20' : 'bg-white/30'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${profileDone ? 'bg-green-500' : 'bg-white'}`}>
+                      {profileDone ? (
                         <Check className="w-5 h-5 text-white" />
                       ) : (
                         <FileText className="w-5 h-5 text-[#49B1E4]" />
@@ -460,7 +462,7 @@ export function Dashboard({
                       <p className="font-medium">
                         {language === 'ja' ? 'プロフィール登録' : 'Profile Registration'}
                       </p>
-                      {!user.profileCompleted && (
+                      {!profileDone && (
                         <button
                           onClick={onOpenProfile}
                           className="text-sm underline hover:no-underline mt-1"
@@ -519,7 +521,7 @@ export function Dashboard({
           <ProfilePage
             language={language}
             user={user}
-            isProfileComplete={user.profileCompleted}
+            isProfileComplete={profileDone}
             onClose={() => setCurrentPage('home')}
             onUpdateProfile={onUpdateProfile}
           />

@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Checkbox } from '../ui/checkbox';
 import type { Language, Event, User } from '../../domain/types/app';
 import { supabase } from '../../lib/supabase';
+import { isProfileCompleteForParticipation } from '../../lib/profile-completion';
+import { googleMapsHrefForEvent } from '../../lib/event-map-link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '../../lib/event-icons';
 
@@ -131,11 +133,12 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
     const isAttending = attendingEvents.has(event.id);
     if (isAttending) return onToggleAttending(event.id);
     if (!user.approved) return alert(language === 'ja' ? '運営による承認をお待ちください' : 'Please wait for admin approval');
-    const isLimited = !user.profileCompleted || (user.category === 'japanese' && !user.feePaid);
+    const profileOk = isProfileCompleteForParticipation(user);
+    const isLimited = !profileOk || (user.category === 'japanese' && !user.feePaid);
     if (isLimited && attendingEvents.size >= 1) {
       const msg = language === 'ja'
-        ? (!user.profileCompleted ? 'プロフィール登録が完了するまで、1つのイベントにのみ参加できます' : '年会費のお支払いが完了するまで、1つのイベントにのみ参加できます')
-        : (!user.profileCompleted ? 'You can only register for one event until you complete your profile' : 'You can only register for one event until you pay the annual fee');
+        ? (!profileOk ? 'プロフィール登録が完了するまで、1つのイベントにのみ参加できます' : '年会費のお支払いが完了するまで、1つのイベントにのみ参加できます')
+        : (!profileOk ? 'You can only register for one event until you complete your profile' : 'You can only register for one event until you pay the annual fee');
       return alert(msg);
     }
     setSelectedEvent(event);
@@ -163,6 +166,8 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
     setDetailEvent(event);
     setDetailModalOpen(true);
   };
+
+  const detailMapsHref = detailEvent ? googleMapsHrefForEvent(detailEvent, language) : null;
 
   return (
     <div className="space-y-6">
@@ -270,7 +275,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
               <div className="bg-[#F5F1E8] rounded-lg p-4 space-y-3">
                 <div className="flex items-center gap-3 text-[#3D3D4E]"><Calendar className="w-5 h-5 text-[#49B1E4]" /><span>{detailEvent.date}</span></div>
                 <div className="flex items-center gap-3 text-[#3D3D4E]"><Clock className="w-5 h-5 text-[#49B1E4]" /><span>{detailEvent.time}</span></div>
-                <div className="flex items-start gap-3 text-[#3D3D4E]"><MapPin className="w-5 h-5 text-[#49B1E4] shrink-0 mt-0.5" /><div><span>{language === 'ja' ? detailEvent.location : (detailEvent.locationEn || detailEvent.location)}</span>{detailEvent.googleMapUrl && <a href={detailEvent.googleMapUrl} target="_blank" rel="noopener noreferrer" className="block text-sm text-[#49B1E4] hover:underline mt-1"><ExternalLink className="w-3 h-3 inline mr-1" />{language === 'ja' ? 'Google Mapで開く' : 'Open in Google Maps'}</a>}</div></div>
+                <div className="flex items-start gap-3 text-[#3D3D4E]"><MapPin className="w-5 h-5 text-[#49B1E4] shrink-0 mt-0.5" /><div><span>{language === 'ja' ? detailEvent.location : (detailEvent.locationEn || detailEvent.location)}</span>{detailMapsHref && <a href={detailMapsHref} target="_blank" rel="noopener noreferrer" className="block text-sm text-[#49B1E4] hover:underline mt-1"><ExternalLink className="w-3 h-3 inline mr-1" />{language === 'ja' ? 'Google Mapで開く' : 'Open in Google Maps'}</a>}</div></div>
               </div>
               <div className="flex items-center gap-6"><button type="button" onClick={() => onToggleLike(detailEvent.id)} className="flex items-center gap-2 text-pink-600 hover:text-pink-700 transition-colors"><Heart className={`w-6 h-6 ${likedEvents.has(detailEvent.id) ? 'fill-current' : ''}`} /><span className="text-lg font-semibold">{detailEvent.likes}</span><span className="text-sm">{t.likes}</span></button><div className="flex items-center gap-2 text-blue-600"><Users className="w-6 h-6" /><span className="text-lg font-semibold">{detailEvent.currentParticipants}/{detailEvent.maxParticipants}</span><span className="text-sm">{t.participants}</span></div></div>
               <div className="border-t pt-4"><h4 className="font-semibold text-[#3D3D4E] mb-2">{t.description}</h4><p className="text-[#6B6B7A] whitespace-pre-wrap leading-relaxed">{language === 'ja' ? (detailEvent.descriptionJa || detailEvent.description || t.noDescription) : (detailEvent.descriptionEn || detailEvent.descriptionJa || detailEvent.description || t.noDescription)}</p></div>

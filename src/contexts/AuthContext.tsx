@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { getAppOrigin } from '../lib/app-origin';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import type { User as AppUser, RegistrationStep } from '../domain/types/app';
+import { isProfileCompleteForParticipation } from '../lib/profile-completion';
 
 interface AuthContextType {
   session: Session | null;
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const queryPromise = supabase.from('users').select('*').eq('auth_id', authId).maybeSingle();
       const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
       if (error || !data) return null;
-      return {
+      const row = {
         id: data.id,
         email: data.email,
         name: data.name || '',
@@ -92,6 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         reuploadReason: data.reupload_reason || undefined,
         requestedAt: data.requested_at || undefined,
       };
+      if (!row.profileCompleted && isProfileCompleteForParticipation(row)) {
+        void supabase.from('users').update({ profile_completed: true }).eq('id', row.id);
+        row.profileCompleted = true;
+      }
+      return row;
     } catch (_error) {
       return null;
     }
@@ -247,14 +253,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (updates.registrationStep !== undefined) dbUpdates.registration_step = updates.registrationStep;
       if (updates.emailVerified !== undefined) dbUpdates.email_verified = updates.emailVerified;
       if (updates.initialRegistered !== undefined) dbUpdates.initial_registered = updates.initialRegistered;
-      if (updates.profileCompleted !== undefined) dbUpdates.profile_completed = updates.profileCompleted;
       if (updates.feePaid !== undefined) dbUpdates.fee_paid = updates.feePaid;
       if (updates.studentIdReuploadRequested !== undefined) dbUpdates.student_id_reupload_requested = updates.studentIdReuploadRequested;
       if (updates.reuploadReason !== undefined) dbUpdates.reupload_reason = updates.reuploadReason || null;
 
+      const merged: AppUser = { ...user, ...updates };
+      const computedComplete = isProfileCompleteForParticipation(merged);
+      dbUpdates.profile_completed = computedComplete;
+
       const { error } = await supabase.from('users').update(dbUpdates).eq('id', user.id);
       if (error) return { error };
-      const updatedUser = { ...user, ...updates };
+      const updatedUser = { ...merged, profileCompleted: computedComplete };
       setUser(updatedUser);
       setCachedUser(updatedUser);
       return { error: null };
