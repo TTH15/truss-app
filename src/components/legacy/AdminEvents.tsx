@@ -451,7 +451,8 @@ export function AdminEvents({
     };
     setNewEvent(nextEvent);
     setInitialEventSnapshot(JSON.stringify(nextEvent));
-    setEditMode(true);
+    // まず詳細表示を開き、参加者一覧・いいね数を確認できるようにする
+    setEditMode(false);
     setSelectedParticipants(new Set());
     setShowNewEventForm(false);
     if (!event?.image) {
@@ -471,6 +472,10 @@ export function AdminEvents({
       })();
     }
   };
+
+  const selectedEventParticipants = selectedEvent ? (eventParticipants[selectedEvent.id] || []) : [];
+  const selectedEventParticipantsCount = selectedEventParticipants.length;
+  const selectedEventLikesCount = selectedEvent?.likes || 0;
 
   const handleCloseForm = () => {
     setShowNewEventForm(false);
@@ -1308,7 +1313,7 @@ export function AdminEvents({
 
       {/* イベント詳細表示 */}
       {selectedEvent && !editMode && (
-        <div className={`bg-white rounded-[14px] p-6 relative ${selectedEvent.currentParticipants >= selectedEvent.maxParticipants
+        <div className={`bg-white rounded-[14px] p-6 relative ${selectedEventParticipantsCount >= selectedEvent.maxParticipants
           ? 'border-2 border-[#00A63E]'
           : 'border-2 border-[#49B1E4]'
           }`}>
@@ -1386,11 +1391,11 @@ export function AdminEvents({
                 )}
                 <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
                   <Users className="w-4 h-4" />
-                  <span className={`font-semibold ${selectedEvent.currentParticipants >= selectedEvent.maxParticipants
+                  <span className={`font-semibold ${selectedEventParticipantsCount >= selectedEvent.maxParticipants
                     ? 'text-[#00A63E]'
                     : 'text-[#49B1E4]'
                     }`}>
-                    {selectedEvent.currentParticipants} / {selectedEvent.maxParticipants}
+                    {selectedEventParticipantsCount} / {selectedEvent.maxParticipants}
                   </span>
                   <span>{language === 'ja' ? '参加者' : 'Participants'}</span>
                 </div>
@@ -1398,7 +1403,7 @@ export function AdminEvents({
                 <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
                   <Heart className="w-4 h-4 text-red-500" />
                   <span className="font-semibold text-red-500">
-                    {selectedEvent.likes || 0}
+                    {selectedEventLikesCount}
                   </span>
                   <span>{language === 'ja' ? 'いいね' : 'Likes'}</span>
                 </div>
@@ -1434,7 +1439,7 @@ export function AdminEvents({
 
               {/* 参加者リスト */}
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {(eventParticipants[selectedEvent.id] || []).map((participant) => (
+                {selectedEventParticipants.map((participant) => (
                   <div
                     key={participant.userId}
                     className="flex items-center gap-3 p-3 bg-[#F9FAFB] rounded-[8px]"
@@ -1496,7 +1501,7 @@ export function AdminEvents({
                     </div>
                   </div>
                 ))}
-                {(!eventParticipants[selectedEvent.id] || eventParticipants[selectedEvent.id].length === 0) && (
+                {selectedEventParticipants.length === 0 && (
                   <p className="text-[#6B6B7A] text-sm text-center py-4">
                     {language === 'ja' ? 'まだ参加者がいません' : 'No participants yet'}
                   </p>
