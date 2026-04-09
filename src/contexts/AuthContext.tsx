@@ -164,6 +164,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         if (session?.user) {
+          // public.users の取得完了まで loading にしておく（未取得の一瞬で初期登録へ誤遷移しない）
+          setLoading(true);
           const appUser = await fetchAppUser(session.user.id);
           if (appUser && mounted) {
             setUser(appUser);

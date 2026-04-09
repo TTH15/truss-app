@@ -182,8 +182,10 @@ export function Dashboard({
           <div className="flex flex-col gap-3">
             <div className="flex justify-between items-center">
               <button
-                onClick={onLogout}
+                type="button"
+                onClick={() => setCurrentPage('home')}
                 className="flex items-center gap-2 cursor-pointer bg-transparent border-none p-0 hover:opacity-80 transition-opacity"
+                title={language === 'ja' ? 'ホームへ' : 'Go to home'}
               >
                 <ImageWithFallback
                   src={logoImage}
