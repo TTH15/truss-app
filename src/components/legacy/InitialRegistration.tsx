@@ -85,7 +85,12 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
     setStudentIdImage(existingUser.studentIdImage || '');
   }, [existingUser]);
 
-  const validateStudentNumber = (value: string) => !value || /^\d{7}[A-Za-z]$/.test(value) || /^\d{3}[A-Za-z]\d{3}[A-Za-z]$/.test(value);
+  const normalizeStudentNumber = (value: string) =>
+    value
+      .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+      .replace(/[\s\u3000]/g, '')
+      .toUpperCase();
+  const validateStudentNumber = (value: string) => !value || /^[A-Z0-9]{8}$/.test(value);
   const validatePhoneNumber = (value: string) => {
     const normalized = value.replace(/[\s-]/g, '');
     return /^\d{8,15}$/.test(normalized);
@@ -106,10 +111,14 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
   };
 
   const validateForm = () => {
+    const normalizedStudentNumber = normalizeStudentNumber(formData.studentNumber);
+    if (normalizedStudentNumber !== formData.studentNumber) {
+      setFormData((prev) => ({ ...prev, studentNumber: normalizedStudentNumber }));
+    }
     const newErrors = {
       name: !formData.name,
       furigana: !formData.furigana,
-      studentNumber: !formData.studentNumber || !validateStudentNumber(formData.studentNumber),
+      studentNumber: !normalizedStudentNumber || !validateStudentNumber(normalizedStudentNumber),
       phone: !formData.phone || !validatePhoneNumber(formData.phone),
       faculty: !formData.faculty,
       department: !isGraduateSchool && !formData.department,
@@ -117,11 +126,11 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
       studentId: !studentIdImage
     };
     setErrors(newErrors);
-    if (formData.studentNumber && !validateStudentNumber(formData.studentNumber)) setStudentNumberError(t.studentNumberError);
+    if (normalizedStudentNumber && !validateStudentNumber(normalizedStudentNumber)) setStudentNumberError(t.studentNumberError);
     if (newErrors.name) return toast.error(t.nameRequired), scrollToError(nameRef), false;
     if (newErrors.furigana) return toast.error(t.furiganaRequired), scrollToError(furiganaRef), false;
-    if (!formData.studentNumber) return toast.error(t.studentNumberRequired), scrollToError(studentNumberRef), false;
-    if (!validateStudentNumber(formData.studentNumber)) return toast.error(t.studentNumberError), scrollToError(studentNumberRef), false;
+    if (!normalizedStudentNumber) return toast.error(t.studentNumberRequired), scrollToError(studentNumberRef), false;
+    if (!validateStudentNumber(normalizedStudentNumber)) return toast.error(t.studentNumberError), scrollToError(studentNumberRef), false;
     if (newErrors.phone)
       return (
         toast.error(
@@ -144,7 +153,7 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
     onComplete({
       name: formData.name,
       furigana: formData.furigana,
-      studentNumber: formData.studentNumber,
+      studentNumber: normalizeStudentNumber(formData.studentNumber),
       phone: formData.phone,
       major: isGraduateSchool ? formData.faculty : `${formData.faculty} ${formData.department}`,
       grade: formData.grade,
@@ -170,7 +179,7 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
               <div className="space-y-2" ref={nameRef}><Label htmlFor="name">{t.nameLabel}</Label><Input id="name" placeholder={t.namePlaceholder} value={formData.name} onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setErrors({ ...errors, name: false }); }} className={`h-12 ${errors.name ? 'border-red-500' : ''}`} /></div>
               <div className="space-y-2" ref={furiganaRef}><Label htmlFor="furigana">{t.furiganaLabel}</Label><Input id="furigana" placeholder={t.furiganaPlaceholder} value={formData.furigana} onChange={(e) => { const v = isComposingRef.current ? e.target.value : e.target.value.replace(/[\u3041-\u3096]/g, (m) => String.fromCharCode(m.charCodeAt(0) + 0x60)); setFormData({ ...formData, furigana: v }); setErrors({ ...errors, furigana: false }); }} onCompositionStart={() => { isComposingRef.current = true; }} onCompositionEnd={(e) => { isComposingRef.current = false; setFormData({ ...formData, furigana: e.currentTarget.value.replace(/[\u3041-\u3096]/g, (m) => String.fromCharCode(m.charCodeAt(0) + 0x60)) }); }} className={`h-12 ${errors.furigana ? 'border-red-500' : ''}`} /></div>
             </div>
-            <div className="space-y-2" ref={studentNumberRef}><Label htmlFor="studentNumber">{t.studentNumberLabel}</Label><Input id="studentNumber" placeholder={t.studentNumberPlaceholder} value={formData.studentNumber} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} onChange={(e) => { const value = e.target.value.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).toUpperCase(); setFormData((prev) => ({ ...prev, studentNumber: value })); setStudentNumberError(''); setErrors((prev) => ({ ...prev, studentNumber: false })); }} onBlur={(e) => { if (e.target.value && !validateStudentNumber(e.target.value)) setStudentNumberError(t.studentNumberError); }} className={`h-12 ${(studentNumberError || errors.studentNumber) ? 'border-red-500' : ''}`} /></div>
+            <div className="space-y-2" ref={studentNumberRef}><Label htmlFor="studentNumber">{t.studentNumberLabel}</Label><Input id="studentNumber" placeholder={t.studentNumberPlaceholder} value={formData.studentNumber} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} onChange={(e) => { const value = normalizeStudentNumber(e.target.value); setFormData((prev) => ({ ...prev, studentNumber: value })); setStudentNumberError(''); setErrors((prev) => ({ ...prev, studentNumber: false })); }} onBlur={(e) => { const value = normalizeStudentNumber(e.target.value); if (value !== formData.studentNumber) setFormData((prev) => ({ ...prev, studentNumber: value })); if (value && !validateStudentNumber(value)) setStudentNumberError(t.studentNumberError); }} className={`h-12 ${(studentNumberError || errors.studentNumber) ? 'border-red-500' : ''}`} /></div>
             <div className="space-y-2" ref={phoneRef}><Label htmlFor="phone">{language === 'ja' ? '電話番号' : 'Phone Number'}</Label><Input id="phone" placeholder={language === 'ja' ? '090-1234-5678' : '090-1234-5678'} value={formData.phone} onChange={(e) => { setFormData({ ...formData, phone: e.target.value }); setErrors({ ...errors, phone: false }); }} onBlur={(e) => { if (e.target.value && !validatePhoneNumber(e.target.value)) setErrors({ ...errors, phone: true }); }} className={`h-12 ${errors.phone ? 'border-red-500' : ''}`} /></div>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2" ref={facultyRef}><Label htmlFor="faculty">{t.facultyLabel}</Label><Select value={formData.faculty} onValueChange={(faculty) => { setFormData({ ...formData, faculty, department: '' }); setErrors({ ...errors, faculty: false }); }}><SelectTrigger className={`h-12! ${errors.faculty ? 'border-red-500' : ''}`}><SelectValue placeholder={t.facultyPlaceholder} /></SelectTrigger><SelectContent><SelectGroup><SelectLabel>{t.facultyGroupUndergrad}</SelectLabel>{Object.keys(faculties).filter((f) => (faculties[f] || []).length > 0).map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectGroup><div className="my-1 border-t border-gray-200" /><SelectGroup><SelectLabel>{t.facultyGroupGrad}</SelectLabel>{Object.keys(faculties).filter((f) => (faculties[f] || []).length === 0).map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectGroup></SelectContent></Select></div>

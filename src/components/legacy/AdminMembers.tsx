@@ -674,10 +674,6 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
             toast.success(language === 'ja' ? `年会費（${feeAmount}）の支払いを確認しました` : `Fee payment (${feeAmount}) confirmed`);
             setShowDetailModal(false);
           }}
-          onSetRenewalStatus={(isRenewal: boolean) => {
-            if (onSetRenewalStatus) onSetRenewalStatus(selectedUser.id, isRenewal);
-            toast.success(language === 'ja' ? (isRenewal ? '継続会員に設定しました' : '新規会員に設定しました') : (isRenewal ? 'Set as renewal member' : 'Set as new member'));
-          }}
         />
       )}
     </div>
