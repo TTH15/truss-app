@@ -1311,21 +1311,25 @@ export function AdminEvents({
         </div>
       )}
 
-      {/* イベント詳細表示 */}
+      {/* イベント詳細モーダル表示 */}
       {selectedEvent && !editMode && (
-        <div className={`bg-white rounded-[14px] p-6 relative ${selectedEventParticipantsCount >= selectedEvent.maxParticipants
-          ? 'border-2 border-[#00A63E]'
-          : 'border-2 border-[#49B1E4]'
-          }`}>
-          {/* 閉じるボタン */}
-          <button
-            onClick={handleCloseForm}
-            className="absolute top-4 right-4 text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"
+        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4" onClick={handleCloseForm}>
+          <div
+            className={`bg-white rounded-[14px] p-6 relative w-full max-w-[1100px] max-h-[90vh] overflow-y-auto ${selectedEventParticipantsCount >= selectedEvent.maxParticipants
+              ? 'border-2 border-[#00A63E]'
+              : 'border-2 border-[#49B1E4]'
+              }`}
+            onClick={(e) => e.stopPropagation()}
           >
-            <X className="w-4 h-4" />
-          </button>
+            {/* 閉じるボタン */}
+            <button
+              onClick={handleCloseForm}
+              className="absolute top-4 right-4 text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"
+            >
+              <X className="w-4 h-4" />
+            </button>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 左側：イベント情報 */}
             <div className="space-y-4">
               {/* タイトルと編集ボタン */}
@@ -1507,6 +1511,7 @@ export function AdminEvents({
                   </p>
                 )}
               </div>
+            </div>
             </div>
           </div>
         </div>
