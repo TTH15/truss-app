@@ -476,6 +476,14 @@ export function AdminEvents({
   const selectedEventParticipants = selectedEvent ? (eventParticipants[selectedEvent.id] || []) : [];
   const selectedEventParticipantsCount = selectedEventParticipants.length;
   const selectedEventLikesCount = selectedEvent?.likes || 0;
+  const selectedEventDetailTitle = selectedEvent ? getEventText(selectedEvent, 'title', language === 'ja' ? 'ja' : 'en') : '';
+  const selectedEventDetailDescription = selectedEvent
+    ? getEventText(selectedEvent, 'description', language === 'ja' ? 'ja' : 'en')
+    : '';
+  const selectedEventDetailLocation = selectedEvent
+    ? getEventText(selectedEvent, 'location', language === 'ja' ? 'ja' : 'en')
+    : '';
+  const selectedEventDetailTime = selectedEvent ? parseEventTime(selectedEvent) : { startTime: '', endTime: '' };
 
   const handleCloseForm = () => {
     setShowNewEventForm(false);
@@ -1321,21 +1329,13 @@ export function AdminEvents({
               }`}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 閉じるボタン */}
-            <button
-              onClick={handleCloseForm}
-              className="absolute top-4 right-4 text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 左側：イベント情報 */}
             <div className="space-y-4">
               {/* タイトルと編集ボタン */}
               <div className="flex items-start justify-between">
                 <h3 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">
-                  {language === 'ja' ? selectedEvent.titleJa : selectedEvent.titleEn}
+                  {selectedEventDetailTitle || (language === 'ja' ? '無題のイベント' : 'Untitled event')}
                 </h3>
                 <Button
                   variant="ghost"
@@ -1350,7 +1350,7 @@ export function AdminEvents({
               {/* イベント画像 */}
               {selectedEvent.image && (
                 <div className="rounded-[10px] overflow-hidden">
-                  <img src={selectedEvent.image} alt={selectedEvent.titleJa} className="w-full h-auto" />
+                  <img src={selectedEvent.image} alt={selectedEventDetailTitle} className="w-full h-[126px] object-cover" />
                 </div>
               )}
 
@@ -1360,9 +1360,7 @@ export function AdminEvents({
                   {language === 'ja' ? 'イベント説明' : 'Event Description'}
                 </h4>
                 <p className="text-[#3D3D4E] text-sm leading-relaxed whitespace-pre-wrap">
-                  {language === 'ja'
-                    ? (selectedEvent.descriptionJa || '説明文がありません')
-                    : (selectedEvent.descriptionEn || selectedEvent.descriptionJa || 'No description')}
+                  {selectedEventDetailDescription || (language === 'ja' ? '説明文がありません' : 'No description')}
                 </p>
               </div>
 
@@ -1374,11 +1372,15 @@ export function AdminEvents({
                 </div>
                 <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
                   <Clock className="w-4 h-4" />
-                  <span>{selectedEvent.startTime}</span>
+                  <span>
+                    {selectedEventDetailTime.startTime || selectedEventDetailTime.endTime
+                      ? `${selectedEventDetailTime.startTime || '--:--'} 〜 ${selectedEventDetailTime.endTime || '--:--'}`
+                      : '--:--'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
                   <MapPin className="w-4 h-4" />
-                  <span>{language === 'ja' ? (selectedEvent.location || '') : (selectedEvent.locationEn || selectedEvent.location || '')}</span>
+                  <span>{selectedEventDetailLocation}</span>
                 </div>
                 {selectedEvent.googleMapUrl && (
                   <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
