@@ -152,6 +152,8 @@ function FeeUnpaidWalletIcon({ tooltip }: { tooltip: string }) {
 
 export function AdminMembers({ language, approvedMembers, pendingUsers, isLoading = false, onApproveUser, onRejectUser, onRequestReupload, onOpenChat, onSendBulkEmail, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser }: AdminMembersProps) {
   const t = translations[language];
+  const toKatakana = (value: string) =>
+    value.replace(/[\u3041-\u3096]/g, (m) => String.fromCharCode(m.charCodeAt(0) + 0x60));
   const [activeTab, setActiveTab] = useState<'approved' | 'pending'>('approved');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
@@ -174,7 +176,15 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
   const displayedMembers = activeTab === 'approved' ? approvedMembersList : pendingUsers;
 
   const filteredMembers = displayedMembers.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(searchQuery.toLowerCase()) || member.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase();
+    const qKana = toKatakana(q);
+    const memberFurigana = (member.furigana || '').toLowerCase();
+    const memberFuriganaKana = toKatakana(memberFurigana);
+    const matchesSearch =
+      member.name.toLowerCase().includes(q) ||
+      member.email.toLowerCase().includes(q) ||
+      memberFurigana.includes(q) ||
+      memberFuriganaKana.includes(qKana);
     if (!matchesSearch) return false;
     const categoryFilters = [filters.japanese, filters.regularInternational, filters.exchange];
     const anyCategorySelected = categoryFilters.some(f => f);
