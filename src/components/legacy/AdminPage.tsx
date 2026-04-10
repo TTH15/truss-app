@@ -72,7 +72,27 @@ const translations = {
 
 export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, membersLoading = false, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onDeleteBoardPost, onSetPinnedBoardPost, onSendBulkEmail }: AdminPageProps) {
   const t = translations[language];
+  const ADMIN_TAB_STORAGE_KEY = `truss-admin-tab-${user.id}`;
   const [currentTab, setCurrentTab] = useState<AdminTab>('members');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(ADMIN_TAB_STORAGE_KEY) as AdminTab | null;
+      if (!saved) return;
+      const validTabs: AdminTab[] = ['members', 'events', 'gallery', 'boards', 'chat'];
+      if (validTabs.includes(saved)) setCurrentTab(saved);
+    } catch {
+      // ignore storage errors
+    }
+  }, [ADMIN_TAB_STORAGE_KEY]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ADMIN_TAB_STORAGE_KEY, currentTab);
+    } catch {
+      // ignore storage errors
+    }
+  }, [ADMIN_TAB_STORAGE_KEY, currentTab]);
 
   useEffect(() => {
     if (selectedChatUserId) {

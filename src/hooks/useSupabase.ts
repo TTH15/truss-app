@@ -80,6 +80,7 @@ export function appEventToDbEvent(appEvent: Partial<Event>): Partial<DbEventInse
   if (appEvent.location !== undefined) result.location = appEvent.location;
   if (appEvent.locationEn !== undefined) result.location_en = appEvent.locationEn || null;
   if (appEvent.googleMapUrl !== undefined) result.google_map_url = appEvent.googleMapUrl || null;
+  if (appEvent.participationFee !== undefined) result.participation_fee = appEvent.participationFee;
   if (appEvent.maxParticipants !== undefined) result.max_participants = appEvent.maxParticipants;
   if (appEvent.currentParticipants !== undefined) result.current_participants = appEvent.currentParticipants;
   if (appEvent.likes !== undefined) result.likes = appEvent.likes;

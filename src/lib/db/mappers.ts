@@ -72,6 +72,7 @@ export function mapDbEventRowToEvent(row: DbEvent): Event {
     location: row.location,
     locationEn: row.location_en ?? undefined,
     googleMapUrl: row.google_map_url ?? undefined,
+    participationFee: row.participation_fee ?? 0,
     maxParticipants: row.max_participants,
     currentParticipants: row.current_participants,
     likes: row.likes,

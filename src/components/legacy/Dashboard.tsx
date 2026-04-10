@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Home, Calendar, Users, Image, Mail, Bell, LogOut, X, Check, Clock, AlertCircle, Upload, FileText, CreditCard, MessageCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { UserAvatarImage } from './UserAvatarImage';
@@ -123,6 +123,7 @@ export function Dashboard({
   onDeleteBoardPost,
   approvedMembers,
 }: DashboardProps) {
+  const DASHBOARD_PAGE_STORAGE_KEY = `truss-dashboard-page-${user.id}`;
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
   const [selectedNotification, setSelectedNotification] = useState<SelectedNotification | null>(null);
@@ -134,6 +135,25 @@ export function Dashboard({
   const [feePaymentDialogOpen, setFeePaymentDialogOpen] = useState(false);
   const t = translations[language];
   const profileDone = isProfileCompleteForParticipation(user);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DASHBOARD_PAGE_STORAGE_KEY) as Page | null;
+      if (!saved) return;
+      const validPages: Page[] = ['home', 'events', 'members', 'bulletin', 'gallery', 'profile', 'notifications', 'messages', 'message-detail'];
+      if (validPages.includes(saved)) setCurrentPage(saved);
+    } catch {
+      // ignore storage errors
+    }
+  }, [DASHBOARD_PAGE_STORAGE_KEY]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DASHBOARD_PAGE_STORAGE_KEY, currentPage);
+    } catch {
+      // ignore storage errors
+    }
+  }, [DASHBOARD_PAGE_STORAGE_KEY, currentPage]);
 
   const unreadMessageCount = () => {
     const userMessages = messageThreads[user.id] || [];

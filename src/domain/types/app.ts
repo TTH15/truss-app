@@ -61,6 +61,7 @@ export interface Event {
   location: string;
   locationEn?: string;
   googleMapUrl?: string;
+  participationFee?: number;
   maxParticipants: number;
   currentParticipants: number;
   likes: number;

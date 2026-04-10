@@ -60,6 +60,7 @@ const translations = {
     locationNamePlaceholderEn: '英語の場所名',
     googleMapUrl: 'Google Map URL',
     googleMapUrlPlaceholder: 'https://maps.google.com/...',
+    participationFee: '参加費（円）',
     maxParticipants: '最大参加者数',
     save: '保存',
     cancel: 'キャンセル',
@@ -108,6 +109,7 @@ const translations = {
     locationNamePlaceholderEn: 'Location Name in English',
     googleMapUrl: 'Google Map URL',
     googleMapUrlPlaceholder: 'https://maps.google.com/...',
+    participationFee: 'Participation Fee (JPY)',
     maxParticipants: 'Max Participants',
     save: 'Save',
     cancel: 'Cancel',
@@ -310,6 +312,7 @@ export function AdminEvents({
     location: '',
     locationEn: '',
     googleMapUrl: '',
+    participationFee: '0',
     maxParticipants: '',
     lineGroupUrl: '',
     image: null as string | null,
@@ -374,6 +377,7 @@ export function AdminEvents({
       location: getEventText(sourceEvent, 'location', 'ja'),
       locationEn: getEventText(sourceEvent, 'location', 'en'),
       googleMapUrl: sourceEvent?.googleMapUrl || '',
+      participationFee: String(sourceEvent?.participationFee ?? 0),
       maxParticipants: String(sourceEvent?.maxParticipants || ''),
       lineGroupUrl: '',
       image: sourceEvent?.image || null,
@@ -409,6 +413,7 @@ export function AdminEvents({
         location: getEventText(sourceEvent, 'location', 'ja'),
         locationEn: getEventText(sourceEvent, 'location', 'en') || undefined,
         googleMapUrl: sourceEvent?.googleMapUrl || undefined,
+        participationFee: Number(sourceEvent?.participationFee ?? 0),
         maxParticipants: parseInt(String(sourceEvent?.maxParticipants ?? ''), 10) || 30,
         image: sourceEvent?.image || undefined,
         eventColor: sourceEvent?.eventColor || '#49B1E4',
@@ -443,6 +448,7 @@ export function AdminEvents({
       location: getEventText(event, 'location', 'ja'),
       locationEn: getEventText(event, 'location', 'en'),
       googleMapUrl: event?.googleMapUrl || '',
+      participationFee: String(event?.participationFee ?? 0),
       maxParticipants: String(event?.maxParticipants || ''),
       lineGroupUrl: event?.lineGroupLink || event?.lineGroupUrl || '',
       image: event?.image || null,
@@ -476,6 +482,7 @@ export function AdminEvents({
   const selectedEventParticipants = selectedEvent ? (eventParticipants[selectedEvent.id] || []) : [];
   const selectedEventParticipantsCount = selectedEventParticipants.length;
   const selectedEventLikesCount = selectedEvent?.likes || 0;
+  const selectedEventParticipationFee = Number(selectedEvent?.participationFee ?? 0);
   const selectedEventDetailTitle = selectedEvent ? getEventText(selectedEvent, 'title', language === 'ja' ? 'ja' : 'en') : '';
   const selectedEventDetailDescription = selectedEvent
     ? getEventText(selectedEvent, 'description', language === 'ja' ? 'ja' : 'en')
@@ -500,6 +507,7 @@ export function AdminEvents({
       location: '',
       locationEn: '',
       googleMapUrl: '',
+      participationFee: '0',
       maxParticipants: '',
       lineGroupUrl: '',
       image: null,
@@ -560,6 +568,7 @@ export function AdminEvents({
       location: getEventText(selectedEvent, 'location', 'ja'),
       locationEn: getEventText(selectedEvent, 'location', 'en'),
       googleMapUrl: selectedEvent.googleMapUrl || '',
+      participationFee: String(selectedEvent.participationFee ?? 0),
       maxParticipants: String(selectedEvent.maxParticipants || ''),
       lineGroupUrl: selectedEvent.lineGroupLink || selectedEvent.lineGroupUrl || '',
       image: selectedEvent.image || null,
@@ -1167,6 +1176,21 @@ export function AdminEvents({
                     className="bg-[#EEEBE3] border-0 w-24"
                   />
                 </div>
+
+                {/* 参加費 */}
+                <div>
+                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                    {t.participationFee}
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={newEvent.participationFee}
+                    onChange={(e) => setNewEvent({ ...newEvent, participationFee: e.target.value })}
+                    className="bg-[#EEEBE3] border-0 w-32"
+                  />
+                </div>
               </div>
 
               {/* 右側 */}
@@ -1405,6 +1429,10 @@ export function AdminEvents({
                   </span>
                   <span>{language === 'ja' ? '参加者' : 'Participants'}</span>
                 </div>
+                <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
+                  <span className="font-semibold">¥{selectedEventParticipationFee.toLocaleString()}</span>
+                  <span>{language === 'ja' ? '参加費' : 'Participation fee'}</span>
+                </div>
                 {/* いいね数 */}
                 <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
                   <Heart className="w-4 h-4 text-red-500" />
@@ -1494,16 +1522,18 @@ export function AdminEvents({
                         />
                         <span className="text-[#3D3D4E] text-xs">{t.attended}</span>
                       </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox
-                          checked={participant.paid || false}
-                          onCheckedChange={() => {
-                            // TODO: 支払い状態を更新する処理を実装
-                          }}
-                          className="border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
-                        />
-                        <span className="text-[#3D3D4E] text-xs">{t.paid}</span>
-                      </label>
+                      {selectedEventParticipationFee >= 1 && (
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={participant.paid || false}
+                            onCheckedChange={() => {
+                              // TODO: 支払い状態を更新する処理を実装
+                            }}
+                            className="border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
+                          />
+                          <span className="text-[#3D3D4E] text-xs">{t.paid}</span>
+                        </label>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1631,6 +1661,21 @@ export function AdminEvents({
                     value={newEvent.maxParticipants}
                     onChange={(e) => setNewEvent({ ...newEvent, maxParticipants: e.target.value })}
                     className="bg-[#EEEBE3] border-0 w-24"
+                  />
+                </div>
+
+                {/* 参加費 */}
+                <div>
+                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
+                    {t.participationFee}
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={newEvent.participationFee}
+                    onChange={(e) => setNewEvent({ ...newEvent, participationFee: e.target.value })}
+                    className="bg-[#EEEBE3] border-0 w-32"
                   />
                 </div>
               </div>
@@ -1968,6 +2013,7 @@ export function AdminEvents({
                           location: newEvent.location,
                           locationEn: newEvent.locationEn || undefined,
                           googleMapUrl: newEvent.googleMapUrl || undefined,
+                          participationFee: Math.max(0, parseInt(newEvent.participationFee || '0', 10) || 0),
                           maxParticipants: parseInt(newEvent.maxParticipants) || 30,
                           image: newEvent.image || undefined,
                           eventColor: newEvent.eventColor || '#49B1E4',
@@ -1992,6 +2038,7 @@ export function AdminEvents({
                             location: newEvent.location,
                             locationEn: newEvent.locationEn || undefined,
                             googleMapUrl: newEvent.googleMapUrl || undefined,
+                            participationFee: Math.max(0, parseInt(newEvent.participationFee || '0', 10) || 0),
                             maxParticipants: parseInt(newEvent.maxParticipants) || 30,
                             image: newEvent.image || undefined,
                             eventColor: newEvent.eventColor || '#49B1E4',

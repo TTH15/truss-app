@@ -82,6 +82,7 @@ export interface DbEvent {
   location: string;
   location_en: string | null;
   google_map_url: string | null;
+  participation_fee: number;
   max_participants: number;
   current_participants: number;
   likes: number;

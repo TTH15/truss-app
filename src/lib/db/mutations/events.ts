@@ -20,6 +20,7 @@ export async function insertEventRow(
     location: eventData.location,
     location_en: eventData.locationEn ?? null,
     google_map_url: eventData.googleMapUrl ?? null,
+    participation_fee: eventData.participationFee ?? 0,
     max_participants: eventData.maxParticipants,
     current_participants: 0,
     likes: 0,
@@ -48,6 +49,9 @@ export function buildEventUpdatePatch(
   if (updates.location !== undefined) dbUpdates.location = updates.location;
   if (updates.locationEn !== undefined) dbUpdates.location_en = updates.locationEn;
   if (updates.googleMapUrl !== undefined) dbUpdates.google_map_url = updates.googleMapUrl;
+  if (updates.participationFee !== undefined) {
+    dbUpdates.participation_fee = updates.participationFee;
+  }
   if (updates.maxParticipants !== undefined) {
     dbUpdates.max_participants = updates.maxParticipants;
   }
