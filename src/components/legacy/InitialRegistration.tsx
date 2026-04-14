@@ -90,7 +90,7 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
       .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
       .replace(/[\s\u3000]/g, '')
       .toUpperCase();
-  const validateStudentNumber = (value: string) => !value || /^[A-Z0-9]{8}$/.test(value);
+  const validateStudentNumber = (value: string) => !value || /^[A-Z0-9]{7,8}$/.test(value);
   const validatePhoneNumber = (value: string) => {
     const normalized = value.replace(/[\s-]/g, '');
     return /^\d{8,15}$/.test(normalized);
