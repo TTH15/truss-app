@@ -51,9 +51,12 @@ const translations = {
 
 export function InitialRegistration({ language, onLanguageChange, email, onComplete, onBack, existingUser }: InitialRegistrationProps) {
   const t = translations[language];
+  const MAX_STUDENT_ID_SIZE_MB = 10;
+  const MAX_STUDENT_ID_DATA_URL_LEN = 2_000_000;
   const [formData, setFormData] = useState({ name: '', furigana: '', studentNumber: '', phone: '', faculty: '', department: '', grade: '', category: 'japanese' as 'japanese' | 'regular-international' | 'exchange' });
   const [studentIdImage, setStudentIdImage] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
+  const [uploadingStudentId, setUploadingStudentId] = useState(false);
   const [studentNumberError, setStudentNumberError] = useState<string>('');
   const [errors, setErrors] = useState({ name: false, furigana: false, studentNumber: false, phone: false, faculty: false, department: false, grade: false, studentId: false });
   const nameRef = useRef<HTMLDivElement>(null);
@@ -97,17 +100,68 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
   };
   const scrollToError = (ref: React.RefObject<HTMLDivElement>) => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const readFileAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => resolve(event.target?.result as string);
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+
+  const compressImageDataUrl = (dataUrl: string, maxSide: number = 1600, quality: number = 0.82) =>
+    new Promise<string>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to create canvas context'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('Failed to decode image'));
+      img.src = dataUrl;
+    });
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setStudentIdImage(event.target?.result as string);
+    if (!file.type.startsWith('image/')) {
+      toast.error(language === 'ja' ? '画像ファイルを選択してください' : 'Please select an image file');
+      return;
+    }
+    if (file.size > MAX_STUDENT_ID_SIZE_MB * 1024 * 1024) {
+      toast.error(
+        language === 'ja'
+          ? `画像サイズは${MAX_STUDENT_ID_SIZE_MB}MB以下にしてください`
+          : `Please keep image size under ${MAX_STUDENT_ID_SIZE_MB}MB`
+      );
+      return;
+    }
+    setUploadingStudentId(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const normalized = dataUrl.length > MAX_STUDENT_ID_DATA_URL_LEN
+        ? await compressImageDataUrl(dataUrl)
+        : dataUrl;
+      setStudentIdImage(normalized);
       setFileName(file.name);
       setErrors({ ...errors, studentId: false });
       toast.success(language === 'ja' ? '学生証をアップロードしました' : 'Student ID uploaded successfully');
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Student ID upload error:', error);
+      toast.error(language === 'ja' ? '画像の読み込みに失敗しました' : 'Failed to process image');
+    } finally {
+      setUploadingStudentId(false);
+      e.currentTarget.value = '';
+    }
   };
 
   const validateForm = () => {
@@ -145,6 +199,10 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
     if (newErrors.department && !isGraduateSchool) return toast.error(t.departmentRequired), scrollToError(departmentRef), false;
     if (newErrors.grade) return toast.error(t.gradeRequired), scrollToError(gradeRef), false;
     if (newErrors.studentId) return toast.error(t.studentIdRequired), scrollToError(studentIdRef), false;
+    if (uploadingStudentId) {
+      toast.error(language === 'ja' ? '学生証画像の処理が完了するまでお待ちください' : 'Please wait until student ID processing completes');
+      return false;
+    }
     return true;
   };
 
@@ -187,8 +245,8 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
             </div>
             <div className="space-y-2" ref={gradeRef}><Label htmlFor="grade">{t.gradeLabel}</Label><Select value={formData.grade} onValueChange={(value) => { setFormData({ ...formData, grade: value }); setErrors({ ...errors, grade: false }); }}><SelectTrigger className={`h-12! ${errors.grade ? 'border-red-500' : ''}`}><SelectValue placeholder={t.gradePlaceholder} /></SelectTrigger><SelectContent>{!isGraduateSchool ? <><SelectItem value="1">{t.grade1}</SelectItem><SelectItem value="2">{t.grade2}</SelectItem><SelectItem value="3">{t.grade3}</SelectItem><SelectItem value="4">{t.grade4}</SelectItem><SelectItem value="other">{t.gradeOther}</SelectItem></> : <><SelectItem value="M1">{t.gradeM1}</SelectItem><SelectItem value="M2">{t.gradeM2}</SelectItem><SelectItem value="D1">{t.gradeD1}</SelectItem><SelectItem value="D2">{t.gradeD2}</SelectItem><SelectItem value="D3">{t.gradeD3}</SelectItem><SelectItem value="other">{t.gradeOther}</SelectItem></>}</SelectContent></Select></div>
             <div className="space-y-3"><Label>{t.categoryLabel}</Label><div className="space-y-3">{(['japanese', 'regular-international', 'exchange'] as const).map((cat) => <label key={cat} className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer"><input type="radio" name="category" value={cat} checked={formData.category === cat} onChange={(e) => setFormData({ ...formData, category: e.target.value as 'japanese' | 'regular-international' | 'exchange' })} className="w-4 h-4" /><div className="font-medium text-[#3D3D4E]">{cat === 'japanese' ? t.japanese : cat === 'regular-international' ? t.regularInternational : t.exchange}</div></label>)}</div></div>
-            <div className="space-y-2" ref={studentIdRef}><Label htmlFor="studentId">{t.studentIdLabel}</Label><div className={`border-2 border-dashed rounded-lg p-6 text-center ${errors.studentId ? 'border-red-500' : 'border-gray-300'}`}>{studentIdImage ? <div className="space-y-3"><img src={studentIdImage} alt="Student ID" className="max-h-48 mx-auto rounded" /><div className="flex items-center justify-center gap-2 text-sm text-green-600"><FileText className="w-4 h-4" />{fileName}</div><Button variant="outline" onClick={() => document.getElementById('studentId')?.click()}>{language === 'ja' ? '別の写真を選択' : 'Choose Different Photo'}</Button></div> : <div className="space-y-3"><Upload className="w-12 h-12 text-gray-400 mx-auto" /><p className="text-gray-600">{t.uploadButton}</p><Button variant="outline" onClick={() => document.getElementById('studentId')?.click()}><Upload className="w-4 h-4 mr-2" />{language === 'ja' ? 'ファイルを選択' : 'Select File'}</Button></div>}<input id="studentId" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" /></div></div>
-            <Button type="button" onClick={handleSubmit} className="w-full bg-[#49B1E4] hover:bg-[#3A9BD4]">{t.submitButton}</Button>
+            <div className="space-y-2" ref={studentIdRef}><Label htmlFor="studentId">{t.studentIdLabel}</Label><div className={`border-2 border-dashed rounded-lg p-6 text-center ${errors.studentId ? 'border-red-500' : 'border-gray-300'}`}>{studentIdImage ? <div className="space-y-3"><img src={studentIdImage} alt="Student ID" className="max-h-48 mx-auto rounded" /><div className="flex items-center justify-center gap-2 text-sm text-green-600"><FileText className="w-4 h-4" />{fileName}</div><Button variant="outline" disabled={uploadingStudentId} onClick={() => document.getElementById('studentId')?.click()}>{language === 'ja' ? '別の写真を選択' : 'Choose Different Photo'}</Button></div> : <div className="space-y-3"><Upload className="w-12 h-12 text-gray-400 mx-auto" /><p className="text-gray-600">{t.uploadButton}</p><Button variant="outline" disabled={uploadingStudentId} onClick={() => document.getElementById('studentId')?.click()}><Upload className="w-4 h-4 mr-2" />{language === 'ja' ? 'ファイルを選択' : 'Select File'}</Button></div>}<input id="studentId" type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" /></div></div>
+            <Button type="button" disabled={uploadingStudentId} onClick={handleSubmit} className="w-full bg-[#49B1E4] hover:bg-[#3A9BD4]">{uploadingStudentId ? (language === 'ja' ? '画像処理中...' : 'Processing image...') : t.submitButton}</Button>
           </CardContent>
         </Card>
       </div>
