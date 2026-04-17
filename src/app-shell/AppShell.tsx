@@ -20,6 +20,7 @@ export type {
 export default function AppShell(props: {
   initialPage?: "landing" | "auth-selection" | "auth-complete" | "login" | "admin-login" | "email-verification" | "initial-registration" | "profile" | "dashboard" | "admin";
   standaloneAdmin?: boolean;
+  sharedEventToken?: string;
 }) {
   return <LegacyApp {...props} />;
 }

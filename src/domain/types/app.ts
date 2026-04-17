@@ -77,6 +77,7 @@ export interface Event {
   photos?: number;
   lineGroupLink?: string;
   lineGroupUrl?: string;
+  shareToken?: string;
   participants?: Array<{ id: string; name: string; email: string; attended?: boolean; paid?: boolean }>;
 }
 

@@ -13,6 +13,9 @@ export async function sendMessageRow(input: {
   receiverId: string;
   text: string;
   isAdmin: boolean;
+  isBroadcast?: boolean;
+  broadcastSubject?: string;
+  broadcastSubjectEn?: string;
 }): Promise<{ error: Error | null }> {
   const { error } = await supabase.from("messages").insert({
     sender_id: input.senderId,
@@ -20,8 +23,38 @@ export async function sendMessageRow(input: {
     sender_name: input.senderName,
     text: input.text,
     is_admin: input.isAdmin,
+    is_broadcast: input.isBroadcast ?? false,
+    broadcast_subject: input.broadcastSubject ?? null,
+    broadcast_subject_en: input.broadcastSubjectEn ?? null,
   });
 
+  return { error: toErrorOrNull(error) };
+}
+
+export async function sendBulkMessagesRow(input: {
+  senderId: string;
+  senderName: string;
+  messages: Array<{
+    receiverId: string;
+    text: string;
+    isAdmin: boolean;
+    isBroadcast?: boolean;
+    broadcastSubject?: string;
+    broadcastSubjectEn?: string;
+  }>;
+}): Promise<{ error: Error | null }> {
+  if (input.messages.length === 0) return { error: null };
+  const rows = input.messages.map((message) => ({
+    sender_id: input.senderId,
+    receiver_id: message.receiverId,
+    sender_name: input.senderName,
+    text: message.text,
+    is_admin: message.isAdmin,
+    is_broadcast: message.isBroadcast ?? false,
+    broadcast_subject: message.broadcastSubject ?? null,
+    broadcast_subject_en: message.broadcastSubjectEn ?? null,
+  }));
+  const { error } = await supabase.from("messages").insert(rows);
   return { error: toErrorOrNull(error) };
 }
 

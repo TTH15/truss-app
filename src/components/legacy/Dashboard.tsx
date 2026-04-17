@@ -50,6 +50,7 @@ interface DashboardProps {
   onToggleInterest?: (postId: number) => Promise<void>;
   onDeleteBoardPost?: (postId: number) => Promise<void>;
   approvedMembers: User[];
+  forceOpenEventId?: number;
 }
 
 type Page = 'home' | 'events' | 'members' | 'bulletin' | 'gallery' | 'profile' | 'notifications' | 'messages' | 'message-detail';
@@ -122,6 +123,7 @@ export function Dashboard({
   onToggleInterest,
   onDeleteBoardPost,
   approvedMembers,
+  forceOpenEventId,
 }: DashboardProps) {
   const DASHBOARD_PAGE_STORAGE_KEY = `truss-dashboard-page-${user.id}`;
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -133,6 +135,7 @@ export function Dashboard({
   const [highlightEventId, setHighlightEventId] = useState<number | undefined>(undefined);
   const [messageHistory, setMessageHistory] = useState<MessageHistory>({});
   const [feePaymentDialogOpen, setFeePaymentDialogOpen] = useState(false);
+  const [pendingOpenEventId, setPendingOpenEventId] = useState<number | undefined>(undefined);
   const t = translations[language];
   const profileDone = isProfileCompleteForParticipation(user);
 
@@ -194,6 +197,14 @@ export function Dashboard({
     setCurrentPage('events');
     setTimeout(() => setHighlightEventId(undefined), 3000);
   };
+
+  useEffect(() => {
+    if (!forceOpenEventId) return;
+    setCurrentPage('events');
+    setHighlightEventId(forceOpenEventId);
+    setPendingOpenEventId(forceOpenEventId);
+    setTimeout(() => setHighlightEventId(undefined), 3000);
+  }, [forceOpenEventId]);
 
   return (
     <div className="min-h-screen bg-[#F5F1E8]">
@@ -535,7 +546,7 @@ export function Dashboard({
         />
 
         {currentPage === 'home' && <HomePage language={language} user={user} events={events} onNavigateToEvent={handleNavigateToEvent} onOpenProfile={onOpenProfile} onReopenInitialRegistration={onReopenInitialRegistration} onDismissReuploadNotification={onDismissReuploadNotification} onOpenFeePayment={() => setFeePaymentDialogOpen(true)} />}
-        {currentPage === 'events' && <EventsPage language={language} events={events} attendingEvents={attendingEvents} likedEvents={likedEvents} onToggleAttending={onToggleAttending} onToggleLike={onToggleLike} highlightEventId={highlightEventId} onAddEventParticipant={onAddEventParticipant} user={user} />}
+        {currentPage === 'events' && <EventsPage language={language} events={events} attendingEvents={attendingEvents} likedEvents={likedEvents} onToggleAttending={onToggleAttending} onToggleLike={onToggleLike} highlightEventId={highlightEventId} openEventId={pendingOpenEventId} onOpenEventHandled={() => setPendingOpenEventId(undefined)} onAddEventParticipant={onAddEventParticipant} user={user} />}
         {currentPage === 'members' && <MembersPage language={language} members={approvedMembers.filter((member) => !member.isAdmin)} />}
         {currentPage === 'bulletin' && <BulletinBoard language={language} user={user} onInterested={handleInterested} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onAddReply={onAddReply} onToggleInterest={onToggleInterest} onDeleteBoardPost={onDeleteBoardPost} />}
         {currentPage === 'gallery' && <GalleryPage language={language} currentUser={user} />}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
@@ -12,12 +12,16 @@ import { toast } from 'sonner';
 import { AdminChatMessages } from './AdminChatMessages';
 import { translateText } from '../../utils/translate';
 import type { Language, MessageThread, User as UserType, ChatThreadMetadata } from '../../domain/types/app';
+import type { DbAdminBroadcast } from '../../types/database.types';
+import { supabase } from '../../lib/supabase';
 
 interface AdminChatProps {
+  adminUserId: string;
   language: Language;
   messageThreads: MessageThread;
   onUpdateMessageThreads: (threads: MessageThread) => void;
   onSendMessage?: (receiverId: string, text: string, isAdmin?: boolean) => Promise<void>;
+  onSendBulkMessages?: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string }>) => Promise<void>;
   approvedMembers?: UserType[];
   pendingUsers?: UserType[];
   chatThreadMetadata: ChatThreadMetadata;
@@ -33,7 +37,7 @@ const translations = {
   en: { sendBroadcast: 'New Broadcast', recipients: 'Recipients', japanese: 'Japanese Students Only', exchange: 'Exchange Students Only', regularInternational: 'Regular International Students Only', notificationType: 'Notification Type', inAppNotification: 'In-App Notification', emailNotification: 'Email Notification', scheduledDate: 'Scheduled Date/Time', selectDateTime: 'Leave empty for immediate send', send: 'Send', cancel: 'Cancel', sent: 'Sent', scheduled: 'Scheduled', members: 'Members', broadcastHistory: 'Broadcast History', memberChat: 'Member Chat', broadcast: 'Broadcast', translateToEnglish: 'Translate to English' }
 };
 
-export function AdminChat({ language, messageThreads, onUpdateMessageThreads, onSendMessage, approvedMembers, pendingUsers, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat }: AdminChatProps) {
+export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessageThreads, onSendMessage, onSendBulkMessages, approvedMembers, pendingUsers, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat }: AdminChatProps) {
   const t = translations[language];
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [year, setYear] = useState('2026');
@@ -48,11 +52,54 @@ export function AdminChat({ language, messageThreads, onUpdateMessageThreads, on
   const [messageEn, setMessageEn] = useState('');
   const years = Array.from({ length: 7 }, (_, i) => (2024 + i).toString());
   const [broadcasts, setBroadcasts] = useState<BroadcastMessage[]>([]);
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+  const [isLoadingBroadcasts, setIsLoadingBroadcasts] = useState(false);
 
   const getRecipientLabel = (recipients: string) => recipients;
   const getNotificationTypeIcon = (type: string) => type === 'email' ? <Mail className="w-4 h-4" /> : type === 'inApp' ? <Bell className="w-4 h-4" /> : <><Mail className="w-4 h-4" /><Bell className="w-4 h-4" /></>;
   const toggleNotificationType = (type: string) => notificationTypes.includes(type) ? setNotificationTypes(notificationTypes.filter((t) => t !== type)) : setNotificationTypes([...notificationTypes, type]);
   const toggleRecipient = (recipient: string) => selectedRecipients.includes(recipient) ? setSelectedRecipients(selectedRecipients.filter((r) => r !== recipient)) : setSelectedRecipients([...selectedRecipients, recipient]);
+  const recipientKeyToLabel = (key: string) => {
+    if (key === 'all') return language === 'ja' ? '全員' : 'All';
+    if (key === 'japanese') return t.japanese;
+    if (key === 'exchange') return t.exchange;
+    if (key === 'regularInternational') return t.regularInternational;
+    return key;
+  };
+  const mapBroadcastRow = (row: DbAdminBroadcast): BroadcastMessage => {
+    const subject = language === 'ja' ? (row.subject_ja || row.subject_en) : (row.subject_en || row.subject_ja);
+    const message = language === 'ja' ? (row.message_ja || row.message_en) : (row.message_en || row.message_ja);
+    const sentAt = row.status === 'scheduled' ? row.scheduled_at : row.sent_at;
+    return {
+      id: row.id,
+      subject: subject || '-',
+      message: message || '-',
+      recipients: (row.recipient_filters || []).map((k) => recipientKeyToLabel(k)).join(', ') || recipientKeyToLabel('all'),
+      recipientCount: row.recipient_count,
+      status: row.status,
+      sentTime: sentAt ? new Date(sentAt).toLocaleString(language === 'ja' ? 'ja-JP' : 'en-US') : '-',
+      notificationType: row.notification_type,
+    };
+  };
+
+  useEffect(() => {
+    const loadBroadcasts = async () => {
+      setIsLoadingBroadcasts(true);
+      const { data, error } = await supabase
+        .from('admin_broadcasts')
+        .select('*')
+        .eq('admin_user_id', adminUserId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      setIsLoadingBroadcasts(false);
+      if (error) {
+        toast.error(language === 'ja' ? '一斉送信履歴の取得に失敗しました' : 'Failed to load broadcast history');
+        return;
+      }
+      setBroadcasts((data ?? []).map((row) => mapBroadcastRow(row)));
+    };
+    if (activeTab === 'broadcast') void loadBroadcasts();
+  }, [adminUserId, activeTab, language]);
 
   const handleTranslateJaToEn = async () => {
     if (!subjectJa.trim() && !messageJa.trim()) return toast.error(language === 'ja' ? '翻訳する内容を入力してください' : 'Please enter text to translate');
@@ -71,10 +118,11 @@ export function AdminChat({ language, messageThreads, onUpdateMessageThreads, on
   };
 
   const handleSendBroadcast = async () => {
-    if (!onSendMessage || !approvedMembers || approvedMembers.length === 0) {
+    if (!approvedMembers || approvedMembers.length === 0) {
       toast.error(language === 'ja' ? '送信先メンバーが見つかりません' : 'No recipients found');
       return;
     }
+    if (isSendingBroadcast) return;
     const recipients = approvedMembers.filter((member) => {
       if (member.isAdmin) return false;
       if (selectedRecipients.includes('all') || selectedRecipients.length === 0) return true;
@@ -93,17 +141,55 @@ export function AdminChat({ language, messageThreads, onUpdateMessageThreads, on
       toast.error(language === 'ja' ? '件名またはメッセージを入力してください' : 'Please enter a subject or message');
       return;
     }
+    setIsSendingBroadcast(true);
     try {
-      await Promise.all(recipients.map((member) => onSendMessage(member.id, payload, true)));
+      if (onSendBulkMessages) {
+        await onSendBulkMessages(
+          recipients.map((member) => ({
+            receiverId: member.id,
+            text: payload,
+            isAdmin: true,
+            isBroadcast: true,
+            broadcastSubject: subjectJa || subjectEn,
+            broadcastSubjectEn: subjectEn || subjectJa,
+          }))
+        );
+      } else if (onSendMessage) {
+        await Promise.all(recipients.map((member) => onSendMessage(member.id, payload, true)));
+      } else {
+        throw new Error('No sender is available');
+      }
     } catch {
       toast.error(language === 'ja' ? '送信に失敗しました' : 'Failed to send');
+      setIsSendingBroadcast(false);
       return;
     }
     const isScheduled = year && monthDay && time && new Date(`${year}-${monthDay}T${time}`) > new Date();
     const notifType = notificationTypes.includes('inApp') && notificationTypes.includes('email') ? 'both' : notificationTypes.includes('email') ? 'email' : 'inApp';
-    const newBroadcast: BroadcastMessage = { id: broadcasts.length + 1, subject: subjectJa || subjectEn, message: messageJa || messageEn, recipients: selectedRecipients.join(', '), recipientCount: recipients.length, status: isScheduled ? 'scheduled' : 'sent', sentTime: isScheduled ? `${year}-${monthDay}T${time}` : new Date().toLocaleString('ja-JP'), notificationType: notifType as BroadcastMessage['notificationType'] };
-    setBroadcasts([newBroadcast, ...broadcasts]);
+    const scheduledAt = isScheduled ? new Date(`${year}-${monthDay}T${time}`).toISOString() : null;
+    const { data: historyRow, error: historyError } = await supabase
+      .from('admin_broadcasts')
+      .insert({
+        admin_user_id: adminUserId,
+        subject_ja: subjectJa || '',
+        subject_en: subjectEn || '',
+        message_ja: messageJa || '',
+        message_en: messageEn || '',
+        recipient_filters: selectedRecipients,
+        recipient_count: recipients.length,
+        notification_type: notifType,
+        status: isScheduled ? 'scheduled' : 'sent',
+        scheduled_at: scheduledAt,
+      })
+      .select('*')
+      .single();
+    if (historyError) {
+      toast.error(language === 'ja' ? '送信は完了しましたが履歴保存に失敗しました' : 'Sent, but failed to save history');
+    } else if (historyRow) {
+      setBroadcasts((prev) => [mapBroadcastRow(historyRow), ...prev]);
+    }
     setSubjectJa(''); setSubjectEn(''); setMessageJa(''); setMessageEn(''); setSelectedRecipients(['all']); setNotificationTypes(['inApp']); setYear('2026'); setMonthDay(''); setTime(''); setIsDialogOpen(false);
+    setIsSendingBroadcast(false);
     toast.success(language === 'ja' ? '送信しました' : 'Sent');
   };
 
@@ -164,8 +250,8 @@ export function AdminChat({ language, messageThreads, onUpdateMessageThreads, on
                     <p className="text-xs text-gray-500">{t.selectDateTime}</p>
                   </div>
                   <div className="flex justify-end gap-2 pt-4">
-                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t.cancel}</Button>
-                    <Button onClick={handleSendBroadcast} disabled={(!subjectJa && !subjectEn) || (!messageJa && !messageEn) || notificationTypes.length === 0} className="bg-[#49B1E4] hover:bg-[#3A9BD4] disabled:opacity-50 disabled:cursor-not-allowed"><Send className="w-4 h-4 mr-2" />{t.send}</Button>
+                    <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSendingBroadcast}>{t.cancel}</Button>
+                    <Button onClick={handleSendBroadcast} disabled={isSendingBroadcast || (!subjectJa && !subjectEn) || (!messageJa && !messageEn) || notificationTypes.length === 0} className="bg-[#49B1E4] hover:bg-[#3A9BD4] disabled:opacity-50 disabled:cursor-not-allowed"><Send className={`w-4 h-4 mr-2 ${isSendingBroadcast ? 'animate-pulse' : ''}`} />{isSendingBroadcast ? (language === 'ja' ? '送信中...' : 'Sending...') : t.send}</Button>
                   </div>
                 </div>
               </DialogContent>
@@ -174,6 +260,9 @@ export function AdminChat({ language, messageThreads, onUpdateMessageThreads, on
           <div className="space-y-4">
             <h3 className="font-medium text-gray-900">{t.broadcastHistory}</h3>
             <div className="space-y-2">
+              {isLoadingBroadcasts && (
+                <p className="text-sm text-gray-500">{language === 'ja' ? '履歴を読み込み中...' : 'Loading history...'}</p>
+              )}
               {broadcasts.map((broadcast) => (
                 <Card key={broadcast.id} className="hover:shadow-lg transition-shadow">
                   <CardContent className="p-4">
@@ -191,6 +280,9 @@ export function AdminChat({ language, messageThreads, onUpdateMessageThreads, on
                   </CardContent>
                 </Card>
               ))}
+              {!isLoadingBroadcasts && broadcasts.length === 0 && (
+                <p className="text-sm text-gray-500">{language === 'ja' ? '履歴はまだありません' : 'No broadcast history yet'}</p>
+              )}
             </div>
           </div>
         </div>

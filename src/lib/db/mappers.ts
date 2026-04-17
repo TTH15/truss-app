@@ -89,6 +89,7 @@ export function mapDbEventRowToEvent(row: DbEvent): Event {
     status: row.status,
     photos: row.photos_count,
     lineGroupLink: row.line_group_link ?? undefined,
+    shareToken: row.share_token,
   };
 }
 

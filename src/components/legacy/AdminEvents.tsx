@@ -695,15 +695,22 @@ export function AdminEvents({
   };
 
   const participantStatusKey = (eventId: number, userId: string) => `${eventId}:${userId}`;
+  const getParticipantUserId = (participant: AdminEventParticipant): string =>
+    String(participant?.userId ?? participant?.user_id ?? participant?.id ?? '');
+  const getParticipantStatusRaw = (participant: AdminEventParticipant, field: 'attended' | 'paid') => {
+    if (field === 'attended') return participant?.attended ?? participant?.is_attended ?? false;
+    return participant?.paid ?? participant?.is_paid ?? false;
+  };
 
   const getParticipantStatusValue = (
     participant: AdminEventParticipant,
     field: 'attended' | 'paid',
   ) => {
     if (!selectedEvent) return false;
-    const override = participantStatusOverrides[participantStatusKey(selectedEvent.id, participant.userId)];
+    const participantUserId = getParticipantUserId(participant);
+    const override = participantStatusOverrides[participantStatusKey(selectedEvent.id, participantUserId)];
     if (override && override[field] !== undefined) return Boolean(override[field]);
-    return Boolean(participant[field]);
+    return Boolean(getParticipantStatusRaw(participant, field));
   };
 
   const handleParticipantStatusChange = async (
@@ -712,7 +719,12 @@ export function AdminEvents({
     checked: boolean,
   ) => {
     if (!selectedEvent) return;
-    const key = participantStatusKey(selectedEvent.id, participant.userId);
+    const participantUserId = getParticipantUserId(participant);
+    if (!participantUserId) {
+      toast.error(language === 'ja' ? '参加者IDが取得できないため更新できません' : 'Cannot update participant without id');
+      return;
+    }
+    const key = participantStatusKey(selectedEvent.id, participantUserId);
     const prev = getParticipantStatusValue(participant, field);
     setParticipantStatusOverrides((prevMap) => ({
       ...prevMap,
@@ -722,7 +734,7 @@ export function AdminEvents({
       .from('event_participants')
       .update((field === 'attended' ? { attended: checked } : { paid: checked }) as never)
       .eq('event_id', selectedEvent.id)
-      .eq('user_id', participant.userId);
+      .eq('user_id', participantUserId);
     const { error } = await query;
     if (error) {
       setParticipantStatusOverrides((prevMap) => ({
@@ -1481,19 +1493,21 @@ export function AdminEvents({
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {selectedEventParticipants.map((participant) => (
                   <div
-                    key={participant.userId}
+                    key={getParticipantUserId(participant)}
                     className="flex items-center gap-3 p-3 bg-[#F9FAFB] rounded-[8px]"
                   >
                     {/* 左側：メール送信先選択チェックボックス */}
                     <div className="flex items-center">
                       <Checkbox
-                        checked={selectedParticipants.has(participant.userId)}
+                        checked={selectedParticipants.has(getParticipantUserId(participant))}
                         onCheckedChange={(checked) => {
+                          const participantUserId = getParticipantUserId(participant);
+                          if (!participantUserId) return;
                           const newSelected = new Set(selectedParticipants);
                           if (checked) {
-                            newSelected.add(participant.userId);
+                            newSelected.add(participantUserId);
                           } else {
-                            newSelected.delete(participant.userId);
+                            newSelected.delete(participantUserId);
                           }
                           setSelectedParticipants(newSelected);
                         }}

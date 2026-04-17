@@ -48,6 +48,7 @@ import {
 } from '../lib/db/mutations/gallery';
 import {
   sendMessageRow,
+  sendBulkMessagesRow,
   sendBroadcastRow,
   markMessageAsReadRow,
   markAllMessagesAsReadForUserRow,
@@ -90,6 +91,7 @@ interface DataContextType {
   resetMembershipForNewYear: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   sendMessage: (receiverId: string, text: string, isAdmin?: boolean) => Promise<void>;
+  sendBulkMessages: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string }>) => Promise<void>;
   sendBroadcast: (text: string, subjectJa: string, subjectEn: string) => Promise<void>;
   markMessageAsRead: (messageId: number) => Promise<void>;
   markAllMessagesAsReadForUser: (userId: string) => Promise<void>;
@@ -514,6 +516,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const sendBulkMessages = async (
+    messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string }>
+  ) => {
+    if (!user || messages.length === 0) return;
+    try {
+      const { error } = await sendBulkMessagesRow({
+        senderId: user.id,
+        senderName: user.name,
+        messages: messages.map((message) => ({
+          receiverId: message.receiverId,
+          text: message.text,
+          isAdmin: message.isAdmin ?? false,
+          isBroadcast: message.isBroadcast ?? false,
+          broadcastSubject: message.broadcastSubject,
+          broadcastSubjectEn: message.broadcastSubjectEn,
+        })),
+      });
+      if (error) throw error;
+      await fetchMessages();
+    } catch (error) {
+      console.error('Error sending bulk messages:', error);
+    }
+  };
+
   const sendBroadcast = async (text: string, subjectJa: string, subjectEn: string) => {
     if (!user) return;
     try {
@@ -688,7 +714,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     events, pendingUsers, approvedMembers, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading,
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
     approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, resetMembershipForNewYear, deleteUser,
-    sendMessage, sendBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, updateChatMetadata,
+    sendMessage, sendBulkMessages, sendBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, updateChatMetadata,
     markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost, setPinnedBoardPost,
     uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, likeGalleryPhoto,
     refreshEvents: () => fetchEvents(true), refreshUsers: () => fetchUsers(true), refreshMessages: fetchMessages, refreshNotifications: fetchNotifications,

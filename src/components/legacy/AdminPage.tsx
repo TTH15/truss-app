@@ -43,6 +43,7 @@ interface AdminPageProps {
   onDeleteBoardPost?: (postId: number) => Promise<void>;
   onSetPinnedBoardPost?: (postId: number | null) => Promise<void>;
   onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
+  onSendBulkMessages?: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string }>) => Promise<void>;
 }
 
 type AdminTab = 'members' | 'events' | 'gallery' | 'boards' | 'chat';
@@ -70,7 +71,7 @@ const translations = {
   }
 };
 
-export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, membersLoading = false, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onDeleteBoardPost, onSetPinnedBoardPost, onSendBulkEmail }: AdminPageProps) {
+export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, membersLoading = false, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onDeleteBoardPost, onSetPinnedBoardPost, onSendBulkEmail, onSendBulkMessages }: AdminPageProps) {
   const t = translations[language];
   const ADMIN_TAB_STORAGE_KEY = `truss-admin-tab-${user.id}`;
   const [currentTab, setCurrentTab] = useState<AdminTab>('members');
@@ -163,7 +164,7 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
           {currentTab === 'events' && <AdminEvents language={language} events={events} eventParticipants={eventParticipants} onCreateEvent={onCreateEvent} onUpdateEvent={onUpdateEvent} onDeleteEvent={onDeleteEvent} onSendBulkEmail={onSendBulkEmail} />}
           {currentTab === 'gallery' && <AdminGallery language={language} />}
           {currentTab === 'boards' && <AdminBoards language={language} adminUserId={user.id} adminName={user.name} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onDeleteBoardPost={onDeleteBoardPost} onSetPinnedBoardPost={onSetPinnedBoardPost} />}
-          {currentTab === 'chat' && <AdminChat language={language} messageThreads={messageThreads} onUpdateMessageThreads={onUpdateMessageThreads} onSendMessage={onSendMessage} approvedMembers={approvedMembers} pendingUsers={pendingUsers} chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={onUpdateChatThreadMetadata} selectedChatUserId={selectedChatUserId} onOpenMemberChat={onOpenMemberChat} />}
+          {currentTab === 'chat' && <AdminChat language={language} adminUserId={user.id} messageThreads={messageThreads} onUpdateMessageThreads={onUpdateMessageThreads} onSendMessage={onSendMessage} onSendBulkMessages={onSendBulkMessages} approvedMembers={approvedMembers} pendingUsers={pendingUsers} chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={onUpdateChatThreadMetadata} selectedChatUserId={selectedChatUserId} onOpenMemberChat={onOpenMemberChat} />}
         </main>
       </div>
 

@@ -24,6 +24,7 @@ import type { Event, Language, User } from '../domain/types/app';
 
 const ADMIN_PATH = '/admin-z8x4m2q9r7';
 const ADMIN_SESSION_KEY = 'truss-admin-session';
+const SHARED_EVENT_TOKEN_KEY = 'truss-shared-event-token';
 
 export type {
   Language,
@@ -55,9 +56,10 @@ type PageState =
 interface AppProps {
   initialPage?: PageState;
   standaloneAdmin?: boolean;
+  sharedEventToken?: string;
 }
 
-function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProps) {
+function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEventToken }: AppProps) {
   const router = useRouter();
   const pathname = usePathname();
   const {
@@ -94,6 +96,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
     setRenewalStatus,
     deleteUser,
     sendMessage,
+    sendBulkMessages,
     markNotificationAsRead,
     dismissNotification,
     createBoardPost,
@@ -121,6 +124,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
   const [likedEvents, setLikedEvents] = useState<Set<number>>(new Set());
   const [selectedChatUserId, setSelectedChatUserId] = useState<string | null>(null);
   const [adminActiveTab, setAdminActiveTab] = useState<'members' | 'events' | 'boards' | 'chat'>('members');
+  const [activeSharedEventToken, setActiveSharedEventToken] = useState<string | null>(sharedEventToken ?? null);
 
   const routeMap: Partial<Record<PageState, string>> = {
     landing: '/',
@@ -153,6 +157,32 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
     // 認証フローは現状 landing(`/`) を土台に表示しているため、URL も合わせる
     if (pathname !== '/') router.push('/');
   };
+
+  useEffect(() => {
+    if (!sharedEventToken) return;
+    setActiveSharedEventToken(sharedEventToken);
+    try {
+      localStorage.setItem(SHARED_EVENT_TOKEN_KEY, sharedEventToken);
+    } catch {
+      // ignore storage errors
+    }
+  }, [sharedEventToken]);
+
+  useEffect(() => {
+    if (sharedEventToken) return;
+    try {
+      const savedToken = localStorage.getItem(SHARED_EVENT_TOKEN_KEY);
+      if (savedToken && !activeSharedEventToken) {
+        setActiveSharedEventToken(savedToken);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [sharedEventToken, activeSharedEventToken]);
+
+  const sharedEventId = activeSharedEventToken
+    ? (events.find((event) => event.shareToken === activeSharedEventToken)?.id ?? null)
+    : null;
 
   /** ブラウザの戻る/進む・直接 URL 入力時に currentPage を合わせる（認証フローの仮画面は `/` で上書きしない） */
   useEffect(() => {
@@ -228,15 +258,22 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
       } else {
         navigateTo('dashboard');
       }
+      if (sharedEventId) {
+        try {
+          localStorage.removeItem(SHARED_EVENT_TOKEN_KEY);
+        } catch {
+          // ignore storage errors
+        }
+      }
     } else if (!authLoading && !session) {
       if (isOAuthCallback()) {
         console.log('🔄 OAuth callback detected, waiting for session...');
         return;
       }
       setUser(null);
-      navigateTo('landing');
+      navigateTo(activeSharedEventToken ? 'login' : 'landing');
     }
-  }, [authUser, authLoading, session, standaloneAdmin]);
+  }, [authUser, authLoading, session, standaloneAdmin, activeSharedEventToken, sharedEventId]);
 
   /**
    * Google OAuth 直後など: Supabase セッションはあるが public.users にまだ行がない場合は
@@ -579,6 +616,11 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
       : (language === 'ja' ? 'メール' : 'email');
     toast.success(language === 'ja' ? `${userIds.length}人に${messageType}を送信しました` : `Sent ${messageType} to ${userIds.length} members`);
   };
+  const handleSendBulkMessages = async (
+    messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string }>
+  ) => {
+    await sendBulkMessages(messages);
+  };
 
   // 管理者画面でもセッション復元が完了するまではローディング表示にする
   // （admin-login の一瞬表示による「自動ログアウトされたように見える」体験を防ぐ）
@@ -629,6 +671,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
           onUpdateChatThreadMetadata={setChatThreadMetadata} notifications={notifications} onDismissNotification={handleDismissNotification}
           boardPosts={boardPosts} onUpdateBoardPosts={setBoardPosts} onCreateBoardPost={createBoardPost} onAddReply={addReply}
           onToggleInterest={toggleInterest} onDeleteBoardPost={deleteBoardPost} approvedMembers={approvedMembers}
+          forceOpenEventId={sharedEventId ?? undefined}
         />
       )}
       {currentPage === 'admin' && user && (
@@ -642,6 +685,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
           chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={setChatThreadMetadata} selectedChatUserId={selectedChatUserId}
           onOpenMemberChat={handleOpenMemberChat} onUpdateNotifications={setNotifications} boardPosts={boardPosts}
           onUpdateBoardPosts={setBoardPosts} onCreateBoardPost={createBoardPost} onDeleteBoardPost={deleteBoardPost} onSetPinnedBoardPost={setPinnedBoardPost} onSendBulkEmail={handleSendBulkEmail}
+          onSendBulkMessages={handleSendBulkMessages}
         />
       )}
       {currentPage === 'admin-login' && (

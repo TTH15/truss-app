@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '../ui/button';
-import { Heart, Users, Calendar, Camera, MapPin, Clock, MessageCircle, ExternalLink } from 'lucide-react';
+import { Heart, Users, Calendar, Camera, MapPin, Clock, MessageCircle, ExternalLink, Share2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Checkbox } from '../ui/checkbox';
 import type { Language, Event, User } from '../../domain/types/app';
@@ -17,6 +17,8 @@ interface EventsPageProps {
   onToggleAttending: (eventId: number) => void;
   onToggleLike: (eventId: number) => void;
   highlightEventId?: number;
+  openEventId?: number;
+  onOpenEventHandled?: () => void;
   onAddEventParticipant: (eventId: number, photoRefusal: boolean) => void;
   user: User;
 }
@@ -26,7 +28,7 @@ const translations = {
   en: { title: 'Events', viewPhotos: 'View Photos', attend: 'Attend', registered: 'Registered', likes: 'Likes', participants: 'Participants', participationFee: 'Participation fee', registrationComplete: 'Registration Complete', registrationCompleteMessage: 'Your event registration is complete!', lineGroupDescription: 'You can join the event LINE group using the button below.', photoRefusal: 'I refuse to have photos of my face uploaded.', openLine: 'Open in LINE', close: 'Close', noLineGroup: 'This event does not have a LINE group.', confirmRegistration: 'Event Registration', confirmRegistrationMessage: 'Please confirm the following and register.', registerButton: 'Register', eventDetails: 'Event Details', description: 'Description', noDescription: 'No description available', tapIconHint: 'Tap an event icon on the calendar to see details.' },
 };
 
-export function EventsPage({ language, events, attendingEvents, likedEvents, onToggleAttending, onToggleLike, highlightEventId, onAddEventParticipant, user }: EventsPageProps) {
+export function EventsPage({ language, events, attendingEvents, likedEvents, onToggleAttending, onToggleLike, highlightEventId, openEventId, onOpenEventHandled, onAddEventParticipant, user }: EventsPageProps) {
   const t = translations[language];
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [lineGroupDialogOpen, setLineGroupDialogOpen] = useState(false);
@@ -82,6 +84,15 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
     if (!highlightEventId || !eventRefs.current[highlightEventId]) return;
     setTimeout(() => eventRefs.current[highlightEventId]?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
   }, [highlightEventId, calendarMonth, calendarYear]);
+
+  useEffect(() => {
+    if (!openEventId) return;
+    const target = events.find((event) => event.id === openEventId);
+    if (!target) return;
+    setDetailEvent(target);
+    setDetailModalOpen(true);
+    onOpenEventHandled?.();
+  }, [openEventId, events, onOpenEventHandled]);
 
   const handlePreviousMonth = () => {
     if (calendarMonth === 0) {
@@ -140,6 +151,28 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
   };
 
   const detailMapsHref = detailEvent ? googleMapsHrefForEvent(detailEvent, language) : null;
+  const detailShareUrl = useMemo(() => {
+    if (!detailEvent?.shareToken || typeof window === 'undefined') return null;
+    return `${window.location.origin}/event/${detailEvent.shareToken}`;
+  }, [detailEvent]);
+
+  const handleShareEvent = async () => {
+    if (!detailShareUrl || !detailEvent) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: language === 'ja' ? detailEvent.title : (detailEvent.titleEn || detailEvent.title),
+          text: language === 'ja' ? 'イベントを共有します' : 'Sharing event',
+          url: detailShareUrl,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(detailShareUrl);
+      alert(language === 'ja' ? '共有リンクをコピーしました' : 'Copied share link');
+    } catch {
+      // user cancelled share dialog etc.
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -251,7 +284,30 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
                 <div className="flex items-center gap-3 text-[#3D3D4E]"><Clock className="w-5 h-5 text-[#49B1E4]" /><span>{detailEvent.time}</span></div>
                 <div className="flex items-start gap-3 text-[#3D3D4E]"><MapPin className="w-5 h-5 text-[#49B1E4] shrink-0 mt-0.5" /><div><span>{language === 'ja' ? detailEvent.location : (detailEvent.locationEn || detailEvent.location)}</span>{detailMapsHref && <a href={detailMapsHref} target="_blank" rel="noopener noreferrer" className="block text-sm text-[#49B1E4] hover:underline mt-1"><ExternalLink className="w-3 h-3 inline mr-1" />{language === 'ja' ? 'Google Mapで開く' : 'Open in Google Maps'}</a>}</div></div>
               </div>
-              <div className="flex items-center gap-6"><button type="button" onClick={() => onToggleLike(detailEvent.id)} className="flex items-center gap-2 text-pink-600 hover:text-pink-700 transition-colors"><Heart className={`w-6 h-6 ${likedEvents.has(detailEvent.id) ? 'fill-current' : ''}`} /><span className="text-lg font-semibold">{detailEvent.likes}</span><span className="text-sm">{t.likes}</span></button><div className="flex items-center gap-2 text-blue-600"><Users className="w-6 h-6" /><span className="text-lg font-semibold">{detailEvent.currentParticipants}/{detailEvent.maxParticipants}</span><span className="text-sm">{t.participants}</span></div><div className="flex items-center gap-2 text-[#3D3D4E]"><span className="text-lg font-semibold">¥{Number(detailEvent.participationFee ?? 0).toLocaleString()}</span><span className="text-sm">{t.participationFee}</span></div></div>
+              <div className="flex items-center gap-6">
+                <button type="button" onClick={() => onToggleLike(detailEvent.id)} className="flex items-center gap-2 text-pink-600 hover:text-pink-700 transition-colors">
+                  <Heart className={`w-6 h-6 ${likedEvents.has(detailEvent.id) ? 'fill-current' : ''}`} />
+                  <span className="text-lg font-semibold">{detailEvent.likes}</span>
+                </button>
+                <div className="flex items-center gap-2 text-blue-600">
+                  <Users className="w-6 h-6" />
+                  <span className="text-lg font-semibold">{detailEvent.currentParticipants}/{detailEvent.maxParticipants}</span>
+                </div>
+                <div className="flex items-center gap-2 text-[#3D3D4E]">
+                  <span className="text-lg font-semibold">¥{Number(detailEvent.participationFee ?? 0).toLocaleString()}</span>
+                </div>
+                {detailShareUrl && (
+                  <button
+                    type="button"
+                    onClick={handleShareEvent}
+                    className="flex items-center gap-1 text-[#49B1E4] hover:text-[#3A9FD3] transition-colors ml-auto"
+                    title={language === 'ja' ? '共有' : 'Share'}
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span className="text-sm">{language === 'ja' ? '共有' : 'Share'}</span>
+                  </button>
+                )}
+              </div>
               <div className="border-t pt-4"><h4 className="font-semibold text-[#3D3D4E] mb-2">{t.description}</h4><p className="text-[#6B6B7A] whitespace-pre-wrap leading-relaxed">{language === 'ja' ? (detailEvent.descriptionJa || detailEvent.description || t.noDescription) : (detailEvent.descriptionEn || detailEvent.descriptionJa || detailEvent.description || t.noDescription)}</p></div>
               <div className="flex gap-3 pt-4 border-t">
                 {detailEvent.status === 'upcoming' && <Button className={`flex-1 ${attendingEvents.has(detailEvent.id) ? 'bg-gray-400' : 'bg-[#49B1E4] hover:bg-[#3A9FD3]'}`} onClick={() => { setDetailModalOpen(false); handleAttendClick(detailEvent); }}>{attendingEvents.has(detailEvent.id) ? t.registered : t.attend}</Button>}

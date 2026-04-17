@@ -93,6 +93,7 @@ export interface DbEvent {
   status: EventStatus;
   photos_count: number;
   line_group_link: string | null;
+  share_token: string;
   /** Font Awesome キー（例: calendar, sakura） */
   event_icon: string | null;
   created_at: string;
@@ -163,6 +164,24 @@ export interface DbChatThreadMetadata {
   unread_count: number;
   last_message_at: string | null;
   updated_at: string;
+}
+
+export interface DbAdminBroadcast {
+  // Supabase JS v2 GenericTable の互換性確保のため（Record<string, unknown> 前提）
+  [key: string]: unknown;
+  id: number;
+  admin_user_id: string;
+  subject_ja: string;
+  subject_en: string;
+  message_ja: string;
+  message_en: string;
+  recipient_filters: string[];
+  recipient_count: number;
+  notification_type: 'email' | 'inApp' | 'both';
+  status: 'sent' | 'scheduled';
+  scheduled_at: string | null;
+  sent_at: string;
+  created_at: string;
 }
 
 export interface DbNotification {
@@ -273,6 +292,7 @@ export type DbEventParticipantInsert = Omit<DbEventParticipant, 'id'>;
 export type DbEventParticipantUpdate = Partial<DbEventParticipantInsert>;
 
 export type DbMessageInsert = Omit<DbMessage, 'id' | 'created_at'>;
+export type DbAdminBroadcastInsert = Omit<DbAdminBroadcast, 'id' | 'created_at'> & { id?: number };
 
 export type DbNotificationInsert = Omit<DbNotification, 'id' | 'created_at'> & {
   id?: string;
@@ -297,6 +317,7 @@ export type DbUserUpdate = Partial<Omit<DbUser, 'id' | 'created_at' | 'updated_a
 export type DbEventUpdate = Partial<Omit<DbEvent, 'id' | 'created_at' | 'updated_at'>>;
 
 export type DbMessageUpdate = Partial<Pick<DbMessage, 'read' | 'pinned' | 'flagged'>>;
+export type DbAdminBroadcastUpdate = Partial<Omit<DbAdminBroadcast, 'id' | 'admin_user_id' | 'created_at'>>;
 
 export type DbNotificationUpdate = Partial<Pick<DbNotification, 'read'>>;
 
@@ -355,6 +376,12 @@ export interface Database {
         Row: DbChatThreadMetadata;
         Insert: Omit<DbChatThreadMetadata, 'id' | 'updated_at'>;
         Update: DbChatThreadMetadataUpdate;
+        Relationships: [];
+      };
+      admin_broadcasts: {
+        Row: DbAdminBroadcast;
+        Insert: DbAdminBroadcastInsert;
+        Update: DbAdminBroadcastUpdate;
         Relationships: [];
       };
       notifications: {
