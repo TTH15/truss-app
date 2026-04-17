@@ -86,6 +86,8 @@ export interface EventParticipant {
   userNickname: string;
   registeredAt: string;
   photoRefusal?: boolean;
+  attended?: boolean;
+  paid?: boolean;
 }
 
 export interface Message {

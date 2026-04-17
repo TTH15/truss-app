@@ -258,6 +258,7 @@ export function AdminEvents({
   const saveInFlightRef = useRef(false);
   const [confirmType, setConfirmType] = useState<'create' | 'update'>('create');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
+  const [participantStatusOverrides, setParticipantStatusOverrides] = useState<Record<string, { attended?: boolean; paid?: boolean }>>({});
   const [initialEventSnapshot, setInitialEventSnapshot] = useState('');
 
   const [edgeZone, setEdgeZone] = useState<'left' | 'right' | null>(null);
@@ -693,38 +694,43 @@ export function AdminEvents({
     reader.readAsDataURL(file);
   };
 
-  const toggleAttended = (participantId: string) => {
-    if (!selectedEvent) return;
-    const updatedEvents = propsEvents.map(event => {
-      if (event.id === selectedEvent.id) {
-        return {
-          ...event,
-          participants: event.participants.map(p =>
-            p.id === participantId ? { ...p, attended: !p.attended } : p
-          )
-        };
-      }
-      return event;
-    });
-    const updatedEvent = updatedEvents.find(e => e.id === selectedEvent.id);
-    if (updatedEvent) setSelectedEvent(updatedEvent);
+  const participantStatusKey = (eventId: number, userId: string) => `${eventId}:${userId}`;
+
+  const getParticipantStatusValue = (
+    participant: AdminEventParticipant,
+    field: 'attended' | 'paid',
+  ) => {
+    if (!selectedEvent) return false;
+    const override = participantStatusOverrides[participantStatusKey(selectedEvent.id, participant.userId)];
+    if (override && override[field] !== undefined) return Boolean(override[field]);
+    return Boolean(participant[field]);
   };
 
-  const togglePaid = (participantId: string) => {
+  const handleParticipantStatusChange = async (
+    participant: AdminEventParticipant,
+    field: 'attended' | 'paid',
+    checked: boolean,
+  ) => {
     if (!selectedEvent) return;
-    const updatedEvents = propsEvents.map(event => {
-      if (event.id === selectedEvent.id) {
-        return {
-          ...event,
-          participants: event.participants.map(p =>
-            p.id === participantId ? { ...p, paid: !p.paid } : p
-          )
-        };
-      }
-      return event;
-    });
-    const updatedEvent = updatedEvents.find(e => e.id === selectedEvent.id);
-    if (updatedEvent) setSelectedEvent(updatedEvent);
+    const key = participantStatusKey(selectedEvent.id, participant.userId);
+    const prev = getParticipantStatusValue(participant, field);
+    setParticipantStatusOverrides((prevMap) => ({
+      ...prevMap,
+      [key]: { ...(prevMap[key] || {}), [field]: checked },
+    }));
+    const query = supabase
+      .from('event_participants')
+      .update((field === 'attended' ? { attended: checked } : { paid: checked }) as never)
+      .eq('event_id', selectedEvent.id)
+      .eq('user_id', participant.userId);
+    const { error } = await query;
+    if (error) {
+      setParticipantStatusOverrides((prevMap) => ({
+        ...prevMap,
+        [key]: { ...(prevMap[key] || {}), [field]: prev },
+      }));
+      toast.error(language === 'ja' ? '参加者ステータスの更新に失敗しました' : 'Failed to update participant status');
+    }
   };
 
   const monthNames = language === 'ja'
@@ -1514,9 +1520,9 @@ export function AdminEvents({
                     <div className="flex flex-col gap-2">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <Checkbox
-                          checked={participant.attended || false}
-                          onCheckedChange={() => {
-                            // TODO: 出席状態を更新する処理を実装
+                          checked={getParticipantStatusValue(participant, 'attended')}
+                          onCheckedChange={(checked) => {
+                            void handleParticipantStatusChange(participant, 'attended', checked === true);
                           }}
                           className="border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
                         />
@@ -1525,9 +1531,9 @@ export function AdminEvents({
                       {selectedEventParticipationFee >= 1 && (
                         <label className="flex items-center gap-2 cursor-pointer">
                           <Checkbox
-                            checked={participant.paid || false}
-                            onCheckedChange={() => {
-                              // TODO: 支払い状態を更新する処理を実装
+                            checked={getParticipantStatusValue(participant, 'paid')}
+                            onCheckedChange={(checked) => {
+                              void handleParticipantStatusChange(participant, 'paid', checked === true);
                             }}
                             className="border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
                           />

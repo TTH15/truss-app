@@ -109,6 +109,8 @@ export interface DbEventParticipant {
   user_nickname: string;
   registered_at: string;
   photo_refusal: boolean;
+  attended: boolean;
+  paid: boolean;
 }
 
 export interface DbEventLike {
@@ -268,6 +270,7 @@ export type DbEventInsert = Omit<DbEvent, 'id' | 'created_at' | 'updated_at'> & 
 };
 
 export type DbEventParticipantInsert = Omit<DbEventParticipant, 'id'>;
+export type DbEventParticipantUpdate = Partial<DbEventParticipantInsert>;
 
 export type DbMessageInsert = Omit<DbMessage, 'id' | 'created_at'>;
 
@@ -327,7 +330,7 @@ export interface Database {
       event_participants: {
         Row: DbEventParticipant;
         Insert: DbEventParticipantInsert;
-        Update: never;
+        Update: DbEventParticipantUpdate;
         Relationships: [];
       };
       event_likes: {

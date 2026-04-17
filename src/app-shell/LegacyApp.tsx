@@ -465,8 +465,8 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false }: AppProp
 
   const handleOpenProfile = () => navigateTo('profile');
   const handleReopenInitialRegistration = () => {
-    if (!user) return;
-    setTempEmail(user.email);
+    const reopenEmail = user?.email || authUser?.email || tempEmail;
+    if (reopenEmail) setTempEmail(reopenEmail);
     showAuthFlowPage('initial-registration');
   };
   const handleOpenMemberChat = (userId: string) => {

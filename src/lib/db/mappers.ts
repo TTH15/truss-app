@@ -99,6 +99,8 @@ export function mapDbEventParticipantRow(row: DbEventParticipant): EventParticip
     userNickname: row.user_nickname,
     registeredAt: row.registered_at,
     photoRefusal: row.photo_refusal,
+    attended: row.attended,
+    paid: row.paid,
   };
 }
 
