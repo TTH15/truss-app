@@ -51,6 +51,8 @@ interface DashboardProps {
   onDeleteBoardPost?: (postId: number) => Promise<void>;
   approvedMembers: User[];
   forceOpenEventId?: number;
+  forceOpenEventToken?: string;
+  onForceOpenEventHandled?: () => void;
 }
 
 type Page = 'home' | 'events' | 'members' | 'bulletin' | 'gallery' | 'profile' | 'notifications' | 'messages' | 'message-detail';
@@ -124,6 +126,8 @@ export function Dashboard({
   onDeleteBoardPost,
   approvedMembers,
   forceOpenEventId,
+  forceOpenEventToken,
+  onForceOpenEventHandled,
 }: DashboardProps) {
   const DASHBOARD_PAGE_STORAGE_KEY = `truss-dashboard-page-${user.id}`;
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -205,6 +209,17 @@ export function Dashboard({
     setPendingOpenEventId(forceOpenEventId);
     setTimeout(() => setHighlightEventId(undefined), 3000);
   }, [forceOpenEventId]);
+
+  useEffect(() => {
+    if (!forceOpenEventToken) return;
+    const target = events.find((event) => event.shareToken === forceOpenEventToken);
+    if (!target) return;
+    setCurrentPage('events');
+    setHighlightEventId(target.id);
+    setPendingOpenEventId(target.id);
+    setTimeout(() => setHighlightEventId(undefined), 3000);
+    onForceOpenEventHandled?.();
+  }, [forceOpenEventToken, events, onForceOpenEventHandled]);
 
   return (
     <div className="min-h-screen bg-[#F5F1E8]">

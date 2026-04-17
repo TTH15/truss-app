@@ -180,9 +180,14 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     }
   }, [sharedEventToken, activeSharedEventToken]);
 
-  const sharedEventId = activeSharedEventToken
-    ? (events.find((event) => event.shareToken === activeSharedEventToken)?.id ?? null)
-    : null;
+  const clearSharedEventToken = () => {
+    setActiveSharedEventToken(null);
+    try {
+      localStorage.removeItem(SHARED_EVENT_TOKEN_KEY);
+    } catch {
+      // ignore storage errors
+    }
+  };
 
   /** ブラウザの戻る/進む・直接 URL 入力時に currentPage を合わせる（認証フローの仮画面は `/` で上書きしない） */
   useEffect(() => {
@@ -258,13 +263,6 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       } else {
         navigateTo('dashboard');
       }
-      if (sharedEventId) {
-        try {
-          localStorage.removeItem(SHARED_EVENT_TOKEN_KEY);
-        } catch {
-          // ignore storage errors
-        }
-      }
     } else if (!authLoading && !session) {
       if (isOAuthCallback()) {
         console.log('🔄 OAuth callback detected, waiting for session...');
@@ -273,7 +271,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       setUser(null);
       navigateTo(activeSharedEventToken ? 'login' : 'landing');
     }
-  }, [authUser, authLoading, session, standaloneAdmin, activeSharedEventToken, sharedEventId]);
+  }, [authUser, authLoading, session, standaloneAdmin, activeSharedEventToken]);
 
   /**
    * Google OAuth 直後など: Supabase セッションはあるが public.users にまだ行がない場合は
@@ -671,7 +669,8 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
           onUpdateChatThreadMetadata={setChatThreadMetadata} notifications={notifications} onDismissNotification={handleDismissNotification}
           boardPosts={boardPosts} onUpdateBoardPosts={setBoardPosts} onCreateBoardPost={createBoardPost} onAddReply={addReply}
           onToggleInterest={toggleInterest} onDeleteBoardPost={deleteBoardPost} approvedMembers={approvedMembers}
-          forceOpenEventId={sharedEventId ?? undefined}
+          forceOpenEventToken={activeSharedEventToken ?? undefined}
+          onForceOpenEventHandled={clearSharedEventToken}
         />
       )}
       {currentPage === 'admin' && user && (
