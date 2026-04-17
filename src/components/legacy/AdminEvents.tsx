@@ -738,8 +738,9 @@ export function AdminEvents({
   };
 
   const participantStatusKey = (eventId: number, userId: string) => `${eventId}:${userId}`;
-  const getParticipantUserId = (participant: AdminEventParticipant): string =>
-    String(participant?.userId ?? participant?.user_id ?? participant?.id ?? '');
+  function getParticipantUserId(participant: AdminEventParticipant): string {
+    return String(participant?.userId ?? participant?.user_id ?? participant?.id ?? '');
+  }
   const getParticipantStatusRaw = (participant: AdminEventParticipant, field: 'attended' | 'paid') => {
     if (field === 'attended') return participant?.attended ?? participant?.is_attended ?? false;
     return participant?.paid ?? participant?.is_paid ?? false;
