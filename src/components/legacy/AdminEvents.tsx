@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
-import { X, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrashCan, faUpload, faEye, faWandMagicSparkles, faFloppyDisk, faRotateLeft } from '@fortawesome/free-solid-svg-icons';
@@ -484,6 +484,10 @@ export function AdminEvents({
   const selectedEventParticipantsCount = selectedEventParticipants.length;
   const selectedEventLikesCount = selectedEvent?.likes || 0;
   const selectedEventParticipationFee = Number(selectedEvent?.participationFee ?? 0);
+  const selectedEventShareUrl = useMemo(() => {
+    if (!selectedEvent?.shareToken || typeof window === 'undefined') return null;
+    return `${window.location.origin}/event/${selectedEvent.shareToken}`;
+  }, [selectedEvent]);
   const selectedEventDetailTitle = selectedEvent ? getEventText(selectedEvent, 'title', language === 'ja' ? 'ja' : 'en') : '';
   const selectedEventDetailDescription = selectedEvent
     ? getEventText(selectedEvent, 'description', language === 'ja' ? 'ja' : 'en')
@@ -492,6 +496,25 @@ export function AdminEvents({
     ? getEventText(selectedEvent, 'location', language === 'ja' ? 'ja' : 'en')
     : '';
   const selectedEventDetailTime = selectedEvent ? parseEventTime(selectedEvent) : { startTime: '', endTime: '' };
+
+  const handleShareEventLink = async () => {
+    if (!selectedEventShareUrl || !selectedEvent) return;
+    const shareTitle = selectedEventDetailTitle || (language === 'ja' ? 'イベント共有' : 'Event share');
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: shareTitle,
+          text: language === 'ja' ? 'イベントリンクを共有します' : 'Sharing event link',
+          url: selectedEventShareUrl,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(selectedEventShareUrl);
+      toast.success(language === 'ja' ? '共有リンクをコピーしました' : 'Copied share link');
+    } catch {
+      // no-op (share dialog canceled etc.)
+    }
+  };
 
   const handleCloseForm = () => {
     setShowNewEventForm(false);
@@ -1459,6 +1482,18 @@ export function AdminEvents({
                   </span>
                   <span>{language === 'ja' ? 'いいね' : 'Likes'}</span>
                 </div>
+                {selectedEventShareUrl && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleShareEventLink()}
+                    className="w-fit text-[#49B1E4] border-[#49B1E4] hover:bg-[#EAF6FD]"
+                  >
+                    <Share2 className="w-4 h-4 mr-1" />
+                    {language === 'ja' ? '共有リンク' : 'Share link'}
+                  </Button>
+                )}
               </div>
             </div>
 

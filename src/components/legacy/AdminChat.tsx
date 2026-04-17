@@ -33,8 +33,8 @@ interface AdminChatProps {
 interface BroadcastMessage { id: number; subject: string; message: string; recipients: string; recipientCount: number; status: 'sent' | 'scheduled'; sentTime: string; notificationType: 'email' | 'inApp' | 'both'; }
 
 const translations = {
-  ja: { sendBroadcast: '新規送信', recipients: '送信先', japanese: '日本人学生・国内学生のみ', exchange: '交換留学生のみ', regularInternational: '正規留学生のみ', notificationType: '通知タイプ', inAppNotification: 'アプリ内通知', emailNotification: 'メール通知', scheduledDate: '送信日時', selectDateTime: '空欄の場合は即時送信', send: '送信', cancel: 'キャンセル', sent: '送信済み', scheduled: '予約送信', members: 'メンバー', broadcastHistory: '一斉送信履歴', memberChat: 'メンバーチャット', broadcast: '一斉送信', translateToEnglish: '英語に翻訳' },
-  en: { sendBroadcast: 'New Broadcast', recipients: 'Recipients', japanese: 'Japanese Students Only', exchange: 'Exchange Students Only', regularInternational: 'Regular International Students Only', notificationType: 'Notification Type', inAppNotification: 'In-App Notification', emailNotification: 'Email Notification', scheduledDate: 'Scheduled Date/Time', selectDateTime: 'Leave empty for immediate send', send: 'Send', cancel: 'Cancel', sent: 'Sent', scheduled: 'Scheduled', members: 'Members', broadcastHistory: 'Broadcast History', memberChat: 'Member Chat', broadcast: 'Broadcast', translateToEnglish: 'Translate to English' }
+  ja: { sendBroadcast: '新規送信', recipients: '送信先', japanese: '日本人学生・国内学生のみ', exchange: '交換留学生のみ', regularInternational: '正規留学生のみ', annualFeeUnpaid: '年会費未払いのみ', annualFeePaid: '年会費支払済のみ', notificationType: '通知タイプ', inAppNotification: 'アプリ内通知', emailNotification: 'メール通知', scheduledDate: '送信日時', selectDateTime: '空欄の場合は即時送信', send: '送信', cancel: 'キャンセル', sent: '送信済み', scheduled: '予約送信', members: 'メンバー', broadcastHistory: '一斉送信履歴', memberChat: 'メンバーチャット', broadcast: '一斉送信', translateToEnglish: '英語に翻訳' },
+  en: { sendBroadcast: 'New Broadcast', recipients: 'Recipients', japanese: 'Japanese Students Only', exchange: 'Exchange Students Only', regularInternational: 'Regular International Students Only', annualFeeUnpaid: 'Annual fee unpaid only', annualFeePaid: 'Annual fee paid only', notificationType: 'Notification Type', inAppNotification: 'In-App Notification', emailNotification: 'Email Notification', scheduledDate: 'Scheduled Date/Time', selectDateTime: 'Leave empty for immediate send', send: 'Send', cancel: 'Cancel', sent: 'Sent', scheduled: 'Scheduled', members: 'Members', broadcastHistory: 'Broadcast History', memberChat: 'Member Chat', broadcast: 'Broadcast', translateToEnglish: 'Translate to English' }
 };
 
 export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessageThreads, onSendMessage, onSendBulkMessages, approvedMembers, pendingUsers, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat }: AdminChatProps) {
@@ -64,6 +64,8 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
     if (key === 'japanese') return t.japanese;
     if (key === 'exchange') return t.exchange;
     if (key === 'regularInternational') return t.regularInternational;
+    if (key === 'annualFeeUnpaid') return t.annualFeeUnpaid;
+    if (key === 'annualFeePaid') return t.annualFeePaid;
     return key;
   };
   const mapBroadcastRow = (row: DbAdminBroadcast): BroadcastMessage => {
@@ -129,7 +131,9 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
       return (
         (selectedRecipients.includes('japanese') && member.category === 'japanese') ||
         (selectedRecipients.includes('exchange') && member.category === 'exchange') ||
-        (selectedRecipients.includes('regularInternational') && member.category === 'regular-international')
+        (selectedRecipients.includes('regularInternational') && member.category === 'regular-international') ||
+        (selectedRecipients.includes('annualFeeUnpaid') && !member.feePaid) ||
+        (selectedRecipients.includes('annualFeePaid') && member.feePaid)
       );
     });
     if (recipients.length === 0) {
@@ -221,6 +225,8 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
                       <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={selectedRecipients.includes('japanese')} onCheckedChange={() => toggleRecipient('japanese')} /><span className="text-sm">{t.japanese}</span></label>
                       <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={selectedRecipients.includes('exchange')} onCheckedChange={() => toggleRecipient('exchange')} /><span className="text-sm">{t.exchange}</span></label>
                       <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={selectedRecipients.includes('regularInternational')} onCheckedChange={() => toggleRecipient('regularInternational')} /><span className="text-sm">{t.regularInternational}</span></label>
+                      <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={selectedRecipients.includes('annualFeeUnpaid')} onCheckedChange={() => toggleRecipient('annualFeeUnpaid')} /><span className="text-sm">{t.annualFeeUnpaid}</span></label>
+                      <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={selectedRecipients.includes('annualFeePaid')} onCheckedChange={() => toggleRecipient('annualFeePaid')} /><span className="text-sm">{t.annualFeePaid}</span></label>
                     </div>
                   </div>
                   <div className="space-y-1.5">
