@@ -480,8 +480,28 @@ export function AdminEvents({
     }
   };
 
-  const selectedEventParticipants = selectedEvent ? (eventParticipants[selectedEvent.id] || []) : [];
+  const selectedEventParticipants = useMemo(() => {
+    if (!selectedEvent) return [];
+    const rows = eventParticipants[selectedEvent.id] || [];
+    return [...rows].sort((a, b) => {
+      const ta = new Date(String(a?.registeredAt ?? '')).getTime();
+      const tb = new Date(String(b?.registeredAt ?? '')).getTime();
+      if (Number.isNaN(ta) && Number.isNaN(tb)) {
+        return getParticipantUserId(a).localeCompare(getParticipantUserId(b));
+      }
+      if (Number.isNaN(ta)) return 1;
+      if (Number.isNaN(tb)) return -1;
+      if (ta !== tb) return ta - tb;
+      return getParticipantUserId(a).localeCompare(getParticipantUserId(b));
+    });
+  }, [selectedEvent, eventParticipants]);
   const selectedEventParticipantsCount = selectedEventParticipants.length;
+  const selectedEventParticipantIds = useMemo(
+    () => selectedEventParticipants.map((participant) => getParticipantUserId(participant)).filter(Boolean),
+    [selectedEventParticipants],
+  );
+  const allParticipantsSelected = selectedEventParticipantIds.length > 0
+    && selectedEventParticipantIds.every((id) => selectedParticipants.has(id));
   const selectedEventLikesCount = selectedEvent?.likes || 0;
   const selectedEventParticipationFee = Number(selectedEvent?.participationFee ?? 0);
   const selectedEventShareUrl = useMemo(() => {
@@ -1501,7 +1521,21 @@ export function AdminEvents({
             <div className="space-y-4">
               {/* タイトルとメール送信ボタン */}
               <div className="flex items-center justify-between gap-4">
-                <h4 className="text-[#3D3D4E] text-base font-semibold">{t.participantsList}</h4>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={allParticipantsSelected}
+                    onCheckedChange={(checked) => {
+                      if (checked === true) {
+                        setSelectedParticipants(new Set(selectedEventParticipantIds));
+                        return;
+                      }
+                      setSelectedParticipants(new Set());
+                    }}
+                    title={language === 'ja' ? '参加者を一括選択' : 'Select all participants'}
+                    className="border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
+                  />
+                  <h4 className="text-[#3D3D4E] text-base font-semibold">{t.participantsList}</h4>
+                </div>
                 <Button
                   size="icon"
                   className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white h-9 w-9"
