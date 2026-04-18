@@ -344,11 +344,35 @@ export function AdminEvents({
     return null;
   });
 
+  const normalizeEventDateKey = (raw: unknown): string => {
+    const text = String(raw ?? '').trim();
+    if (!text) return '';
+    const head = text.split('T')[0]?.replace(/\//g, '-');
+    if (!head) return '';
+    const m = head.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+    const d = new Date(text);
+    if (Number.isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const eventsByDate = useMemo(() => {
+    const grouped = new Map<string, AdminEvent[]>();
+    propsEvents.forEach((event) => {
+      const key = normalizeEventDateKey(event?.date);
+      if (!key) return;
+      const existing = grouped.get(key);
+      if (existing) existing.push(event);
+      else grouped.set(key, [event]);
+    });
+    return grouped;
+  }, [propsEvents]);
+
   // 日付のイベントを取得
   const getEventsForDate = (day: number | null) => {
     if (!day) return [];
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return propsEvents.filter(event => event.date === dateStr);
+    return eventsByDate.get(dateStr) || [];
   };
 
   const handleAddEvent = (day: number | null) => {
