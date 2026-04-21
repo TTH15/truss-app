@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Home, Calendar, Users, Image, Mail, Bell, LogOut, X, Check, Clock, AlertCircle, Upload, FileText, CreditCard, MessageCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { UserAvatarImage } from './UserAvatarImage';
@@ -18,6 +18,7 @@ import { ImageWithFallback } from '../figma/ImageWithFallback';
 import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
 import type { User as UserType, Language, Event, MessageThread, ChatThreadMetadata, Notification, BoardPost, BoardPostReply } from '../../domain/types/app';
 import { isProfileCompleteForParticipation } from '../../lib/profile-completion';
+import { toast } from 'sonner';
 
 type User = UserType;
 
@@ -140,8 +141,81 @@ export function Dashboard({
   const [messageHistory, setMessageHistory] = useState<MessageHistory>({});
   const [feePaymentDialogOpen, setFeePaymentDialogOpen] = useState(false);
   const [pendingOpenEventId, setPendingOpenEventId] = useState<number | undefined>(undefined);
+  const [uploadingStudentId, setUploadingStudentId] = useState(false);
+  const studentIdReuploadInputRef = useRef<HTMLInputElement | null>(null);
   const t = translations[language];
   const profileDone = isProfileCompleteForParticipation(user);
+
+  const readFileAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => resolve(event.target?.result as string);
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+
+  const compressImageDataUrl = (dataUrl: string, maxSide: number = 1600, quality: number = 0.82) =>
+    new Promise<string>((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to create canvas context'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('Failed to decode image'));
+      img.src = dataUrl;
+    });
+
+  const handleStudentIdReupload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!onUpdateProfile) {
+      toast.error(language === 'ja' ? '再アップロード機能を利用できません' : 'Re-upload feature is unavailable');
+      e.currentTarget.value = '';
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.error(language === 'ja' ? '画像ファイルを選択してください' : 'Please select an image file');
+      e.currentTarget.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(language === 'ja' ? '画像サイズは10MB以下にしてください' : 'Please keep image size under 10MB');
+      e.currentTarget.value = '';
+      return;
+    }
+
+    setUploadingStudentId(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const normalized = dataUrl.length > 2_000_000 ? await compressImageDataUrl(dataUrl) : dataUrl;
+      const { error } = await onUpdateProfile({
+        studentIdImage: normalized, // 旧画像はこの更新で置換される
+        studentIdReuploadRequested: false,
+        reuploadReason: undefined,
+      });
+      if (error) {
+        toast.error(language === 'ja' ? '再アップロードに失敗しました' : 'Failed to re-upload student ID');
+        return;
+      }
+      toast.success(language === 'ja' ? '学生証を再アップロードしました' : 'Student ID re-uploaded successfully');
+    } catch {
+      toast.error(language === 'ja' ? '画像の読み込みに失敗しました' : 'Failed to process image');
+    } finally {
+      setUploadingStudentId(false);
+      e.currentTarget.value = '';
+    }
+  };
 
   useEffect(() => {
     try {
@@ -436,13 +510,24 @@ export function Dashboard({
                         : 'The administration team has requested you to re-upload your student ID. Please re-upload it using the button below.'}
                     </p>
                     <Button
-                      onClick={onReopenInitialRegistration}
+                      onClick={() => studentIdReuploadInputRef.current?.click()}
+                      disabled={uploadingStudentId}
                       className="text-white hover:opacity-90"
                       style={{ backgroundColor: '#49B1E4' }}
                     >
                       <Upload className="w-4 h-4 mr-2" />
-                      {language === 'ja' ? '学生証を再アップロード' : 'Re-upload Student ID'}
+                      {uploadingStudentId
+                        ? (language === 'ja' ? 'アップロード中...' : 'Uploading...')
+                        : (language === 'ja' ? '学生証を再アップロード' : 'Re-upload Student ID')}
                     </Button>
+                    <input
+                      ref={studentIdReuploadInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleStudentIdReupload}
+                      className="hidden"
+                    />
                   </div>
                 </div>
               </div>
