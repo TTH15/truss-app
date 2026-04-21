@@ -122,7 +122,10 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
                   <div className="w-full h-full bg-linear-to-br from-blue-100 to-purple-100" />
                 )}
                 <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="absolute bottom-0 left-0 right-0 p-2"><p className="text-white text-xs truncate">{displayTitle}</p><p className="text-white/80 text-xs">{event.date}</p></div>
+                  <div className="absolute bottom-0 left-0 right-0 p-2">
+                    <p className="text-white text-xs truncate">{displayTitle}</p>
+                    <p className="text-white/80 text-xs">{event.date}</p>
+                  </div>
                 </div>
               </div>
             );
