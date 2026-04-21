@@ -202,7 +202,12 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       'auth-selection',
       'auth-complete',
     ];
-    if (pathname === '/' && authFlowPages.includes(currentPage)) return;
+    if (pathname === '/') {
+      const reuploadFlowRequested =
+        typeof window !== 'undefined' &&
+        sessionStorage.getItem(STUDENT_ID_REUPLOAD_FLOW_KEY) === '1';
+      if (authFlowPages.includes(currentPage) || reuploadFlowRequested) return;
+    }
     setCurrentPage(next);
   }, [pathname, currentPage, standaloneAdmin]);
 
