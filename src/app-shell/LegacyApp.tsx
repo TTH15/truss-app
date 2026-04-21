@@ -26,6 +26,7 @@ const ADMIN_PATH = '/admin-z8x4m2q9r7';
 const ADMIN_SESSION_KEY = 'truss-admin-session';
 const SHARED_EVENT_TOKEN_KEY = 'truss-shared-event-token';
 const STUDENT_ID_REUPLOAD_AUTOSTART_KEY = 'truss-student-id-reupload-autostart';
+const STUDENT_ID_REUPLOAD_FLOW_KEY = 'truss-student-id-reupload-flow';
 
 export type {
   Language,
@@ -248,6 +249,14 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     }
 
     if (authUser) {
+      const reuploadFlowRequested =
+        typeof window !== 'undefined' &&
+        sessionStorage.getItem(STUDENT_ID_REUPLOAD_FLOW_KEY) === '1';
+      if (reuploadFlowRequested) {
+        setTempEmail(authUser.email);
+        showAuthFlowPage('initial-registration');
+        return;
+      }
       setUser(authUser);
       if (isOAuthCallback()) {
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -505,6 +514,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     if (reopenEmail) setTempEmail(reopenEmail);
     try {
       sessionStorage.setItem(STUDENT_ID_REUPLOAD_AUTOSTART_KEY, '1');
+      sessionStorage.setItem(STUDENT_ID_REUPLOAD_FLOW_KEY, '1');
     } catch {
       // ignore storage errors
     }

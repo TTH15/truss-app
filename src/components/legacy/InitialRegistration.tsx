@@ -92,6 +92,7 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const shouldAutostart = sessionStorage.getItem('truss-student-id-reupload-autostart') === '1';
+    sessionStorage.removeItem('truss-student-id-reupload-flow');
     if (!shouldAutostart) return;
     sessionStorage.removeItem('truss-student-id-reupload-autostart');
     // 再アップロード導線: 画面遷移直後にファイル選択を開く
