@@ -524,7 +524,6 @@ export function Dashboard({
                       ref={studentIdReuploadInputRef}
                       type="file"
                       accept="image/*"
-                      capture="environment"
                       onChange={handleStudentIdReupload}
                       className="hidden"
                     />
