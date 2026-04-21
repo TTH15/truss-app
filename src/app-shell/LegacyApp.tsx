@@ -25,6 +25,7 @@ import type { Event, Language, User } from '../domain/types/app';
 const ADMIN_PATH = '/admin-z8x4m2q9r7';
 const ADMIN_SESSION_KEY = 'truss-admin-session';
 const SHARED_EVENT_TOKEN_KEY = 'truss-shared-event-token';
+const STUDENT_ID_REUPLOAD_AUTOSTART_KEY = 'truss-student-id-reupload-autostart';
 
 export type {
   Language,
@@ -502,6 +503,11 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
   const handleReopenInitialRegistration = () => {
     const reopenEmail = user?.email || authUser?.email || tempEmail;
     if (reopenEmail) setTempEmail(reopenEmail);
+    try {
+      sessionStorage.setItem(STUDENT_ID_REUPLOAD_AUTOSTART_KEY, '1');
+    } catch {
+      // ignore storage errors
+    }
     showAuthFlowPage('initial-registration');
   };
   const handleOpenMemberChat = (userId: string) => {

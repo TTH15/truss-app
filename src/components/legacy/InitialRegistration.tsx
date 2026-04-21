@@ -67,6 +67,7 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
   const departmentRef = useRef<HTMLDivElement>(null);
   const gradeRef = useRef<HTMLDivElement>(null);
   const studentIdRef = useRef<HTMLDivElement>(null);
+  const studentIdInputRef = useRef<HTMLInputElement>(null);
   const isComposingRef = useRef(false);
   const faculties = FACULTIES[language] as Record<string, string[]>;
   const departments = formData.faculty ? faculties[formData.faculty] || [] : [];
@@ -87,6 +88,17 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
     });
     setStudentIdImage(existingUser.studentIdImage || '');
   }, [existingUser]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const shouldAutostart = sessionStorage.getItem('truss-student-id-reupload-autostart') === '1';
+    if (!shouldAutostart) return;
+    sessionStorage.removeItem('truss-student-id-reupload-autostart');
+    // 再アップロード導線: 画面遷移直後にファイル選択を開く
+    setTimeout(() => {
+      studentIdInputRef.current?.click();
+    }, 0);
+  }, []);
 
   const normalizeStudentNumber = (value: string) =>
     value
@@ -245,7 +257,7 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
             </div>
             <div className="space-y-2" ref={gradeRef}><Label htmlFor="grade">{t.gradeLabel}</Label><Select value={formData.grade} onValueChange={(value) => { setFormData({ ...formData, grade: value }); setErrors({ ...errors, grade: false }); }}><SelectTrigger className={`h-12! ${errors.grade ? 'border-red-500' : ''}`}><SelectValue placeholder={t.gradePlaceholder} /></SelectTrigger><SelectContent>{!isGraduateSchool ? <><SelectItem value="1">{t.grade1}</SelectItem><SelectItem value="2">{t.grade2}</SelectItem><SelectItem value="3">{t.grade3}</SelectItem><SelectItem value="4">{t.grade4}</SelectItem><SelectItem value="other">{t.gradeOther}</SelectItem></> : <><SelectItem value="M1">{t.gradeM1}</SelectItem><SelectItem value="M2">{t.gradeM2}</SelectItem><SelectItem value="D1">{t.gradeD1}</SelectItem><SelectItem value="D2">{t.gradeD2}</SelectItem><SelectItem value="D3">{t.gradeD3}</SelectItem><SelectItem value="other">{t.gradeOther}</SelectItem></>}</SelectContent></Select></div>
             <div className="space-y-3"><Label>{t.categoryLabel}</Label><div className="space-y-3">{(['japanese', 'regular-international', 'exchange'] as const).map((cat) => <label key={cat} className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer"><input type="radio" name="category" value={cat} checked={formData.category === cat} onChange={(e) => setFormData({ ...formData, category: e.target.value as 'japanese' | 'regular-international' | 'exchange' })} className="w-4 h-4" /><div className="font-medium text-[#3D3D4E]">{cat === 'japanese' ? t.japanese : cat === 'regular-international' ? t.regularInternational : t.exchange}</div></label>)}</div></div>
-            <div className="space-y-2" ref={studentIdRef}><Label htmlFor="studentId">{t.studentIdLabel}</Label><div className={`border-2 border-dashed rounded-lg p-6 text-center ${errors.studentId ? 'border-red-500' : 'border-gray-300'}`}>{studentIdImage ? <div className="space-y-3"><img src={studentIdImage} alt="Student ID" className="max-h-48 mx-auto rounded" /><div className="flex items-center justify-center gap-2 text-sm text-green-600"><FileText className="w-4 h-4" />{fileName}</div><Button variant="outline" disabled={uploadingStudentId} onClick={() => document.getElementById('studentId')?.click()}>{language === 'ja' ? '別の写真を選択' : 'Choose Different Photo'}</Button></div> : <div className="space-y-3"><Upload className="w-12 h-12 text-gray-400 mx-auto" /><p className="text-gray-600">{t.uploadButton}</p><Button variant="outline" disabled={uploadingStudentId} onClick={() => document.getElementById('studentId')?.click()}><Upload className="w-4 h-4 mr-2" />{language === 'ja' ? 'ファイルを選択' : 'Select File'}</Button></div>}<input id="studentId" type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" /></div></div>
+            <div className="space-y-2" ref={studentIdRef}><Label htmlFor="studentId">{t.studentIdLabel}</Label><div className={`border-2 border-dashed rounded-lg p-6 text-center ${errors.studentId ? 'border-red-500' : 'border-gray-300'}`}>{studentIdImage ? <div className="space-y-3"><img src={studentIdImage} alt="Student ID" className="max-h-48 mx-auto rounded" /><div className="flex items-center justify-center gap-2 text-sm text-green-600"><FileText className="w-4 h-4" />{fileName}</div><Button variant="outline" disabled={uploadingStudentId} onClick={() => studentIdInputRef.current?.click()}>{language === 'ja' ? '別の写真を選択' : 'Choose Different Photo'}</Button></div> : <div className="space-y-3"><Upload className="w-12 h-12 text-gray-400 mx-auto" /><p className="text-gray-600">{t.uploadButton}</p><Button variant="outline" disabled={uploadingStudentId} onClick={() => studentIdInputRef.current?.click()}><Upload className="w-4 h-4 mr-2" />{language === 'ja' ? 'ファイルを選択' : 'Select File'}</Button></div>}<input id="studentId" ref={studentIdInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" /></div></div>
             <Button type="button" disabled={uploadingStudentId} onClick={handleSubmit} className="w-full bg-[#49B1E4] hover:bg-[#3A9BD4]">{uploadingStudentId ? (language === 'ja' ? '画像処理中...' : 'Processing image...') : t.submitButton}</Button>
           </CardContent>
         </Card>
