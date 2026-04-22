@@ -226,10 +226,12 @@ export function AdminEvents({
   onSendBulkEmail,
 }: AdminEventsProps) {
   const t = translations[language];
-  const [currentMonth, setCurrentMonth] = useState(3); // 4月 = 3 (0-indexed)
-  const [currentYear, setCurrentYear] = useState(2026);
+  const now = new Date();
+  const [currentMonth, setCurrentMonth] = useState(now.getMonth());
+  const [currentYear, setCurrentYear] = useState(now.getFullYear());
   const currentMonthRef = useRef(currentMonth);
   const currentYearRef = useRef(currentYear);
+  const monthManuallyChangedRef = useRef(false);
   const lastMonthSwitchAtRef = useRef<number>(0);
   const calendarContainerRef = useRef<HTMLDivElement | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -823,6 +825,7 @@ export function AdminEvents({
 
   // 前月・次月への移動
   const handlePreviousMonth = () => {
+    monthManuallyChangedRef.current = true;
     if (currentMonth === 0) {
       setCurrentMonth(11);
       setCurrentYear(currentYear - 1);
@@ -832,6 +835,7 @@ export function AdminEvents({
   };
 
   const handleNextMonth = () => {
+    monthManuallyChangedRef.current = true;
     if (currentMonth === 11) {
       setCurrentMonth(0);
       setCurrentYear(currentYear + 1);
@@ -891,6 +895,7 @@ export function AdminEvents({
       const cm = currentMonthRef.current;
       const cy = currentYearRef.current;
       if (zone === 'left') {
+        monthManuallyChangedRef.current = true;
         if (cm === 0) {
           setCurrentMonth(11);
           setCurrentYear(cy - 1);
@@ -898,6 +903,7 @@ export function AdminEvents({
           setCurrentMonth(cm - 1);
         }
       } else {
+        monthManuallyChangedRef.current = true;
         if (cm === 11) {
           setCurrentMonth(0);
           setCurrentYear(cy + 1);
@@ -954,6 +960,30 @@ export function AdminEvents({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [imageEditorOpen]);
+
+  useEffect(() => {
+    if (monthManuallyChangedRef.current) return;
+    if (propsEvents.length === 0) return;
+
+    const hasAnyEventInCurrentMonth = propsEvents.some((event) => {
+      const key = normalizeEventDateKey(event?.date);
+      if (!key) return false;
+      const [yy, mm] = key.split('-');
+      return Number(yy) === currentYear && Number(mm) === currentMonth + 1;
+    });
+    if (hasAnyEventInCurrentMonth) return;
+
+    const firstValid = propsEvents
+      .map((event) => normalizeEventDateKey(event?.date))
+      .find((key) => Boolean(key));
+    if (!firstValid) return;
+    const [yy, mm] = firstValid.split('-');
+    const nextYear = Number(yy);
+    const nextMonth = Number(mm) - 1;
+    if (Number.isNaN(nextYear) || Number.isNaN(nextMonth)) return;
+    setCurrentYear(nextYear);
+    setCurrentMonth(nextMonth);
+  }, [propsEvents, currentYear, currentMonth]);
 
   const renderEventImageField = () => (
     <div>
