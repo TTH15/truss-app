@@ -8,9 +8,18 @@ export const translateText = async (text: string, targetLang: string = 'en'): Pr
     const response = await fetch(url);
     const data = await response.json();
     
-    // レスポンスから翻訳テキストを抽出
-    if (data && data[0] && data[0][0] && data[0][0][0]) {
-      return data[0][0][0];
+    // レスポンスから翻訳テキストを抽出（複数セグメント対応）
+    if (Array.isArray(data?.[0])) {
+      const translated = data[0]
+        .map((segment: unknown) =>
+          Array.isArray(segment) && typeof segment[0] === 'string' ? segment[0] : ''
+        )
+        .join('')
+        .trim();
+
+      if (translated) {
+        return translated;
+      }
     }
     
     throw new Error('Translation failed');
