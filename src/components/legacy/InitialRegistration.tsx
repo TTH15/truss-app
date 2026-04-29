@@ -121,6 +121,24 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
       reader.readAsDataURL(file);
     });
 
+  const blobToDataUrl = (blob: Blob) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => resolve(event.target?.result as string);
+      reader.onerror = () => reject(new Error('Failed to read blob'));
+      reader.readAsDataURL(blob);
+    });
+
+  const isHeicLikeFile = (file: File) => {
+    const name = file.name.toLowerCase();
+    return (
+      file.type === 'image/heic' ||
+      file.type === 'image/heif' ||
+      name.endsWith('.heic') ||
+      name.endsWith('.heif')
+    );
+  };
+
   const compressImageDataUrl = (dataUrl: string, maxSide: number = 1600, quality: number = 0.82) =>
     new Promise<string>((resolve, reject) => {
       const img = new Image();
@@ -143,10 +161,38 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
       img.src = dataUrl;
     });
 
+  const normalizeStudentIdImageDataUrl = async (file: File) => {
+    let sourceDataUrl = '';
+    if (isHeicLikeFile(file)) {
+      const heic2any = (await import('heic2any')).default;
+      const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+      const convertedBlob = Array.isArray(converted) ? converted[0] : converted;
+      sourceDataUrl = await blobToDataUrl(convertedBlob);
+    } else {
+      sourceDataUrl = await readFileAsDataUrl(file);
+    }
+
+    if (sourceDataUrl.length <= MAX_STUDENT_ID_DATA_URL_LEN) return sourceDataUrl;
+
+    let quality = 0.82;
+    let compressed = sourceDataUrl;
+    for (let i = 0; i < 4; i += 1) {
+      try {
+        compressed = await compressImageDataUrl(sourceDataUrl, 1600, quality);
+      } catch {
+        // HEIC decode 不可など圧縮に失敗した場合は元データを使う
+        return sourceDataUrl;
+      }
+      if (compressed.length <= MAX_STUDENT_ID_DATA_URL_LEN) break;
+      quality -= 0.14;
+    }
+    return compressed;
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith('image/') && !isHeicLikeFile(file)) {
       toast.error(language === 'ja' ? '画像ファイルを選択してください' : 'Please select an image file');
       return;
     }
@@ -160,10 +206,7 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
     }
     setUploadingStudentId(true);
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const normalized = dataUrl.length > MAX_STUDENT_ID_DATA_URL_LEN
-        ? await compressImageDataUrl(dataUrl)
-        : dataUrl;
+      const normalized = await normalizeStudentIdImageDataUrl(file);
       setStudentIdImage(normalized);
       setFileName(file.name);
       setErrors({ ...errors, studentId: false });

@@ -453,6 +453,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
         studentIdImage: data.studentIdImage, studentIdReuploadRequested: false, reuploadReason: undefined,
       });
       if (error) {
+        console.error('Student ID re-upload update error:', error);
         toast.error(language === 'ja' ? 'エラーが発生しました' : 'An error occurred');
         return;
       }
