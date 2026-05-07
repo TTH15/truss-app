@@ -5,6 +5,7 @@ import { Input } from '../ui/input';
 import { ArrowLeft, Send, Pin, Flag } from 'lucide-react';
 import type { Language, User, Message as AppMessage, MessageThread, ChatThreadMetadata } from '../../domain/types/app';
 import { useData } from '../../contexts/DataContext';
+import { toast } from 'sonner';
 
 interface MessagesPageProps {
   language: Language;
@@ -64,7 +65,7 @@ const formatMessageTime = (raw: string) => {
 
 export function MessagesPage({ language, user, recipientName, recipientAvatar, isAdmin = false, onBack, messageHistory, setMessageHistory, messageThreads, onUpdateMessageThreads }: MessagesPageProps) {
   const t = translations[language];
-  const { markAllMessagesAsReadForUser } = useData();
+  const { markAllMessagesAsReadForUser, sendMessage, approvedMembers } = useData();
   const hasMarkedAsRead = useRef(false);
   useEffect(() => { if (isAdmin && user.id && !hasMarkedAsRead.current) { hasMarkedAsRead.current = true; markAllMessagesAsReadForUser(user.id); } }, [isAdmin, user.id, markAllMessagesAsReadForUser]);
   const getInitialMessage = () => ({ id: 1, sender: 'other' as const, text: language === 'ja' ? 'こんにちは！リアクションありがとうございます。' : 'Hello! Thanks for your reaction.', time: '14:30' });
@@ -83,16 +84,29 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
   }, [messageThreads, user.id, isAdmin, recipientId, setMessageHistory, onUpdateMessageThreads]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
-    const message: Message = { id: messages.length + 1, sender: 'user', text: newMessage, time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) };
+    const text = newMessage;
+    const message: Message = { id: messages.length + 1, sender: 'user', text, time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) };
+    if (isAdmin) {
+      const adminUserId = approvedMembers.find((member) => member.isAdmin)?.id;
+      if (!adminUserId) {
+        toast.error(language === 'ja' ? '運営アカウントが見つかりませんでした' : 'Admin account was not found');
+        return;
+      }
+      try {
+        await sendMessage(adminUserId, text, false);
+        setNewMessage('');
+      } catch {
+        toast.error(language === 'ja' ? 'メッセージ送信に失敗しました' : 'Failed to send message');
+      }
+      return;
+    }
     const updated = [...messages, message];
     setMessages(updated); setNewMessage('');
     setMessageHistory((prev) => ({ ...prev, [recipientId]: updated }));
-    if (isAdmin) {
-      const appMessage: AppMessage = { id: Date.now(), senderId: user.id, senderName: user.name, text: newMessage, time: message.time, isAdmin: false };
-      onUpdateMessageThreads({ ...messageThreads, [user.id]: [...(messageThreads[user.id] || []), appMessage] });
-    }
+    const appMessage: AppMessage = { id: Date.now(), senderId: user.id, senderName: user.name, text: message.text, time: message.time, isAdmin: false };
+    onUpdateMessageThreads({ ...messageThreads, [user.id]: [...(messageThreads[user.id] || []), appMessage] });
   };
   const togglePin = (id: number) => { const updated = messages.map((m) => m.id === id ? { ...m, pinned: !m.pinned } : m); setMessages(updated); setMessageHistory((prev) => ({ ...prev, [recipientId]: updated })); };
   const toggleFlag = (id: number) => { const updated = messages.map((m) => m.id === id ? { ...m, flagged: !m.flagged } : m); setMessages(updated); setMessageHistory((prev) => ({ ...prev, [recipientId]: updated })); };

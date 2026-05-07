@@ -5,6 +5,7 @@ import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { MessageCircle, Send, Pin, Flag, ArrowLeft } from 'lucide-react';
 import type { Language, MessageThread, User as UserType, Message, ChatThreadMetadata } from '../../domain/types/app';
+import { toast } from 'sonner';
 
 interface AdminChatMessagesProps {
   language: Language;
@@ -103,14 +104,18 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedUserId) return;
-    if (onSendMessage) await onSendMessage(selectedUserId, newMessage, true);
-    else {
-      const message: Message = { id: Date.now(), senderId: 'admin-001', senderName: language === 'ja' ? '運営管理者' : 'Admin', text: newMessage, time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }), isAdmin: true, read: false };
-      onUpdateMessageThreads({ ...messageThreads, [selectedUserId]: [...(messageThreads[selectedUserId] || []), message] });
-      const currentMetadata = chatThreadMetadata[selectedUserId] || {};
-      onUpdateChatThreadMetadata({ ...chatThreadMetadata, [selectedUserId]: { ...currentMetadata } });
+    try {
+      if (onSendMessage) await onSendMessage(selectedUserId, newMessage, true);
+      else {
+        const message: Message = { id: Date.now(), senderId: 'admin-001', senderName: language === 'ja' ? '運営管理者' : 'Admin', text: newMessage, time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }), isAdmin: true, read: false };
+        onUpdateMessageThreads({ ...messageThreads, [selectedUserId]: [...(messageThreads[selectedUserId] || []), message] });
+        const currentMetadata = chatThreadMetadata[selectedUserId] || {};
+        onUpdateChatThreadMetadata({ ...chatThreadMetadata, [selectedUserId]: { ...currentMetadata } });
+      }
+      setNewMessage('');
+    } catch {
+      toast.error(language === 'ja' ? 'メッセージ送信に失敗しました' : 'Failed to send message');
     }
-    setNewMessage('');
   };
 
   const togglePin = (messageId: number) => { if (!selectedUserId) return; onUpdateMessageThreads({ ...messageThreads, [selectedUserId]: (messageThreads[selectedUserId] || []).map((m) => m.id === messageId ? { ...m, pinned: !m.pinned } : m) }); };

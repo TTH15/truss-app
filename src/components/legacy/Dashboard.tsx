@@ -19,6 +19,7 @@ import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
 import type { User as UserType, Language, Event, MessageThread, ChatThreadMetadata, Notification, BoardPost, BoardPostReply } from '../../domain/types/app';
 import { isProfileCompleteForParticipation } from '../../lib/profile-completion';
 import { toast } from 'sonner';
+import { uploadStudentIdImage } from '../../lib/supabase';
 
 type User = UserType;
 
@@ -176,6 +177,12 @@ export function Dashboard({
       img.src = dataUrl;
     });
 
+  const dataUrlToJpegFile = async (dataUrl: string, fileName = 'student-id.jpg') => {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    return new File([blob], fileName, { type: 'image/jpeg' });
+  };
+
   const handleStudentIdReupload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -199,8 +206,14 @@ export function Dashboard({
     try {
       const dataUrl = await readFileAsDataUrl(file);
       const normalized = dataUrl.length > 2_000_000 ? await compressImageDataUrl(dataUrl) : dataUrl;
+      const imageFile = await dataUrlToJpegFile(normalized);
+      const { path, error: uploadError } = await uploadStudentIdImage(user.id, imageFile);
+      if (uploadError || !path) {
+        toast.error(language === 'ja' ? '再アップロードに失敗しました' : 'Failed to re-upload student ID');
+        return;
+      }
       const { error } = await onUpdateProfile({
-        studentIdImage: normalized, // 旧画像はこの更新で置換される
+        studentIdImage: path,
         studentIdReuploadRequested: false,
         reuploadReason: undefined,
       });

@@ -1,7 +1,7 @@
 /**
  * users テーブル関連の書き込みを集約
  */
-import { supabase } from "../../supabase";
+import { deleteStudentIdImageByPath, supabase } from "../../supabase";
 
 function toErrorOrNull(error: { message: string } | null) {
   return error ? new Error(error.message) : null;
@@ -15,6 +15,9 @@ export async function approvePendingUserRow(
     feePaid: boolean;
   }
 ): Promise<{ error: Error | null }> {
+  const { data: current } = await supabase.from("users").select("student_id_image").eq("id", userId).maybeSingle();
+  const existingPath = current?.student_id_image;
+
   const { error } = await supabase
     .from("users")
     .update({
@@ -26,13 +29,22 @@ export async function approvePendingUserRow(
     })
     .eq("id", userId);
 
+  if (!error && existingPath) {
+    await deleteStudentIdImageByPath(existingPath);
+  }
+
   return { error: toErrorOrNull(error) };
 }
 
 export async function rejectUserRow(
   userId: string
 ): Promise<{ error: Error | null }> {
+  const { data: current } = await supabase.from("users").select("student_id_image").eq("id", userId).maybeSingle();
+  const existingPath = current?.student_id_image;
   const { error } = await supabase.from("users").delete().eq("id", userId);
+  if (!error && existingPath) {
+    await deleteStudentIdImageByPath(existingPath);
+  }
   return { error: toErrorOrNull(error) };
 }
 
@@ -91,7 +103,12 @@ export async function resetMembershipForNewYearRow(
 export async function deleteUserRow(
   userId: string
 ): Promise<{ error: Error | null }> {
+  const { data: current } = await supabase.from("users").select("student_id_image").eq("id", userId).maybeSingle();
+  const existingPath = current?.student_id_image;
   const { error } = await supabase.from("users").delete().eq("id", userId);
+  if (!error && existingPath) {
+    await deleteStudentIdImageByPath(existingPath);
+  }
   return { error: toErrorOrNull(error) };
 }
 

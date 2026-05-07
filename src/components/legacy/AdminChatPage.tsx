@@ -78,8 +78,9 @@ export function AdminChatPage({ language, user, onBack }: AdminChatPageProps) {
     setIsSending(true);
     try {
       await sendMessage(adminUserId, newMessage, false);
-      setMessages((prev) => [...prev, { id: Date.now(), sender: 'user', text: newMessage, time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) }]);
       setNewMessage('');
+    } catch {
+      toast.error(language === 'ja' ? 'メッセージ送信に失敗しました' : 'Failed to send message');
     } finally { setIsSending(false); }
   };
   const togglePin = (messageId: number) => setMessages(messages.map((m) => m.id === messageId ? { ...m, pinned: !m.pinned } : m));

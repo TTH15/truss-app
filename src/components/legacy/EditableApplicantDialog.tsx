@@ -10,6 +10,7 @@ import { Checkbox } from '../ui/checkbox';
 import { toast } from 'sonner';
 import type { Language, User } from '../../domain/types/app';
 import { ConfirmDialog } from './ConfirmDialog';
+import { StudentIdImage } from './StudentIdImage';
 
 interface EditableApplicantDialogProps {
   language: Language;
@@ -39,7 +40,7 @@ export function EditableApplicantDialog({ language, application, onApprove, onRe
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{t.applicantDetails}</DialogTitle><DialogDescription>{t.applicationDate}: {application.requestedAt || new Date().toISOString().split('T')[0]}</DialogDescription></DialogHeader>
         <div className="space-y-6">
-          <div><h4 className="text-gray-900 mb-2">{t.studentId}</h4><div className="border rounded-lg overflow-hidden" style={{ aspectRatio: '3/2' }}><img src={application.studentIdImage} alt="Student ID" className="w-full h-full object-contain" /></div></div>
+          <div><h4 className="text-gray-900 mb-2">{t.studentId}</h4><div className="border rounded-lg overflow-hidden" style={{ aspectRatio: '3/2' }}><StudentIdImage value={application.studentIdImage} alt="Student ID" className="w-full h-full object-contain" /></div></div>
           <div>
             <h4 className="text-gray-900 mb-3">{t.personalInfo}</h4>
             <div className="grid md:grid-cols-2 gap-4">

@@ -14,7 +14,7 @@ import { AuthCompleteScreen } from '../components/legacy/AuthCompleteScreen';
 import { Toaster, toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import { supabase } from '../lib/supabase';
+import { supabase, uploadStudentIdImage } from '../lib/supabase';
 import {
   buildInitialRegistrationUserInsert,
   buildInitialRegistrationUserUpdate,
@@ -127,6 +127,12 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
   const [selectedChatUserId, setSelectedChatUserId] = useState<string | null>(null);
   const [adminActiveTab, setAdminActiveTab] = useState<'members' | 'events' | 'boards' | 'chat'>('members');
   const [activeSharedEventToken, setActiveSharedEventToken] = useState<string | null>(sharedEventToken ?? null);
+
+  const dataUrlToJpegFile = async (dataUrl: string, fileName = 'student-id.jpg') => {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    return new File([blob], fileName, { type: 'image/jpeg' });
+  };
 
   const routeMap: Partial<Record<PageState, string>> = {
     landing: '/',
@@ -448,12 +454,28 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
 
   const handleInitialRegistrationComplete = async (data: InitialRegistrationData) => {
     setTempInitialData(data);
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData?.user) {
+      toast.error(language === 'ja' ? '認証エラー' : 'Auth error');
+      return;
+    }
+    let studentIdPath = data.studentIdImage;
+    if (studentIdPath.startsWith('data:')) {
+      const imageFile = await dataUrlToJpegFile(studentIdPath);
+      const { path: uploadedPath, error: uploadError } = await uploadStudentIdImage(authData.user.id, imageFile);
+      if (uploadError || !uploadedPath) {
+        toast.error(language === 'ja' ? '学生証画像の保存に失敗しました' : 'Failed to upload student ID');
+        return;
+      }
+      studentIdPath = uploadedPath;
+    }
+    const payload: InitialRegistrationData = { ...data, studentIdImage: studentIdPath };
+
     if (user && user.studentIdReuploadRequested) {
       const { error } = await updateAuthUser({
-        studentIdImage: data.studentIdImage, studentIdReuploadRequested: false, reuploadReason: undefined,
+        studentIdImage: payload.studentIdImage, studentIdReuploadRequested: false, reuploadReason: undefined,
       });
       if (error) {
-        console.error('Student ID re-upload update error:', error);
         toast.error(language === 'ja' ? 'エラーが発生しました' : 'An error occurred');
         return;
       }
@@ -464,11 +486,6 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     const now = new Date();
     const requestedAt = now.toISOString().split('T')[0];
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      if (!authData?.user) {
-        toast.error(language === 'ja' ? '認証エラー' : 'Auth error');
-        return;
-      }
       const { data: existingUser } = await supabase
         .from('users')
         .select('id')
@@ -477,11 +494,11 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       const email = tempEmail || authData.user.email || '';
       let error;
       if (existingUser) {
-        const patch = buildInitialRegistrationUserUpdate(data, requestedAt);
+        const patch = buildInitialRegistrationUserUpdate(payload, requestedAt);
         const result = await supabase.from('users').update(patch).eq('auth_id', authData.user.id);
         error = result.error;
       } else {
-        const row = buildInitialRegistrationUserInsert(authData.user.id, email, data, requestedAt);
+        const row = buildInitialRegistrationUserInsert(authData.user.id, email, payload, requestedAt);
         const result = await supabase.from('users').insert(row);
         error = result.error;
       }
@@ -625,16 +642,21 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     await registerForEvent(eventId, photoRefusal);
   };
   const handleSendBulkEmail = async (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => {
-    if (sendInApp) {
-      for (const userId of userIds) {
-        await sendMessage(userId, language === 'ja' ? messageJa : messageEn, true);
+    try {
+      if (sendInApp) {
+        for (const userId of userIds) {
+          await sendMessage(userId, language === 'ja' ? messageJa : messageEn, true);
+        }
       }
+      if (sendEmail) console.log('Email sending:', { userIds, subjectJa, subjectEn, messageJa, messageEn });
+      const messageType = sendInApp && sendEmail ? (language === 'ja' ? '通知とメール' : 'notification and email')
+        : sendInApp ? (language === 'ja' ? '通知' : 'notification')
+        : (language === 'ja' ? 'メール' : 'email');
+      toast.success(language === 'ja' ? `${userIds.length}人に${messageType}を送信しました` : `Sent ${messageType} to ${userIds.length} members`);
+    } catch (error) {
+      console.error('Bulk send failed in LegacyApp:', error);
+      toast.error(language === 'ja' ? '一斉送信に失敗しました' : 'Failed to send bulk messages');
     }
-    if (sendEmail) console.log('Email sending:', { userIds, subjectJa, subjectEn, messageJa, messageEn });
-    const messageType = sendInApp && sendEmail ? (language === 'ja' ? '通知とメール' : 'notification and email')
-      : sendInApp ? (language === 'ja' ? '通知' : 'notification')
-      : (language === 'ja' ? 'メール' : 'email');
-    toast.success(language === 'ja' ? `${userIds.length}人に${messageType}を送信しました` : `Sent ${messageType} to ${userIds.length} members`);
   };
   const handleSendBulkMessages = async (
     messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string }>

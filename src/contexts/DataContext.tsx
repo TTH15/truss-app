@@ -513,6 +513,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await fetchMessages();
     } catch (error) {
       console.error('Error sending message:', error);
+      throw error;
     }
   };
 
@@ -537,6 +538,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await fetchMessages();
     } catch (error) {
       console.error('Error sending bulk messages:', error);
+      throw error;
     }
   };
 
@@ -554,6 +556,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await fetchMessages();
     } catch (error) {
       console.error('Error sending broadcast:', error);
+      throw error;
     }
   };
 

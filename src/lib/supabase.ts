@@ -103,29 +103,36 @@ const BUCKETS = {
 } as const;
 
 export async function uploadStudentIdImage(userId: string, file: File) {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${userId}/student-id.${fileExt}`;
+  const fileName = `${userId}/student-id.jpg`;
 
   const { error } = await supabase.storage
     .from(BUCKETS.STUDENT_ID_IMAGES)
     .upload(fileName, file, {
       upsert: true,
+      contentType: 'image/jpeg',
     });
 
-  if (error) return { url: null, error };
-
-  const { data: urlData } = await supabase.storage
-    .from(BUCKETS.STUDENT_ID_IMAGES)
-    .createSignedUrl(fileName, 60 * 60 * 24);
-
-  return { url: urlData?.signedUrl || null, error: null };
+  if (error) return { path: null as string | null, error };
+  return { path: fileName, error: null };
 }
 
 export async function deleteStudentIdImage(userId: string) {
   const { error } = await supabase.storage
     .from(BUCKETS.STUDENT_ID_IMAGES)
-    .remove([`${userId}/student-id.jpg`, `${userId}/student-id.png`, `${userId}/student-id.jpeg`]);
+    .remove([`${userId}/student-id.jpg`, `${userId}/student-id.png`, `${userId}/student-id.jpeg`, `${userId}/student-id.heic`, `${userId}/student-id.heif`]);
   return { error };
+}
+
+export async function deleteStudentIdImageByPath(path: string) {
+  const { error } = await supabase.storage.from(BUCKETS.STUDENT_ID_IMAGES).remove([path]);
+  return { error };
+}
+
+export async function getStudentIdSignedUrl(path: string, expiresIn = 3600) {
+  const { data, error } = await supabase.storage
+    .from(BUCKETS.STUDENT_ID_IMAGES)
+    .createSignedUrl(path, expiresIn);
+  return { url: data?.signedUrl ?? null, error };
 }
 
 export async function uploadEventImage(eventId: number, file: File) {
