@@ -65,8 +65,8 @@ export function AdminApprovals({ language, pendingUsers = [], onApproveUser = ()
                   </div>
                 </div>
               </div>
-              <div className="hidden md:block md:flex-1 shrink-0"><p className="text-gray-600 text-sm mb-2">{t.studentId}</p><div className="border rounded-lg overflow-hidden bg-gray-50 w-full" style={{ aspectRatio: '3/2' }}><StudentIdImage value={application.studentIdImage} alt="Student ID" className="w-full h-full object-contain" /></div></div>
-              <div className="w-full md:hidden shrink-0"><p className="text-gray-600 text-sm mb-2">{t.studentId}</p><div className="border rounded-lg overflow-hidden bg-gray-50 w-full" style={{ aspectRatio: '3/2' }}><StudentIdImage value={application.studentIdImage} alt="Student ID" className="w-full h-full object-contain" /></div></div>
+              <div className="hidden md:block md:flex-1 shrink-0"><p className="text-gray-600 text-sm mb-2">{t.studentId}</p><div className="border rounded-lg overflow-hidden bg-gray-50 w-full" style={{ aspectRatio: '3/2' }}><StudentIdImage value={application.studentIdImage} language={language} alt="Student ID" className="w-full h-full object-contain" /></div></div>
+              <div className="w-full md:hidden shrink-0"><p className="text-gray-600 text-sm mb-2">{t.studentId}</p><div className="border rounded-lg overflow-hidden bg-gray-50 w-full" style={{ aspectRatio: '3/2' }}><StudentIdImage value={application.studentIdImage} language={language} alt="Student ID" className="w-full h-full object-contain" /></div></div>
             </div>
           </CardContent>
         </Card>

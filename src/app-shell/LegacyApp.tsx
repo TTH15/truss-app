@@ -464,7 +464,12 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       const imageFile = await dataUrlToJpegFile(studentIdPath);
       const { path: uploadedPath, error: uploadError } = await uploadStudentIdImage(authData.user.id, imageFile);
       if (uploadError || !uploadedPath) {
-        toast.error(language === 'ja' ? '学生証画像の保存に失敗しました' : 'Failed to upload student ID');
+        toast.error(
+          language === 'ja'
+            ? '学生証の写真をサーバーに送れませんでした。電波やWi‑Fiを確認したうえで、時間をおいて撮り直すか、ギャラリーからJPEGの写真を選び直してください。'
+            : 'We couldn’t send your student ID photo. Check Wi‑Fi or signal, wait a moment, then retake the photo or pick a JPEG from your gallery.',
+          { duration: 16000 }
+        );
         return;
       }
       studentIdPath = uploadedPath;

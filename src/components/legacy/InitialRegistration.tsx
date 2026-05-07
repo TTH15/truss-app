@@ -44,16 +44,53 @@ const FACULTIES = {
 const translations = {
   ja: {
     title: '初期登録', subtitle: '基本情報と学生証を提出してください', nameLabel: '氏名', namePlaceholder: '山田太郎', furiganaLabel: 'フリガナ', furiganaPlaceholder: 'ヤマダタロウ', studentNumberLabel: '学籍番号', studentNumberPlaceholder: '1234567A', studentNumberError: '学籍番号に誤りがあります', facultyLabel: '学部', facultyPlaceholder: '学部を選択してください', facultyGroupUndergrad: '学部', facultyGroupGrad: '大学院', departmentLabel: '学科', departmentPlaceholder: '学科を選択してください', gradeLabel: '学年', gradePlaceholder: '学年を選択してください', grade1: 'B1 (学部1年)', grade2: 'B2 (学部2年)', grade3: 'B3 (学部3年)', grade4: 'B4 (学部4年)', gradeM1: 'M1 (修士1年)', gradeM2: 'M2 (修士2年)', gradeD1: 'D1 (博士1年)', gradeD2: 'D2 (博士2年)', gradeD3: 'D3 (博士3年)', gradeOther: 'その他', categoryLabel: '区分', japanese: '日本人学生・国内学生', regularInternational: '正規留学生', exchange: '交換留学生', studentIdLabel: '学生証写真', uploadButton: '写真をアップロード', submitButton: '承認待ちに進む', back: '戻る', required: '必須項目です', nameRequired: '氏名は必須です', furiganaRequired: 'フリガナは必須です', studentNumberRequired: '学籍番号は必須です', facultyRequired: '学部は必須です', departmentRequired: '学科は必須です', gradeRequired: '学年は必須です', studentIdRequired: '学生証写真は必須です', submitSuccess: '登録が完了しました。運営の承認をお待ちください。', stepEmailVerification: '認証', stepInitialRegistration: '初期登録', stepApproval: '運営の承認',
+    studentIdErrNoPhoto: '写真データを受け取れませんでした。もう一度カメラで撮るか、写真アプリから同じ写真を選び直してください。',
+    studentIdErrNotImage: 'この端末では形式が伝わっていません。カメラで撮り直すか、「ファイルを選ぶ」でギャラリーのJPEG・PNGを選んでください。',
+    studentIdErrTooHeavy: '写真の情報量が大きすぎます。設定でカメラの画質を下げるか、少し離れて撮り直してください。',
+    studentIdErrReadFailed: '写真を読み取れませんでした。ブラウザの更新や別ブラウザを試すか、ギャラリーから選び直してください。',
+    studentIdErrHeic: 'この写真の形式（HEIC）はこの環境では扱えないことがあります。カメラの保存形式をJPEGにするか、アプリでJPEGに変換してから選び直してください。',
+    studentIdErrGeneric: '学生証写真の処理に失敗しました。Wi‑Fi に切り替えるか、しばらくしてから撮り直してください。',
+    studentIdOkPreview: '学生証写真をセットしました。このまま入力を続け、「承認待ちに進む」で送信してください。',
   },
   en: {
     title: 'Initial Registration', subtitle: 'Please submit basic information and student ID', nameLabel: 'Full Name', namePlaceholder: 'Taro Yamada', furiganaLabel: 'Full Name in Katakana (phonetic spelling)', furiganaPlaceholder: 'ヤマダタロウ', studentNumberLabel: 'Student ID Number', studentNumberPlaceholder: '1234567A', studentNumberError: 'Invalid student ID number format', facultyLabel: 'Faculty', facultyPlaceholder: 'Select Faculty', facultyGroupUndergrad: 'Undergraduate', facultyGroupGrad: 'Graduate School', departmentLabel: 'Department', departmentPlaceholder: 'Select Department', gradeLabel: 'Grade', gradePlaceholder: 'Select Grade', grade1: 'B1 (1st Year)', grade2: 'B2 (2nd Year)', grade3: 'B3 (3rd Year)', grade4: 'B4 (4th Year)', gradeM1: 'M1 (Master 1st Year)', gradeM2: 'M2 (Master 2nd Year)', gradeD1: 'D1 (Doctoral 1st Year)', gradeD2: 'D2 (Doctoral 2nd Year)', gradeD3: 'D3 (Doctoral 3rd Year)', gradeOther: 'Other', categoryLabel: 'Category', japanese: 'Japanese Student', regularInternational: 'Regular International Student', exchange: 'Exchange Student', studentIdLabel: 'Student ID Photo', uploadButton: 'Upload Photo', submitButton: 'Submit for Approval', back: 'Back', required: 'This field is required', nameRequired: 'Full name is required', furiganaRequired: 'Furigana is required', studentNumberRequired: 'Student ID number is required', facultyRequired: 'Faculty is required', departmentRequired: 'Department is required', gradeRequired: 'Grade is required', studentIdRequired: 'Student ID photo is required', submitSuccess: 'Registration completed. Please wait for approval.', stepEmailVerification: 'Authentication', stepInitialRegistration: 'Initial Registration', stepApproval: 'Approval',
-  }
+    studentIdErrNoPhoto: "We couldn't get the photo. Take it again or pick the same one from your gallery.",
+    studentIdErrNotImage: 'Your phone didn\'t send a normal photo format. Try the camera again, or choose a JPEG or PNG from your gallery.',
+    studentIdErrTooHeavy: 'This photo has too much detail. Lower your camera quality in settings or stand a bit farther back and retake.',
+    studentIdErrReadFailed: 'We couldn\'t read this photo. Try refreshing the page, another browser, or pick again from gallery.',
+    studentIdErrHeic: 'This photo type (HEIC) may not work here. Save new photos as JPEG in camera settings, or convert to JPEG and pick again.',
+    studentIdErrGeneric: 'Something went wrong with the student ID photo. Try Wi‑Fi or try again shortly.',
+    studentIdOkPreview: 'Photo is set. Continue the form and press Submit when ready.',
+  },
 };
+
+const IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i;
+
+function isProbablyImageFile(file: File): boolean {
+  if (file.type.startsWith('image/')) return true;
+  if (file.type === 'image/heic' || file.type === 'image/heif') return true;
+  // スマホのカメラで type が空・octet-stream になることがある
+  if (!file.type || file.type === 'application/octet-stream') {
+    if (file.name && IMAGE_EXT_RE.test(file.name)) return true;
+    return file.size > 0;
+  }
+  return isHeicLikeFileStatic(file);
+}
+
+function isHeicLikeFileStatic(file: File) {
+  const name = file.name.toLowerCase();
+  return (
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    name.endsWith('.heic') ||
+    name.endsWith('.heif')
+  );
+}
 
 export function InitialRegistration({ language, onLanguageChange, email, onComplete, onBack, existingUser }: InitialRegistrationProps) {
   const t = translations[language];
   const MAX_STUDENT_ID_SIZE_MB = 20;
-  // DB へ data URL 文字列を保存する現行実装のため、送信サイズを強めに抑える
+  // 送信直前まで画面内は data URL。容量が大きいと端末や通信で失敗しやすいため上限を設ける
   const MAX_STUDENT_ID_DATA_URL_LEN = 600_000;
   const [formData, setFormData] = useState({ name: '', furigana: '', studentNumber: '', phone: '', faculty: '', department: '', grade: '', category: 'japanese' as 'japanese' | 'regular-international' | 'exchange' });
   const [studentIdImage, setStudentIdImage] = useState<string>('');
@@ -131,15 +168,7 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
       reader.readAsDataURL(blob);
     });
 
-  const isHeicLikeFile = (file: File) => {
-    const name = file.name.toLowerCase();
-    return (
-      file.type === 'image/heic' ||
-      file.type === 'image/heif' ||
-      name.endsWith('.heic') ||
-      name.endsWith('.heif')
-    );
-  };
+  const isHeicLikeFile = (file: File) => isHeicLikeFileStatic(file);
 
   const compressImageDataUrl = (dataUrl: string, maxSide: number = 1600, quality: number = 0.82) =>
     new Promise<string>((resolve, reject) => {
@@ -166,12 +195,20 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
   const normalizeStudentIdImageDataUrl = async (file: File) => {
     let sourceDataUrl = '';
     if (isHeicLikeFile(file)) {
-      const heic2any = (await import('heic2any')).default;
-      const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
-      const convertedBlob = Array.isArray(converted) ? converted[0] : converted;
-      sourceDataUrl = await blobToDataUrl(convertedBlob);
+      try {
+        const heic2any = (await import('heic2any')).default;
+        const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+        const convertedBlob = Array.isArray(converted) ? converted[0] : converted;
+        sourceDataUrl = await blobToDataUrl(convertedBlob);
+      } catch {
+        throw new Error('HEIC_CONVERT_FAILED');
+      }
     } else {
       sourceDataUrl = await readFileAsDataUrl(file);
+    }
+
+    if (!sourceDataUrl || sourceDataUrl.length < 32) {
+      throw new Error('READ_FAILED');
     }
 
     if (sourceDataUrl.length <= MAX_STUDENT_ID_DATA_URL_LEN) return sourceDataUrl;
@@ -194,41 +231,64 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/') && !isHeicLikeFile(file)) {
-      toast.error(language === 'ja' ? '画像ファイルを選択してください' : 'Please select an image file');
+    const input = e.currentTarget;
+    const clearInput = () => {
+      input.value = '';
+    };
+    const errToast = (message: string) => {
+      toast.error(message, { duration: 14000 });
+    };
+
+    const file = input.files?.[0];
+    if (!file || file.size === 0) {
+      errToast(t.studentIdErrNoPhoto);
+      clearInput();
+      return;
+    }
+    if (!isProbablyImageFile(file)) {
+      errToast(t.studentIdErrNotImage);
+      clearInput();
       return;
     }
     if (file.size > MAX_STUDENT_ID_SIZE_MB * 1024 * 1024) {
-      toast.error(
+      errToast(
         language === 'ja'
-          ? `画像サイズは${MAX_STUDENT_ID_SIZE_MB}MB以下にしてください`
-          : `Please keep image size under ${MAX_STUDENT_ID_SIZE_MB}MB`
+          ? `一枚の写真が大きすぎます（${MAX_STUDENT_ID_SIZE_MB}MB以下にしてください）。画質を下げるか、ギャラリーから圧縮された写真を選んでください。`
+          : `This photo file is too large (max ${MAX_STUDENT_ID_SIZE_MB}MB). Lower quality or pick a smaller image from your gallery.`
       );
+      clearInput();
       return;
     }
+
     setUploadingStudentId(true);
     try {
       const normalized = await normalizeStudentIdImageDataUrl(file);
+      if (!normalized || normalized.length < 32) {
+        errToast(t.studentIdErrReadFailed);
+        return;
+      }
       if (normalized.length > MAX_STUDENT_ID_DATA_URL_LEN) {
-        toast.error(
-          language === 'ja'
-            ? '画像サイズをさらに小さくできませんでした。少し離れて撮影するか、解像度を下げて再撮影してください'
-            : 'Could not reduce image enough. Please retake with lower resolution or from slightly farther away'
-        );
+        errToast(t.studentIdErrTooHeavy);
         return;
       }
       setStudentIdImage(normalized);
-      setFileName(file.name);
-      setErrors({ ...errors, studentId: false });
-      toast.success(language === 'ja' ? '学生証をアップロードしました' : 'Student ID uploaded successfully');
+      setFileName(file.name.trim() || (language === 'ja' ? 'カメラの写真' : 'Camera photo'));
+      setErrors((prev) => ({ ...prev, studentId: false }));
+      toast.success(t.studentIdOkPreview, { duration: 7000 });
     } catch (error) {
       console.error('Student ID upload error:', error);
-      toast.error(language === 'ja' ? '画像の読み込みに失敗しました' : 'Failed to process image');
+      if (error instanceof Error && error.message === 'HEIC_CONVERT_FAILED') {
+        errToast(t.studentIdErrHeic);
+      } else if (error instanceof Error && error.message === 'READ_FAILED') {
+        errToast(t.studentIdErrReadFailed);
+      } else if (error instanceof Error && /decode|tainted|security/i.test(error.message)) {
+        errToast(t.studentIdErrReadFailed);
+      } else {
+        errToast(t.studentIdErrGeneric);
+      }
     } finally {
       setUploadingStudentId(false);
-      e.currentTarget.value = '';
+      clearInput();
     }
   };
 
@@ -313,7 +373,7 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
             </div>
             <div className="space-y-2" ref={gradeRef}><Label htmlFor="grade">{t.gradeLabel}</Label><Select value={formData.grade} onValueChange={(value) => { setFormData({ ...formData, grade: value }); setErrors({ ...errors, grade: false }); }}><SelectTrigger className={`h-12! ${errors.grade ? 'border-red-500' : ''}`}><SelectValue placeholder={t.gradePlaceholder} /></SelectTrigger><SelectContent>{!isGraduateSchool ? <><SelectItem value="1">{t.grade1}</SelectItem><SelectItem value="2">{t.grade2}</SelectItem><SelectItem value="3">{t.grade3}</SelectItem><SelectItem value="4">{t.grade4}</SelectItem><SelectItem value="other">{t.gradeOther}</SelectItem></> : <><SelectItem value="M1">{t.gradeM1}</SelectItem><SelectItem value="M2">{t.gradeM2}</SelectItem><SelectItem value="D1">{t.gradeD1}</SelectItem><SelectItem value="D2">{t.gradeD2}</SelectItem><SelectItem value="D3">{t.gradeD3}</SelectItem><SelectItem value="other">{t.gradeOther}</SelectItem></>}</SelectContent></Select></div>
             <div className="space-y-3"><Label>{t.categoryLabel}</Label><div className="space-y-3">{(['japanese', 'regular-international', 'exchange'] as const).map((cat) => <label key={cat} className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer"><input type="radio" name="category" value={cat} checked={formData.category === cat} onChange={(e) => setFormData({ ...formData, category: e.target.value as 'japanese' | 'regular-international' | 'exchange' })} className="w-4 h-4" /><div className="font-medium text-[#3D3D4E]">{cat === 'japanese' ? t.japanese : cat === 'regular-international' ? t.regularInternational : t.exchange}</div></label>)}</div></div>
-            <div className="space-y-2" ref={studentIdRef}><Label htmlFor="studentId">{t.studentIdLabel}</Label><div className={`border-2 border-dashed rounded-lg p-6 text-center ${errors.studentId ? 'border-red-500' : 'border-gray-300'}`}>{studentIdImage ? <div className="space-y-3"><StudentIdImage value={studentIdImage} alt="Student ID" className="max-h-48 mx-auto rounded" /><div className="flex items-center justify-center gap-2 text-sm text-green-600"><FileText className="w-4 h-4" />{fileName}</div><Button variant="outline" disabled={uploadingStudentId} onClick={() => studentIdInputRef.current?.click()}>{language === 'ja' ? '別の写真を選択' : 'Choose Different Photo'}</Button></div> : <div className="space-y-3"><Upload className="w-12 h-12 text-gray-400 mx-auto" /><p className="text-gray-600">{t.uploadButton}</p><Button variant="outline" disabled={uploadingStudentId} onClick={() => studentIdInputRef.current?.click()}><Upload className="w-4 h-4 mr-2" />{language === 'ja' ? 'ファイルを選択' : 'Select File'}</Button></div>}<input id="studentId" ref={studentIdInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" /></div></div>
+            <div className="space-y-2" ref={studentIdRef}><Label htmlFor="studentId">{t.studentIdLabel}</Label><div className={`border-2 border-dashed rounded-lg p-6 text-center ${errors.studentId ? 'border-red-500' : 'border-gray-300'}`}>{studentIdImage ? <div className="space-y-3"><StudentIdImage value={studentIdImage} language={language} alt="Student ID" className="max-h-48 mx-auto rounded" /><div className="flex items-center justify-center gap-2 text-sm text-green-600"><FileText className="w-4 h-4" />{fileName}</div><Button variant="outline" disabled={uploadingStudentId} onClick={() => studentIdInputRef.current?.click()}>{language === 'ja' ? '別の写真を選択' : 'Choose Different Photo'}</Button></div> : <div className="space-y-3"><Upload className="w-12 h-12 text-gray-400 mx-auto" /><p className="text-gray-600">{t.uploadButton}</p><Button variant="outline" disabled={uploadingStudentId} onClick={() => studentIdInputRef.current?.click()}><Upload className="w-4 h-4 mr-2" />{language === 'ja' ? 'ファイルを選択' : 'Select File'}</Button></div>}<input id="studentId" ref={studentIdInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" /></div></div>
             <Button type="button" disabled={uploadingStudentId} onClick={handleSubmit} className="w-full bg-[#49B1E4] hover:bg-[#3A9BD4]">{uploadingStudentId ? (language === 'ja' ? '画像処理中...' : 'Processing image...') : t.submitButton}</Button>
           </CardContent>
         </Card>

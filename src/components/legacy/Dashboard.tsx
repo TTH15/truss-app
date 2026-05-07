@@ -183,33 +183,75 @@ export function Dashboard({
     return new File([blob], fileName, { type: 'image/jpeg' });
   };
 
+  const DASHBOARD_IMG_EXT = /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i;
+  function isProbablyDashboardImage(file: File) {
+    if (file.type.startsWith('image/')) return true;
+    if (!file.type || file.type === 'application/octet-stream') {
+      if (file.name && DASHBOARD_IMG_EXT.test(file.name)) return true;
+      return file.size > 0;
+    }
+    return /\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif';
+  }
+
   const handleStudentIdReupload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!onUpdateProfile) {
-      toast.error(language === 'ja' ? '再アップロード機能を利用できません' : 'Re-upload feature is unavailable');
-      e.currentTarget.value = '';
+    const input = e.currentTarget;
+    const clearInput = () => {
+      input.value = '';
+    };
+    const fail = (msgJa: string, msgEn: string) => {
+      toast.error(language === 'ja' ? msgJa : msgEn, { duration: 14000 });
+    };
+
+    const file = input.files?.[0];
+    if (!file || file.size === 0) {
+      fail(
+        '写真データを受け取れませんでした。もう一度カメラで撮るか、写真アプリから選び直してください。',
+        "We couldn't get the photo. Take it again or pick it from your gallery."
+      );
+      clearInput();
       return;
     }
-    if (!file.type.startsWith('image/')) {
-      toast.error(language === 'ja' ? '画像ファイルを選択してください' : 'Please select an image file');
-      e.currentTarget.value = '';
+    if (!onUpdateProfile) {
+      toast.error(language === 'ja' ? '再アップロード機能を利用できません' : 'Re-upload feature is unavailable');
+      clearInput();
+      return;
+    }
+    if (!isProbablyDashboardImage(file)) {
+      fail(
+        'この端末からは写真として認識できませんでした。カメラで撮り直すか、ギャラリーからJPEGまたはPNGを選んでください。',
+        "We couldn't read this as a photo. Use the camera again or choose a JPEG/PNG from your gallery."
+      );
+      clearInput();
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error(language === 'ja' ? '画像サイズは10MB以下にしてください' : 'Please keep image size under 10MB');
-      e.currentTarget.value = '';
+      fail(
+        '一枚の写真が大きすぎます（10MB以下にしてください）。画質設定を下げるか、圧縮された写真を選んでください。',
+        'This photo file is too large (max 10MB). Lower quality or pick a smaller image.'
+      );
+      clearInput();
       return;
     }
 
     setUploadingStudentId(true);
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      const normalized = dataUrl.length > 2_000_000 ? await compressImageDataUrl(dataUrl) : dataUrl;
+      const normalized =
+        typeof dataUrl === 'string' && dataUrl.length > 2_000_000 ? await compressImageDataUrl(dataUrl) : dataUrl;
+      if (!normalized || typeof normalized !== 'string' || normalized.length < 32) {
+        fail(
+          '写真を読み取れませんでした。ページを開き直すか、別の写真を試してください。',
+          "We couldn't read this photo. Refresh the page or try another photo."
+        );
+        return;
+      }
       const imageFile = await dataUrlToJpegFile(normalized);
       const { path, error: uploadError } = await uploadStudentIdImage(user.id, imageFile);
       if (uploadError || !path) {
-        toast.error(language === 'ja' ? '再アップロードに失敗しました' : 'Failed to re-upload student ID');
+        fail(
+          '写真をサーバーに送れませんでした。通信状況を確認したうえで、JPEGの写真をギャラリーから選び直してください。',
+          "We couldn't upload the photo. Check your connection, then pick a JPEG from gallery and try again."
+        );
         return;
       }
       const { error } = await onUpdateProfile({
@@ -218,15 +260,21 @@ export function Dashboard({
         reuploadReason: undefined,
       });
       if (error) {
-        toast.error(language === 'ja' ? '再アップロードに失敗しました' : 'Failed to re-upload student ID');
+        fail(
+          '送信はできましたが、登録情報の保存に失敗しました。時間をおいて再度お試しください。',
+          'Upload worked, but saving your profile failed. Please try again in a moment.'
+        );
         return;
       }
-      toast.success(language === 'ja' ? '学生証を再アップロードしました' : 'Student ID re-uploaded successfully');
+      toast.success(language === 'ja' ? '学生証を再アップロードしました。' : 'Student ID photo updated.', { duration: 6000 });
     } catch {
-      toast.error(language === 'ja' ? '画像の読み込みに失敗しました' : 'Failed to process image');
+      fail(
+        '写真の処理に失敗しました。別の写真を試すか、ブラウザの更新後にもう一度お試しください。',
+        'Something went wrong while processing the photo. Try another photo or refresh and try again.'
+      );
     } finally {
       setUploadingStudentId(false);
-      e.currentTarget.value = '';
+      clearInput();
     }
   };
 
