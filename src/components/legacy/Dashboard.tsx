@@ -246,7 +246,7 @@ export function Dashboard({
         return;
       }
       const imageFile = await dataUrlToJpegFile(normalized);
-      const { path, error: uploadError } = await uploadStudentIdImage(user.id, imageFile);
+      const { path, error: uploadError } = await uploadStudentIdImage(imageFile);
       if (uploadError || !path) {
         fail(
           '写真をサーバーに送れませんでした。通信状況を確認したうえで、JPEGの写真をギャラリーから選び直してください。',

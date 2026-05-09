@@ -462,13 +462,14 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     let studentIdPath = data.studentIdImage;
     if (studentIdPath.startsWith('data:')) {
       const imageFile = await dataUrlToJpegFile(studentIdPath);
-      const { path: uploadedPath, error: uploadError } = await uploadStudentIdImage(authData.user.id, imageFile);
+      const { path: uploadedPath, error: uploadError } = await uploadStudentIdImage(imageFile);
       if (uploadError || !uploadedPath) {
+        console.error('uploadStudentIdImage failed:', uploadError);
         toast.error(
           language === 'ja'
-            ? '学生証の写真をサーバーに送れませんでした。電波やWi‑Fiを確認したうえで、時間をおいて撮り直すか、ギャラリーからJPEGの写真を選び直してください。'
-            : 'We couldn’t send your student ID photo. Check Wi‑Fi or signal, wait a moment, then retake the photo or pick a JPEG from your gallery.',
-          { duration: 16000 }
+            ? '学生証の写真をサーバーに送れませんでした。通信状況を確認し、ページを開き直してからもう一度試してください。それでもだめなときは、ログインし直すか運営にお問い合わせください。（保存先の許可が未設定の可能性があります）'
+            : 'Could not save your student ID photo. Check your connection, reload the page and try again. If it still fails, sign in again or contact support. The server may still need its storage permissions configured.',
+          { duration: 18000 }
         );
         return;
       }

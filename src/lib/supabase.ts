@@ -102,8 +102,18 @@ const BUCKETS = {
   USER_AVATARS: 'user-avatars',
 } as const;
 
-export async function uploadStudentIdImage(userId: string, file: File) {
-  const fileName = `${userId}/student-id.jpg`;
+/** ログイン中ユーザーの UID（Supabase Auth）配下へ保存。path の先頭は必ず auth.uid()（Storage RLS と一致） */
+export async function uploadStudentIdImage(file: File) {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  const authUser = authData?.user;
+  if (!authUser) {
+    return {
+      path: null as string | null,
+      error: authError ?? new Error('Not signed in'),
+    };
+  }
+
+  const fileName = `${authUser.id}/student-id.jpg`;
 
   const { error } = await supabase.storage
     .from(BUCKETS.STUDENT_ID_IMAGES)
@@ -116,10 +126,17 @@ export async function uploadStudentIdImage(userId: string, file: File) {
   return { path: fileName, error: null };
 }
 
-export async function deleteStudentIdImage(userId: string) {
+/** ログイン中ユーザーの学生証オブジェクトをまとめて削除（名前のゆらぎ対応） */
+export async function deleteStudentIdImagesForAuthUser(userIdAuth: string) {
   const { error } = await supabase.storage
     .from(BUCKETS.STUDENT_ID_IMAGES)
-    .remove([`${userId}/student-id.jpg`, `${userId}/student-id.png`, `${userId}/student-id.jpeg`, `${userId}/student-id.heic`, `${userId}/student-id.heif`]);
+    .remove([
+      `${userIdAuth}/student-id.jpg`,
+      `${userIdAuth}/student-id.png`,
+      `${userIdAuth}/student-id.jpeg`,
+      `${userIdAuth}/student-id.heic`,
+      `${userIdAuth}/student-id.heif`,
+    ]);
   return { error };
 }
 
