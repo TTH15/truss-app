@@ -38,9 +38,8 @@ async function fileToObjectUrl(file: File): Promise<string> {
     file.type === "image/heic" ||
     file.type === "image/heif";
   if (isHeic) {
-    const heic2any = (await import("heic2any")).default;
-    const out = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
-    const blob = Array.isArray(out) ? out[0] : out;
+    const { heicTo } = await import("heic-to");
+    const blob = await heicTo({ blob: file, type: "image/jpeg", quality: 0.92 });
     return URL.createObjectURL(blob);
   }
   return URL.createObjectURL(file);

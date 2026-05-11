@@ -20,6 +20,12 @@ import type { User as UserType, Language, Event, MessageThread, ChatThreadMetada
 import { isProfileCompleteForParticipation } from '../../lib/profile-completion';
 import { toast } from 'sonner';
 import { uploadStudentIdImage } from '../../lib/supabase';
+import {
+  STUDENT_ID_ERROR_CODES,
+  dataUrlToJpegFile,
+  isProbablyImageFile,
+  normalizeStudentIdImageDataUrl,
+} from '../../lib/student-id-image';
 
 type User = UserType;
 
@@ -147,66 +153,21 @@ export function Dashboard({
   const t = translations[language];
   const profileDone = isProfileCompleteForParticipation(user);
 
-  const readFileAsDataUrl = (file: File) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => resolve(event.target?.result as string);
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsDataURL(file);
-    });
-
-  const compressImageDataUrl = (dataUrl: string, maxSide: number = 1600, quality: number = 0.82) =>
-    new Promise<string>((resolve, reject) => {
-      const img = new window.Image();
-      img.onload = () => {
-        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-        const width = Math.max(1, Math.round(img.width * scale));
-        const height = Math.max(1, Math.round(img.height * scale));
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to create canvas context'));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = () => reject(new Error('Failed to decode image'));
-      img.src = dataUrl;
-    });
-
-  const dataUrlToJpegFile = async (dataUrl: string, fileName = 'student-id.jpg') => {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    return new File([blob], fileName, { type: 'image/jpeg' });
-  };
-
-  const DASHBOARD_IMG_EXT = /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i;
-  function isProbablyDashboardImage(file: File) {
-    if (file.type.startsWith('image/')) return true;
-    if (!file.type || file.type === 'application/octet-stream') {
-      if (file.name && DASHBOARD_IMG_EXT.test(file.name)) return true;
-      return file.size > 0;
-    }
-    return /\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif';
-  }
-
   const handleStudentIdReupload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
     const clearInput = () => {
       input.value = '';
     };
-    const fail = (msgJa: string, msgEn: string) => {
-      toast.error(language === 'ja' ? msgJa : msgEn, { duration: 14000 });
+    const failWith = (msgJa: string, msgEn: string, code: string) => {
+      toast.error(`${language === 'ja' ? msgJa : msgEn}（${code}）`, { duration: 14000 });
     };
 
     const file = input.files?.[0];
     if (!file || file.size === 0) {
-      fail(
+      failWith(
         '写真データを受け取れませんでした。もう一度カメラで撮るか、写真アプリから選び直してください。',
-        "We couldn't get the photo. Take it again or pick it from your gallery."
+        "We couldn't get the photo. Take it again or pick it from your gallery.",
+        STUDENT_ID_ERROR_CODES.NO_PHOTO,
       );
       clearInput();
       return;
@@ -216,18 +177,20 @@ export function Dashboard({
       clearInput();
       return;
     }
-    if (!isProbablyDashboardImage(file)) {
-      fail(
+    if (!isProbablyImageFile(file)) {
+      failWith(
         'この端末からは写真として認識できませんでした。カメラで撮り直すか、ギャラリーからJPEGまたはPNGを選んでください。',
-        "We couldn't read this as a photo. Use the camera again or choose a JPEG/PNG from your gallery."
+        "We couldn't read this as a photo. Use the camera again or choose a JPEG/PNG from your gallery.",
+        STUDENT_ID_ERROR_CODES.NOT_IMAGE,
       );
       clearInput();
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      fail(
+      failWith(
         '一枚の写真が大きすぎます（10MB以下にしてください）。画質設定を下げるか、圧縮された写真を選んでください。',
-        'This photo file is too large (max 10MB). Lower quality or pick a smaller image.'
+        'This photo file is too large (max 10MB). Lower quality or pick a smaller image.',
+        STUDENT_ID_ERROR_CODES.TOO_LARGE,
       );
       clearInput();
       return;
@@ -235,22 +198,14 @@ export function Dashboard({
 
     setUploadingStudentId(true);
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const normalized =
-        typeof dataUrl === 'string' && dataUrl.length > 2_000_000 ? await compressImageDataUrl(dataUrl) : dataUrl;
-      if (!normalized || typeof normalized !== 'string' || normalized.length < 32) {
-        fail(
-          '写真を読み取れませんでした。ページを開き直すか、別の写真を試してください。',
-          "We couldn't read this photo. Refresh the page or try another photo."
-        );
-        return;
-      }
+      const normalized = await normalizeStudentIdImageDataUrl(file);
       const imageFile = await dataUrlToJpegFile(normalized);
       const { path, error: uploadError } = await uploadStudentIdImage(imageFile);
       if (uploadError || !path) {
-        fail(
+        failWith(
           '写真をサーバーに送れませんでした。通信状況を確認したうえで、JPEGの写真をギャラリーから選び直してください。',
-          "We couldn't upload the photo. Check your connection, then pick a JPEG from gallery and try again."
+          "We couldn't upload the photo. Check your connection, then pick a JPEG from gallery and try again.",
+          'SID-E07',
         );
         return;
       }
@@ -260,18 +215,36 @@ export function Dashboard({
         reuploadReason: undefined,
       });
       if (error) {
-        fail(
+        failWith(
           '送信はできましたが、登録情報の保存に失敗しました。時間をおいて再度お試しください。',
-          'Upload worked, but saving your profile failed. Please try again in a moment.'
+          'Upload worked, but saving your profile failed. Please try again in a moment.',
+          'SID-E11',
         );
         return;
       }
       toast.success(language === 'ja' ? '学生証を再アップロードしました。' : 'Student ID photo updated.', { duration: 6000 });
-    } catch {
-      fail(
-        '写真の処理に失敗しました。別の写真を試すか、ブラウザの更新後にもう一度お試しください。',
-        'Something went wrong while processing the photo. Try another photo or refresh and try again.'
-      );
+    } catch (error) {
+      console.error('Student ID re-upload error:', error);
+      const message = error instanceof Error ? error.message : '';
+      if (message === 'HEIC_CONVERT_FAILED') {
+        failWith(
+          'この写真の形式（HEIC）はこの環境では扱えないことがあります。カメラの保存形式をJPEGにするか、JPEGに変換してから選び直してください。',
+          'This photo type (HEIC) may not work here. Save new photos as JPEG, or convert to JPEG and pick again.',
+          STUDENT_ID_ERROR_CODES.HEIC_CONVERT_FAILED,
+        );
+      } else if (message === 'READ_FAILED' || /decode|tainted|security/i.test(message)) {
+        failWith(
+          '写真を読み取れませんでした。ページを開き直すか、別の写真を試してください。',
+          "We couldn't read this photo. Refresh the page or try another photo.",
+          STUDENT_ID_ERROR_CODES.READ_FAILED,
+        );
+      } else {
+        failWith(
+          '写真の処理に失敗しました。別の写真を試すか、ブラウザの更新後にもう一度お試しください。',
+          'Something went wrong while processing the photo. Try another photo or refresh and try again.',
+          STUDENT_ID_ERROR_CODES.GENERIC,
+        );
+      }
     } finally {
       setUploadingStudentId(false);
       clearInput();

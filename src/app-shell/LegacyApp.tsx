@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { LandingPage } from '../components/legacy/LandingPage';
 import { AuthSelection } from '../components/legacy/AuthSelection';
@@ -19,6 +19,7 @@ import {
   buildInitialRegistrationUserInsert,
   buildInitialRegistrationUserUpdate,
 } from '../lib/db/initial-registration';
+import { dataUrlToJpegFile } from '../lib/student-id-image';
 import '../styles/globals.css';
 import type { Event, Language, User } from '../domain/types/app';
 
@@ -122,17 +123,40 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
   const [tempEmail, setTempEmail] = useState('');
   const [tempInitialData, setTempInitialData] = useState<InitialRegistrationData | null>(null);
 
-  const [attendingEvents, setAttendingEvents] = useState<Set<number>>(new Set());
+  // attendingEvents は eventParticipants から派生。DataContext が register/unregister 後に
+  // fetchEventParticipants() を呼ぶ + Supabase realtime で event_participants の変更を購読しているため、
+  // ローカルの楽観更新は不要。
+  const attendingEvents = useMemo(() => {
+    const result = new Set<number>();
+    if (!user || !eventParticipants) return result;
+    Object.entries(eventParticipants).forEach(([eventId, participants]) => {
+      if (participants.some((p) => p.userId === user.id)) {
+        result.add(parseInt(eventId));
+      }
+    });
+    return result;
+  }, [user, eventParticipants]);
   const [likedEvents, setLikedEvents] = useState<Set<number>>(new Set());
   const [selectedChatUserId, setSelectedChatUserId] = useState<string | null>(null);
   const [adminActiveTab, setAdminActiveTab] = useState<'members' | 'events' | 'boards' | 'chat'>('members');
-  const [activeSharedEventToken, setActiveSharedEventToken] = useState<string | null>(sharedEventToken ?? null);
-
-  const dataUrlToJpegFile = async (dataUrl: string, fileName = 'student-id.jpg') => {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    return new File([blob], fileName, { type: 'image/jpeg' });
-  };
+  // 共有イベントトークンは prop / localStorage の両ソースを束ねた状態。
+  // - 初回マウント時は prop 優先、なければ localStorage から復元
+  // - prop が後から変わった場合は during-render 比較で追従
+  // - clearSharedEventToken() で明示的に null 化できる
+  const [activeSharedEventToken, setActiveSharedEventToken] = useState<string | null>(() => {
+    if (sharedEventToken) return sharedEventToken;
+    if (typeof window === 'undefined') return null;
+    try {
+      return localStorage.getItem(SHARED_EVENT_TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const [lastSharedEventTokenProp, setLastSharedEventTokenProp] = useState<string | null | undefined>(sharedEventToken);
+  if (sharedEventToken && sharedEventToken !== lastSharedEventTokenProp) {
+    setLastSharedEventTokenProp(sharedEventToken);
+    setActiveSharedEventToken(sharedEventToken);
+  }
 
   const routeMap: Partial<Record<PageState, string>> = {
     landing: '/',
@@ -166,27 +190,15 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     if (pathname !== '/') router.push('/');
   };
 
+  // 共有トークンを localStorage に永続化する副作用のみ
   useEffect(() => {
     if (!sharedEventToken) return;
-    setActiveSharedEventToken(sharedEventToken);
     try {
       localStorage.setItem(SHARED_EVENT_TOKEN_KEY, sharedEventToken);
     } catch {
       // ignore storage errors
     }
   }, [sharedEventToken]);
-
-  useEffect(() => {
-    if (sharedEventToken) return;
-    try {
-      const savedToken = localStorage.getItem(SHARED_EVENT_TOKEN_KEY);
-      if (savedToken && !activeSharedEventToken) {
-        setActiveSharedEventToken(savedToken);
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }, [sharedEventToken, activeSharedEventToken]);
 
   const clearSharedEventToken = () => {
     setActiveSharedEventToken(null);
@@ -197,25 +209,29 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     }
   };
 
-  /** ブラウザの戻る/進む・直接 URL 入力時に currentPage を合わせる（認証フローの仮画面は `/` で上書きしない） */
-  useEffect(() => {
-    if (standaloneAdmin) return;
+  // ブラウザの戻る/進む・直接 URL 入力で pathname が変わったら currentPage を追従させる。
+  // 認証フローの仮画面は `/` 上で描画する性質があり、pathname 経由で landing に巻き戻したくないので除外。
+  // pathname の変化は外部状態（URL）→ React state の同期なので during-render 比較で処理する。
+  const [lastSyncedPathname, setLastSyncedPathname] = useState(pathname);
+  if (!standaloneAdmin && pathname !== lastSyncedPathname) {
+    setLastSyncedPathname(pathname);
     const next = pathToPage[pathname];
-    if (!next || next === currentPage) return;
     const authFlowPages: PageState[] = [
       'email-verification',
       'initial-registration',
       'auth-selection',
       'auth-complete',
     ];
-    if (pathname === '/') {
-      const reuploadFlowRequested =
-        typeof window !== 'undefined' &&
-        sessionStorage.getItem(STUDENT_ID_REUPLOAD_FLOW_KEY) === '1';
-      if (authFlowPages.includes(currentPage) || reuploadFlowRequested) return;
+    const reuploadFlowRequested =
+      pathname === '/' &&
+      typeof window !== 'undefined' &&
+      sessionStorage.getItem(STUDENT_ID_REUPLOAD_FLOW_KEY) === '1';
+    const blockedByAuthFlow =
+      pathname === '/' && (authFlowPages.includes(currentPage) || reuploadFlowRequested);
+    if (next && next !== currentPage && !blockedByAuthFlow) {
+      setCurrentPage(next);
     }
-    setCurrentPage(next);
-  }, [pathname, currentPage, standaloneAdmin]);
+  }
 
   const isOAuthCallback = () => {
     const hash = window.location.hash;
@@ -264,6 +280,9 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
         typeof window !== 'undefined' &&
         sessionStorage.getItem(STUDENT_ID_REUPLOAD_FLOW_KEY) === '1';
       if (reuploadFlowRequested) {
+        // 認証コンテキスト (authUser) の変化に応じてフロー画面に振り分ける必要があり、
+        // event handler 化が難しいので effect 内 setState を許可する
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setTempEmail(authUser.email);
         showAuthFlowPage('initial-registration');
         return;
@@ -301,6 +320,9 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
   useLayoutEffect(() => {
     if (standaloneAdmin || authLoading || authUser) return;
     if (!session?.user) return;
+    // OAuth 直後の遷移はセッション状態が確定した瞬間に1回だけ走るルーティングで、
+    // ユーザー操作起点に変換できないため effect 内 setState を許可する
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUser(null);
     setTempEmail(session.user.email ?? '');
     setCurrentPage('initial-registration');
@@ -308,18 +330,6 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       router.replace('/');
     }
   }, [standaloneAdmin, authLoading, authUser, session?.user?.id, pathname, router]);
-
-  useEffect(() => {
-    if (user && eventParticipants) {
-      const attending = new Set<number>();
-      Object.entries(eventParticipants).forEach(([eventId, participants]) => {
-        if (participants.some(p => p.userId === user.id)) {
-          attending.add(parseInt(eventId));
-        }
-      });
-      setAttendingEvents(attending);
-    }
-  }, [user, eventParticipants]);
 
   const handleAdminLogin = async (email: string, password: string) => {
     try {
@@ -454,62 +464,77 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
 
   const handleInitialRegistrationComplete = async (data: InitialRegistrationData) => {
     setTempInitialData(data);
-    const { data: authData } = await supabase.auth.getUser();
-    if (!authData?.user) {
-      toast.error(language === 'ja' ? '認証エラー' : 'Auth error');
-      return;
-    }
-    let studentIdPath = data.studentIdImage;
-    if (studentIdPath.startsWith('data:')) {
-      const imageFile = await dataUrlToJpegFile(studentIdPath);
-      const { path: uploadedPath, error: uploadError } = await uploadStudentIdImage(imageFile);
-      if (uploadError || !uploadedPath) {
-        console.error('uploadStudentIdImage failed:', uploadError);
-        toast.error(
-          language === 'ja'
-            ? '学生証の写真をサーバーに送れませんでした。通信状況を確認し、ページを開き直してからもう一度試してください。それでもだめなときは、ログインし直すか運営にお問い合わせください。（保存先の許可が未設定の可能性があります）'
-            : 'Could not save your student ID photo. Check your connection, reload the page and try again. If it still fails, sign in again or contact support. The server may still need its storage permissions configured.',
-          { duration: 18000 }
-        );
-        return;
-      }
-      studentIdPath = uploadedPath;
-    }
-    const payload: InitialRegistrationData = { ...data, studentIdImage: studentIdPath };
-
-    if (user && user.studentIdReuploadRequested) {
-      const { error } = await updateAuthUser({
-        studentIdImage: payload.studentIdImage, studentIdReuploadRequested: false, reuploadReason: undefined,
-      });
-      if (error) {
-        toast.error(language === 'ja' ? 'エラーが発生しました' : 'An error occurred');
-        return;
-      }
-      toast.success(language === 'ja' ? '学生証を再アップロードしました' : 'Student ID re-uploaded successfully');
-      navigateTo('dashboard');
-      return;
-    }
-    const now = new Date();
-    const requestedAt = now.toISOString().split('T')[0];
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData?.user) {
+        toast.error(`${language === 'ja' ? '認証エラー' : 'Auth error'}（SID-E08）`, { duration: 14000 });
+        return;
+      }
+
+      let studentIdPath = data.studentIdImage;
+      if (studentIdPath.startsWith('data:')) {
+        let imageFile: File;
+        try {
+          imageFile = await dataUrlToJpegFile(studentIdPath);
+        } catch (error) {
+          console.error('dataUrlToJpegFile failed:', error);
+          toast.error(
+            `${language === 'ja'
+              ? '学生証の写真を読み取れませんでした。ページを開き直して、もう一度写真を選んでください。'
+              : "Couldn't read your student ID photo. Reload the page and pick the photo again."}（SID-E09）`,
+            { duration: 18000 },
+          );
+          return;
+        }
+
+        const { path: uploadedPath, error: uploadError } = await uploadStudentIdImage(imageFile);
+        if (uploadError || !uploadedPath) {
+          console.error('uploadStudentIdImage failed:', uploadError);
+          toast.error(
+            `${language === 'ja'
+              ? '学生証の写真をサーバーに送れませんでした。通信状況を確認し、ページを開き直してからもう一度試してください。それでもだめなときは、ログインし直すか運営にお問い合わせください。'
+              : 'Could not save your student ID photo. Check your connection, reload the page and try again. If it still fails, sign in again or contact support.'}（SID-E07）`,
+            { duration: 18000 },
+          );
+          return;
+        }
+        studentIdPath = uploadedPath;
+      }
+
+      const payload: InitialRegistrationData = { ...data, studentIdImage: studentIdPath };
+
+      if (user && user.studentIdReuploadRequested) {
+        const { error } = await updateAuthUser({
+          studentIdImage: payload.studentIdImage,
+          studentIdReuploadRequested: false,
+          reuploadReason: undefined,
+        });
+        if (error) {
+          toast.error(language === 'ja' ? 'エラーが発生しました' : 'An error occurred');
+          return;
+        }
+        toast.success(language === 'ja' ? '学生証を再アップロードしました' : 'Student ID re-uploaded successfully');
+        navigateTo('dashboard');
+        return;
+      }
+
+      const requestedAt = new Date().toISOString().split('T')[0];
       const { data: existingUser } = await supabase
         .from('users')
         .select('id')
         .eq('auth_id', authData.user.id)
         .maybeSingle();
       const email = tempEmail || authData.user.email || '';
-      let error;
-      if (existingUser) {
-        const patch = buildInitialRegistrationUserUpdate(payload, requestedAt);
-        const result = await supabase.from('users').update(patch).eq('auth_id', authData.user.id);
-        error = result.error;
-      } else {
-        const row = buildInitialRegistrationUserInsert(authData.user.id, email, payload, requestedAt);
-        const result = await supabase.from('users').insert(row);
-        error = result.error;
-      }
-      if (error) {
-        console.error('Error saving user:', error);
+      const { error: saveError } = existingUser
+        ? await supabase
+            .from('users')
+            .update(buildInitialRegistrationUserUpdate(payload, requestedAt))
+            .eq('auth_id', authData.user.id)
+        : await supabase
+            .from('users')
+            .insert(buildInitialRegistrationUserInsert(authData.user.id, email, payload, requestedAt));
+      if (saveError) {
+        console.error('Error saving user:', saveError);
         toast.error(language === 'ja' ? 'ユーザー登録エラー' : 'User registration error');
         return;
       }
@@ -519,7 +544,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       navigateTo('dashboard');
     } catch (error) {
       console.error('Registration error:', error);
-      toast.error(language === 'ja' ? 'エラーが発生しました' : 'An error occurred');
+      toast.error(`${language === 'ja' ? 'エラーが発生しました' : 'An error occurred'}（SID-E10）`, { duration: 14000 });
     }
   };
 
@@ -612,14 +637,12 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
 
   const toggleAttending = async (eventId: number) => {
     if (!user) return;
-    const isCurrentlyAttending = attendingEvents.has(eventId);
-    if (isCurrentlyAttending) {
+    if (attendingEvents.has(eventId)) {
       await unregisterFromEvent(eventId);
-      setAttendingEvents(prev => { const newSet = new Set(prev); newSet.delete(eventId); return newSet; });
     } else {
       await registerForEvent(eventId);
-      setAttendingEvents(prev => { const newSet = new Set(prev); newSet.add(eventId); return newSet; });
     }
+    // attendingEvents は eventParticipants 派生なので、DataContext の refetch + realtime で自動反映
   };
   const toggleLike = async (eventId: number) => {
     if (!user) return;
@@ -635,7 +658,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
   const handleDeleteEvent = async (eventId: number) => {
     try {
       await deleteEvent(eventId);
-      setAttendingEvents(prev => { const newSet = new Set(prev); newSet.delete(eventId); return newSet; });
+      // attendingEvents は eventParticipants 派生なので削除に追従。likedEvents だけ手動で掃除する。
       setLikedEvents(prev => { const newSet = new Set(prev); newSet.delete(eventId); return newSet; });
     } catch (error) {
       console.error('Delete event failed in LegacyApp:', error);
