@@ -128,13 +128,18 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
     const recipients = approvedMembers.filter((member) => {
       if (member.isAdmin) return false;
       if (selectedRecipients.includes('all') || selectedRecipients.length === 0) return true;
-      return (
-        (selectedRecipients.includes('japanese') && member.category === 'japanese') ||
-        (selectedRecipients.includes('exchange') && member.category === 'exchange') ||
-        (selectedRecipients.includes('regularInternational') && member.category === 'regular-international') ||
-        (selectedRecipients.includes('annualFeeUnpaid') && !member.feePaid) ||
-        (selectedRecipients.includes('annualFeePaid') && member.feePaid)
-      );
+      const categoryFilters = ['japanese', 'exchange', 'regularInternational'].filter((f) => selectedRecipients.includes(f));
+      const feeFilters = ['annualFeeUnpaid', 'annualFeePaid'].filter((f) => selectedRecipients.includes(f));
+      const matchesCategory = categoryFilters.length === 0 || categoryFilters.some((f) => (
+        (f === 'japanese' && member.category === 'japanese') ||
+        (f === 'exchange' && member.category === 'exchange') ||
+        (f === 'regularInternational' && member.category === 'regular-international')
+      ));
+      const matchesFee = feeFilters.length === 0 || feeFilters.some((f) => (
+        (f === 'annualFeeUnpaid' && !member.feePaid) ||
+        (f === 'annualFeePaid' && member.feePaid)
+      ));
+      return matchesCategory && matchesFee;
     });
     if (recipients.length === 0) {
       toast.error(language === 'ja' ? '送信先を選択してください' : 'Please select recipients');

@@ -68,6 +68,13 @@ export function StudentIdImage({
       </p>
     );
   }
+  if (!value) {
+    return (
+      <div className="text-sm text-gray-500 px-2 py-4 text-center leading-relaxed">
+        {language === "ja" ? "学生証は未提出です" : "Student ID not submitted"}
+      </div>
+    );
+  }
   if (!src) {
     return (
       <div className="text-sm text-gray-500 px-2 py-4 text-center">
