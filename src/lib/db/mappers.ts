@@ -156,6 +156,7 @@ export function mapDbBoardPostRowToBoardPost(
     id: row.id,
     authorId: row.author_id,
     isPinned: row.is_pinned,
+    pinOrder: row.pin_order,
     author: row.author,
     authorAvatar: row.author_avatar ?? "",
     title: row.title,

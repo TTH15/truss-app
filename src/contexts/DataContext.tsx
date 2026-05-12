@@ -37,7 +37,8 @@ import {
   addReplyRow,
   togglePostInterestForUser,
   deleteBoardPostRow,
-  setPinnedBoardPostRow,
+  togglePinBoardPostRow,
+  reorderPinnedBoardPostsRow,
 } from '../lib/db/mutations/board';
 import {
   uploadGalleryPhotoRow,
@@ -53,6 +54,7 @@ import {
   markMessageAsReadRow,
   markAllMessagesAsReadForUserRow,
   updateChatMetadataRow,
+  cancelBroadcastRow,
 } from '../lib/db/mutations/messages';
 import {
   markNotificationAsReadRow,
@@ -91,7 +93,8 @@ interface DataContextType {
   resetMembershipForNewYear: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   sendMessage: (receiverId: string, text: string, isAdmin?: boolean) => Promise<void>;
-  sendBulkMessages: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string }>) => Promise<void>;
+  sendBulkMessages: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; broadcastId?: number | null }>) => Promise<void>;
+  cancelBroadcast: (broadcastId: number) => Promise<void>;
   sendBroadcast: (text: string, subjectJa: string, subjectEn: string) => Promise<void>;
   markMessageAsRead: (messageId: number) => Promise<void>;
   markAllMessagesAsReadForUser: (userId: string) => Promise<void>;
@@ -102,7 +105,8 @@ interface DataContextType {
   addReply: (postId: number, reply: Omit<BoardPostReply, 'id'>) => Promise<void>;
   toggleInterest: (postId: number) => Promise<void>;
   deleteBoardPost: (postId: number) => Promise<void>;
-  setPinnedBoardPost: (postId: number | null) => Promise<void>;
+  togglePinBoardPost: (postId: number, pinned: boolean) => Promise<void>;
+  reorderPinnedBoardPosts: (orderedPostIds: number[]) => Promise<void>;
   uploadGalleryPhoto: (photo: UploadGalleryPhotoInput) => Promise<void>;
   deleteGalleryPhoto: (photoId: number) => Promise<void>;
   approveGalleryPhoto: (photoId: number) => Promise<void>;
@@ -518,13 +522,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const sendBulkMessages = async (
-    messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string }>
+    messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; broadcastId?: number | null }>
   ) => {
     if (!user || messages.length === 0) return;
     try {
+      const broadcastId = messages.find((m) => m.broadcastId != null)?.broadcastId ?? null;
       const { error } = await sendBulkMessagesRow({
         senderId: user.id,
         senderName: user.name,
+        broadcastId,
         messages: messages.map((message) => ({
           receiverId: message.receiverId,
           text: message.text,
@@ -538,6 +544,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await fetchMessages();
     } catch (error) {
       console.error('Error sending bulk messages:', error);
+      throw error;
+    }
+  };
+
+  const cancelBroadcast = async (broadcastId: number) => {
+    try {
+      const { error } = await cancelBroadcastRow(broadcastId);
+      if (error) throw error;
+      await fetchMessages();
+    } catch (error) {
+      console.error('Error cancelling broadcast:', error);
       throw error;
     }
   };
@@ -659,13 +676,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const setPinnedBoardPost = async (postId: number | null) => {
+  const togglePinBoardPost = async (postId: number, pinned: boolean) => {
     try {
-      const { error } = await setPinnedBoardPostRow(postId);
+      const { error } = await togglePinBoardPostRow(postId, pinned);
       if (error) throw error;
       await fetchBoardPosts();
     } catch (error) {
-      console.error('Error setting pinned board post:', error);
+      console.error('Error toggling pinned board post:', error);
+    }
+  };
+
+  const reorderPinnedBoardPosts = async (orderedPostIds: number[]) => {
+    try {
+      const { error } = await reorderPinnedBoardPostsRow(orderedPostIds);
+      if (error) throw error;
+      await fetchBoardPosts();
+    } catch (error) {
+      console.error('Error reordering pinned board posts:', error);
     }
   };
 
@@ -717,8 +744,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     events, pendingUsers, approvedMembers, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading,
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
     approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, resetMembershipForNewYear, deleteUser,
-    sendMessage, sendBulkMessages, sendBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, updateChatMetadata,
-    markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost, setPinnedBoardPost,
+    sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, updateChatMetadata,
+    markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost, togglePinBoardPost, reorderPinnedBoardPosts,
     uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, likeGalleryPhoto,
     refreshEvents: () => fetchEvents(true), refreshUsers: () => fetchUsers(true), refreshMessages: fetchMessages, refreshNotifications: fetchNotifications,
     refreshBoardPosts: fetchBoardPosts, refreshGalleryPhotos: fetchGalleryPhotos,

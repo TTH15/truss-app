@@ -100,13 +100,15 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     deleteUser,
     sendMessage,
     sendBulkMessages,
+    cancelBroadcast,
     markNotificationAsRead,
     dismissNotification,
     createBoardPost,
     addReply,
     toggleInterest,
     deleteBoardPost,
-    setPinnedBoardPost,
+    togglePinBoardPost,
+    reorderPinnedBoardPosts,
     setMessageThreads,
     setChatThreadMetadata,
     setNotifications,
@@ -688,7 +690,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     }
   };
   const handleSendBulkMessages = async (
-    messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string }>
+    messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; broadcastId?: number | null }>
   ) => {
     await sendBulkMessages(messages);
   };
@@ -756,8 +758,8 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
           onDeleteUser={deleteUser} messageThreads={messageThreads} onUpdateMessageThreads={setMessageThreads} onSendMessage={sendMessage}
           chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={setChatThreadMetadata} selectedChatUserId={selectedChatUserId}
           onOpenMemberChat={handleOpenMemberChat} onUpdateNotifications={setNotifications} boardPosts={boardPosts}
-          onUpdateBoardPosts={setBoardPosts} onCreateBoardPost={createBoardPost} onDeleteBoardPost={deleteBoardPost} onSetPinnedBoardPost={setPinnedBoardPost} onSendBulkEmail={handleSendBulkEmail}
-          onSendBulkMessages={handleSendBulkMessages}
+          onUpdateBoardPosts={setBoardPosts} onCreateBoardPost={createBoardPost} onDeleteBoardPost={deleteBoardPost} onTogglePinBoardPost={togglePinBoardPost} onReorderPinnedBoardPosts={reorderPinnedBoardPosts} onSendBulkEmail={handleSendBulkEmail}
+          onSendBulkMessages={handleSendBulkMessages} onCancelBroadcast={cancelBroadcast}
         />
       )}
       {currentPage === 'admin-login' && (

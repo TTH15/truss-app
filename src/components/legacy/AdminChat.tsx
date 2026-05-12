@@ -21,7 +21,8 @@ interface AdminChatProps {
   messageThreads: MessageThread;
   onUpdateMessageThreads: (threads: MessageThread) => void;
   onSendMessage?: (receiverId: string, text: string, isAdmin?: boolean) => Promise<void>;
-  onSendBulkMessages?: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string }>) => Promise<void>;
+  onSendBulkMessages?: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; broadcastId?: number | null }>) => Promise<void>;
+  onCancelBroadcast?: (broadcastId: number) => Promise<void>;
   approvedMembers?: UserType[];
   pendingUsers?: UserType[];
   chatThreadMetadata: ChatThreadMetadata;
@@ -30,14 +31,14 @@ interface AdminChatProps {
   onOpenMemberChat?: (userId: string) => void;
 }
 
-interface BroadcastMessage { id: number; subject: string; message: string; recipients: string; recipientCount: number; status: 'sent' | 'scheduled'; sentTime: string; notificationType: 'email' | 'inApp' | 'both'; }
+interface BroadcastMessage { id: number; subject: string; message: string; recipients: string; recipientCount: number; status: 'sent' | 'scheduled'; sentTime: string; notificationType: 'email' | 'inApp' | 'both'; cancelledAt: string | null; }
 
 const translations = {
-  ja: { sendBroadcast: '新規送信', recipients: '送信先', japanese: '日本人学生・国内学生のみ', exchange: '交換留学生のみ', regularInternational: '正規留学生のみ', annualFeeUnpaid: '年会費未払いのみ', annualFeePaid: '年会費支払済のみ', notificationType: '通知タイプ', inAppNotification: 'アプリ内通知', emailNotification: 'メール通知', scheduledDate: '送信日時', selectDateTime: '空欄の場合は即時送信', send: '送信', cancel: 'キャンセル', sent: '送信済み', scheduled: '予約送信', members: 'メンバー', broadcastHistory: '一斉送信履歴', memberChat: 'メンバーチャット', broadcast: '一斉送信', translateToEnglish: '英語に翻訳' },
-  en: { sendBroadcast: 'New Broadcast', recipients: 'Recipients', japanese: 'Japanese Students Only', exchange: 'Exchange Students Only', regularInternational: 'Regular International Students Only', annualFeeUnpaid: 'Annual fee unpaid only', annualFeePaid: 'Annual fee paid only', notificationType: 'Notification Type', inAppNotification: 'In-App Notification', emailNotification: 'Email Notification', scheduledDate: 'Scheduled Date/Time', selectDateTime: 'Leave empty for immediate send', send: 'Send', cancel: 'Cancel', sent: 'Sent', scheduled: 'Scheduled', members: 'Members', broadcastHistory: 'Broadcast History', memberChat: 'Member Chat', broadcast: 'Broadcast', translateToEnglish: 'Translate to English' }
+  ja: { sendBroadcast: '新規送信', recipients: '送信先', japanese: '日本人学生・国内学生のみ', exchange: '交換留学生のみ', regularInternational: '正規留学生のみ', annualFeeUnpaid: '年会費未払いのみ', annualFeePaid: '年会費支払済のみ', notificationType: '通知タイプ', inAppNotification: 'アプリ内通知', emailNotification: 'メール通知', scheduledDate: '送信日時', selectDateTime: '空欄の場合は即時送信', send: '送信', cancel: 'キャンセル', sent: '送信済み', scheduled: '予約送信', members: 'メンバー', broadcastHistory: '一斉送信履歴', memberChat: 'メンバーチャット', broadcast: '一斉送信', translateToEnglish: '英語に翻訳', recallBroadcast: '送信取り消し', cancelled: '取り消し済み', confirmRecall: 'この一斉送信を取り消しますか？\n受信者の画面からメッセージが非表示になります。' },
+  en: { sendBroadcast: 'New Broadcast', recipients: 'Recipients', japanese: 'Japanese Students Only', exchange: 'Exchange Students Only', regularInternational: 'Regular International Students Only', annualFeeUnpaid: 'Annual fee unpaid only', annualFeePaid: 'Annual fee paid only', notificationType: 'Notification Type', inAppNotification: 'In-App Notification', emailNotification: 'Email Notification', scheduledDate: 'Scheduled Date/Time', selectDateTime: 'Leave empty for immediate send', send: 'Send', cancel: 'Cancel', sent: 'Sent', scheduled: 'Scheduled', members: 'Members', broadcastHistory: 'Broadcast History', memberChat: 'Member Chat', broadcast: 'Broadcast', translateToEnglish: 'Translate to English', recallBroadcast: 'Recall', cancelled: 'Cancelled', confirmRecall: 'Recall this broadcast?\nThe message will be hidden from recipients.' }
 };
 
-export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessageThreads, onSendMessage, onSendBulkMessages, approvedMembers, pendingUsers, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat }: AdminChatProps) {
+export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessageThreads, onSendMessage, onSendBulkMessages, onCancelBroadcast, approvedMembers, pendingUsers, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat }: AdminChatProps) {
   const t = translations[language];
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [year, setYear] = useState('2026');
@@ -58,7 +59,15 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
   const getRecipientLabel = (recipients: string) => recipients;
   const getNotificationTypeIcon = (type: string) => type === 'email' ? <Mail className="w-4 h-4" /> : type === 'inApp' ? <Bell className="w-4 h-4" /> : <><Mail className="w-4 h-4" /><Bell className="w-4 h-4" /></>;
   const toggleNotificationType = (type: string) => notificationTypes.includes(type) ? setNotificationTypes(notificationTypes.filter((t) => t !== type)) : setNotificationTypes([...notificationTypes, type]);
-  const toggleRecipient = (recipient: string) => selectedRecipients.includes(recipient) ? setSelectedRecipients(selectedRecipients.filter((r) => r !== recipient)) : setSelectedRecipients([...selectedRecipients, recipient]);
+  const toggleRecipient = (recipient: string) => {
+    setSelectedRecipients((prev) => {
+      const withoutAll = prev.filter((r) => r !== 'all');
+      const next = withoutAll.includes(recipient)
+        ? withoutAll.filter((r) => r !== recipient)
+        : [...withoutAll, recipient];
+      return next.length === 0 ? ['all'] : next;
+    });
+  };
   const recipientKeyToLabel = (key: string) => {
     if (key === 'all') return language === 'ja' ? '全員' : 'All';
     if (key === 'japanese') return t.japanese;
@@ -81,7 +90,20 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
       status: row.status,
       sentTime: sentAt ? new Date(sentAt).toLocaleString(language === 'ja' ? 'ja-JP' : 'en-US') : '-',
       notificationType: row.notification_type,
+      cancelledAt: row.cancelled_at ?? null,
     };
+  };
+
+  const handleRecallBroadcast = async (broadcastId: number) => {
+    if (!onCancelBroadcast) return;
+    if (typeof window !== 'undefined' && !window.confirm(t.confirmRecall)) return;
+    try {
+      await onCancelBroadcast(broadcastId);
+      setBroadcasts((prev) => prev.map((b) => b.id === broadcastId ? { ...b, cancelledAt: new Date().toISOString() } : b));
+      toast.success(language === 'ja' ? '送信を取り消しました' : 'Broadcast recalled');
+    } catch {
+      toast.error(language === 'ja' ? '取り消しに失敗しました' : 'Failed to recall');
+    }
   };
 
   useEffect(() => {
@@ -125,11 +147,12 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
       return;
     }
     if (isSendingBroadcast) return;
+    const specificFilters = selectedRecipients.filter((r) => r !== 'all');
     const recipients = approvedMembers.filter((member) => {
       if (member.isAdmin) return false;
-      if (selectedRecipients.includes('all') || selectedRecipients.length === 0) return true;
-      const categoryFilters = ['japanese', 'exchange', 'regularInternational'].filter((f) => selectedRecipients.includes(f));
-      const feeFilters = ['annualFeeUnpaid', 'annualFeePaid'].filter((f) => selectedRecipients.includes(f));
+      if (specificFilters.length === 0) return true;
+      const categoryFilters = ['japanese', 'exchange', 'regularInternational'].filter((f) => specificFilters.includes(f));
+      const feeFilters = ['annualFeeUnpaid', 'annualFeePaid'].filter((f) => specificFilters.includes(f));
       const matchesCategory = categoryFilters.length === 0 || categoryFilters.some((f) => (
         (f === 'japanese' && member.category === 'japanese') ||
         (f === 'exchange' && member.category === 'exchange') ||
@@ -151,28 +174,6 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
       return;
     }
     setIsSendingBroadcast(true);
-    try {
-      if (onSendBulkMessages) {
-        await onSendBulkMessages(
-          recipients.map((member) => ({
-            receiverId: member.id,
-            text: payload,
-            isAdmin: true,
-            isBroadcast: true,
-            broadcastSubject: subjectJa || subjectEn,
-            broadcastSubjectEn: subjectEn || subjectJa,
-          }))
-        );
-      } else if (onSendMessage) {
-        await Promise.all(recipients.map((member) => onSendMessage(member.id, payload, true)));
-      } else {
-        throw new Error('No sender is available');
-      }
-    } catch {
-      toast.error(language === 'ja' ? '送信に失敗しました' : 'Failed to send');
-      setIsSendingBroadcast(false);
-      return;
-    }
     const isScheduled = year && monthDay && time && new Date(`${year}-${monthDay}T${time}`) > new Date();
     const notifType = notificationTypes.includes('inApp') && notificationTypes.includes('email') ? 'both' : notificationTypes.includes('email') ? 'email' : 'inApp';
     const scheduledAt = isScheduled ? new Date(`${year}-${monthDay}T${time}`).toISOString() : null;
@@ -192,11 +193,36 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
       })
       .select('*')
       .single();
-    if (historyError) {
-      toast.error(language === 'ja' ? '送信は完了しましたが履歴保存に失敗しました' : 'Sent, but failed to save history');
-    } else if (historyRow) {
-      setBroadcasts((prev) => [mapBroadcastRow(historyRow), ...prev]);
+    if (historyError || !historyRow) {
+      toast.error(language === 'ja' ? '送信に失敗しました（履歴の保存に失敗）' : 'Failed to send (history save failed)');
+      setIsSendingBroadcast(false);
+      return;
     }
+    const broadcastId = historyRow.id;
+    try {
+      if (onSendBulkMessages) {
+        await onSendBulkMessages(
+          recipients.map((member) => ({
+            receiverId: member.id,
+            text: payload,
+            isAdmin: true,
+            isBroadcast: true,
+            broadcastSubject: subjectJa || subjectEn,
+            broadcastSubjectEn: subjectEn || subjectJa,
+            broadcastId,
+          }))
+        );
+      } else if (onSendMessage) {
+        await Promise.all(recipients.map((member) => onSendMessage(member.id, payload, true)));
+      } else {
+        throw new Error('No sender is available');
+      }
+    } catch {
+      toast.error(language === 'ja' ? '送信に失敗しました' : 'Failed to send');
+      setIsSendingBroadcast(false);
+      return;
+    }
+    setBroadcasts((prev) => [mapBroadcastRow(historyRow), ...prev]);
     setSubjectJa(''); setSubjectEn(''); setMessageJa(''); setMessageEn(''); setSelectedRecipients(['all']); setNotificationTypes(['inApp']); setYear('2026'); setMonthDay(''); setTime(''); setIsDialogOpen(false);
     setIsSendingBroadcast(false);
     toast.success(language === 'ja' ? '送信しました' : 'Sent');
@@ -274,23 +300,37 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
               {isLoadingBroadcasts && (
                 <p className="text-sm text-gray-500">{language === 'ja' ? '履歴を読み込み中...' : 'Loading history...'}</p>
               )}
-              {broadcasts.map((broadcast) => (
-                <Card key={broadcast.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2"><h4 className="text-gray-900">{broadcast.subject}</h4><Badge className={broadcast.status === 'sent' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}>{broadcast.status === 'sent' ? t.sent : t.scheduled}</Badge></div>
-                        <p className="text-sm text-gray-600 mb-3">{broadcast.message}</p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <div className="flex items-center gap-1"><Users className="w-4 h-4" /><span>{getRecipientLabel(broadcast.recipients)} ({broadcast.recipientCount} {t.members})</span></div>
-                          <div className="flex items-center gap-1"><Clock className="w-4 h-4" /><span>{broadcast.sentTime}</span></div>
-                          <div className="flex items-center gap-1">{getNotificationTypeIcon(broadcast.notificationType)}</div>
+              {broadcasts.map((broadcast) => {
+                const isCancelled = broadcast.cancelledAt != null;
+                const canRecall = !isCancelled && broadcast.status === 'sent' && onCancelBroadcast;
+                return (
+                  <Card key={broadcast.id} className={`hover:shadow-lg transition-shadow ${isCancelled ? 'bg-gray-50 opacity-75' : ''}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3 gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center flex-wrap gap-2 mb-2">
+                            <h4 className={`text-gray-900 ${isCancelled ? 'line-through' : ''}`}>{broadcast.subject}</h4>
+                            {isCancelled
+                              ? <Badge className="bg-gray-200 text-gray-700">{t.cancelled}</Badge>
+                              : <Badge className={broadcast.status === 'sent' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}>{broadcast.status === 'sent' ? t.sent : t.scheduled}</Badge>}
+                          </div>
+                          <p className={`text-sm text-gray-600 mb-3 ${isCancelled ? 'line-through' : ''}`}>{broadcast.message}</p>
+                          <div className="flex items-center flex-wrap gap-4 text-xs text-gray-500">
+                            <div className="flex items-center gap-1"><Users className="w-4 h-4" /><span>{getRecipientLabel(broadcast.recipients)} ({broadcast.recipientCount} {t.members})</span></div>
+                            <div className="flex items-center gap-1"><Clock className="w-4 h-4" /><span>{broadcast.sentTime}</span></div>
+                            <div className="flex items-center gap-1">{getNotificationTypeIcon(broadcast.notificationType)}</div>
+                          </div>
                         </div>
+                        {canRecall && (
+                          <Button variant="outline" size="sm" className="shrink-0 border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleRecallBroadcast(broadcast.id)}>
+                            {t.recallBroadcast}
+                          </Button>
+                        )}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
               {!isLoadingBroadcasts && broadcasts.length === 0 && (
                 <p className="text-sm text-gray-500">{language === 'ja' ? '履歴はまだありません' : 'No broadcast history yet'}</p>
               )}

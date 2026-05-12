@@ -52,7 +52,7 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
             </div>
           </div>
           <h3 className="text-[#3D3D4E] mb-1">{post.title}</h3>
-          <p className={`text-sm text-gray-600 mb-1 ${isContentExpanded ? '' : 'line-clamp-2'}`}>{post.content}</p>
+          <p className={`text-sm text-gray-600 mb-1 whitespace-pre-line break-words ${isContentExpanded ? '' : 'line-clamp-2'}`}>{post.content}</p>
           {shouldShowExpandButton && (
             <Button
               type="button"
@@ -120,7 +120,7 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
                 {post.replies.map((reply) => (
                   <div key={reply.id} className="flex gap-2 pl-4">
                     <Avatar className="w-7 h-7 shrink-0"><AvatarFallback className="bg-linear-to-br from-purple-500 to-pink-500 text-white text-xs">{reply.authorAvatar}</AvatarFallback></Avatar>
-                    <div className="flex-1 bg-gray-50 rounded-lg p-3"><div className="flex items-center justify-between mb-1"><p className="text-sm text-[#3D3D4E]">{reply.author}</p><p className="text-xs text-gray-500">{reply.time}</p></div><p className="text-sm text-gray-700">{reply.content}</p></div>
+                    <div className="flex-1 bg-gray-50 rounded-lg p-3"><div className="flex items-center justify-between mb-1"><p className="text-sm text-[#3D3D4E]">{reply.author}</p><p className="text-xs text-gray-500">{reply.time}</p></div><p className="text-sm text-gray-700 whitespace-pre-line break-words">{reply.content}</p></div>
                   </div>
                 ))}
               </div>

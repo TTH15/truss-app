@@ -4,7 +4,7 @@ import { Heart, Users, Calendar, Camera, MapPin, Clock, MessageCircle, ExternalL
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Checkbox } from '../ui/checkbox';
 import type { Language, Event, User } from '../../domain/types/app';
-import { isProfileCompleteForParticipation } from '../../lib/profile-completion';
+import { getMissingProfileFields, describeMissingProfileFields } from '../../lib/profile-completion';
 import { googleMapsHrefForEvent } from '../../lib/event-map-link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '../../lib/event-icons';
@@ -116,12 +116,18 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
     const isAttending = attendingEvents.has(event.id);
     if (isAttending) return onToggleAttending(event.id);
     if (!user.approved) return alert(language === 'ja' ? '運営による承認をお待ちください' : 'Please wait for admin approval');
-    const profileOk = isProfileCompleteForParticipation(user);
+    const missingFields = getMissingProfileFields(user);
+    const profileOk = missingFields.length === 0;
     const isLimited = !profileOk || (user.category === 'japanese' && !user.feePaid);
     if (isLimited && attendingEvents.size >= 1) {
+      const missingDesc = describeMissingProfileFields(missingFields, language);
       const msg = language === 'ja'
-        ? (!profileOk ? 'プロフィール登録が完了するまで、1つのイベントにのみ参加できます' : '年会費のお支払いが完了するまで、1つのイベントにのみ参加できます')
-        : (!profileOk ? 'You can only register for one event until you complete your profile' : 'You can only register for one event until you pay the annual fee');
+        ? (!profileOk
+            ? `プロフィール登録が完了するまで、1つのイベントにのみ参加できます。\n未入力の項目: ${missingDesc}`
+            : '年会費のお支払いが完了するまで、1つのイベントにのみ参加できます')
+        : (!profileOk
+            ? `You can only register for one event until you complete your profile.\nMissing fields: ${missingDesc}`
+            : 'You can only register for one event until you pay the annual fee');
       return alert(msg);
     }
     setSelectedEvent(event);

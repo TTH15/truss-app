@@ -35,24 +35,56 @@ export async function createBoardPostRow(
   return { error: toErrorOrNull(error) };
 }
 
-export async function setPinnedBoardPostRow(
-  postId: number | null
+export async function togglePinBoardPostRow(
+  postId: number,
+  pinned: boolean
 ): Promise<{ error: Error | null }> {
-  const { error: resetError } = await supabase
-    .from("board_posts")
-    .update({ is_pinned: false })
-    .eq("is_pinned", true);
-  if (resetError) return { error: new Error(resetError.message) };
-
-  if (postId === null) {
-    return { error: null };
+  if (!pinned) {
+    const { error } = await supabase
+      .from("board_posts")
+      .update({ is_pinned: false, pin_order: null })
+      .eq("id", postId);
+    return { error: toErrorOrNull(error) };
   }
 
+  const { data: maxRow, error: maxError } = await supabase
+    .from("board_posts")
+    .select("pin_order")
+    .not("pin_order", "is", null)
+    .order("pin_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (maxError) return { error: new Error(maxError.message) };
+
+  const nextOrder = (maxRow?.pin_order ?? -1) + 1;
   const { error } = await supabase
     .from("board_posts")
-    .update({ is_pinned: true })
+    .update({ is_pinned: true, pin_order: nextOrder })
     .eq("id", postId);
   return { error: toErrorOrNull(error) };
+}
+
+export async function reorderPinnedBoardPostsRow(
+  orderedPostIds: number[]
+): Promise<{ error: Error | null }> {
+  // 一意制約はないが衝突防止と単純化のため、一旦負の値で逃がしてから正の順序を割り当てる
+  for (let index = 0; index < orderedPostIds.length; index += 1) {
+    const id = orderedPostIds[index];
+    const { error } = await supabase
+      .from("board_posts")
+      .update({ is_pinned: true, pin_order: -(index + 1) })
+      .eq("id", id);
+    if (error) return { error: new Error(error.message) };
+  }
+  for (let index = 0; index < orderedPostIds.length; index += 1) {
+    const id = orderedPostIds[index];
+    const { error } = await supabase
+      .from("board_posts")
+      .update({ is_pinned: true, pin_order: index })
+      .eq("id", id);
+    if (error) return { error: new Error(error.message) };
+  }
+  return { error: null };
 }
 
 export async function addReplyRow(
@@ -114,10 +146,9 @@ export async function togglePostInterestForUser(
 export async function deleteBoardPostRow(
   postId: number
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
-    .from("board_posts")
-    .update({ is_deleted: true })
-    .eq("id", postId);
+  const { error } = await supabase.rpc("delete_board_post", {
+    p_post_id: postId,
+  });
 
   return { error: toErrorOrNull(error) };
 }

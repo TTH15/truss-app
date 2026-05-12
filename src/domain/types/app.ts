@@ -136,6 +136,7 @@ export interface BoardPost {
   id: number;
   authorId?: string;
   isPinned?: boolean;
+  pinOrder?: number | null;
   author: string;
   authorAvatar: string;
   title: string;

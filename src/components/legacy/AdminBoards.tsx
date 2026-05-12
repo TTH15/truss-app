@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { EyeOff, User, MessageSquare, Trash2, Plus, Pin } from 'lucide-react';
+import { EyeOff, User, MessageSquare, Trash2, Plus, Pin, GripVertical } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
@@ -17,21 +17,24 @@ interface AdminBoardsProps {
   onUpdateBoardPosts?: (posts: BoardPost[]) => void;
   onCreateBoardPost?: (post: Omit<BoardPost, 'id' | 'replies'>) => Promise<void>;
   onDeleteBoardPost?: (postId: number) => Promise<void>;
-  onSetPinnedBoardPost?: (postId: number | null) => Promise<void>;
+  onTogglePinBoardPost?: (postId: number, pinned: boolean) => Promise<void>;
+  onReorderPinnedBoardPosts?: (orderedPostIds: number[]) => Promise<void>;
 }
 
 const translations = {
-  ja: { title: '掲示板管理', allPosts: 'すべての投稿', hidden: '非表示', delete: '削除する', pin: 'ピン留め', unpin: 'ピン解除', deleteReason: '削除する理由', reasonInappropriate: '内容が不適切だと判断されたため。', reasonDuplicate: '同じ内容の掲示板が存在するため。', createPost: '運営投稿', postTitle: 'タイトル', postContent: '内容', submit: '投稿する', cancel: 'キャンセル' },
-  en: { title: 'Board Management', allPosts: 'All Posts', hidden: 'Hidden', delete: 'Delete', pin: 'Pin', unpin: 'Unpin', deleteReason: 'Reason for deletion', reasonInappropriate: 'Judged as inappropriate content.', reasonDuplicate: 'Duplicate post exists.', createPost: 'Admin Post', postTitle: 'Title', postContent: 'Content', submit: 'Submit', cancel: 'Cancel' }
+  ja: { title: '掲示板管理', allPosts: 'すべての投稿', pinnedSection: 'ピン留め', pinnedEmpty: 'ピン留めされた投稿はありません', pinnedHint: 'ドラッグで表示順を入れ替えられます', hidden: '非表示', delete: '削除する', pin: 'ピン留め', unpin: 'ピン解除', deleteReason: '削除する理由', reasonInappropriate: '内容が不適切だと判断されたため。', reasonDuplicate: '同じ内容の掲示板が存在するため。', createPost: '運営投稿', postTitle: 'タイトル', postContent: '内容', submit: '投稿する', cancel: 'キャンセル' },
+  en: { title: 'Board Management', allPosts: 'All Posts', pinnedSection: 'Pinned', pinnedEmpty: 'No pinned posts yet', pinnedHint: 'Drag to reorder', hidden: 'Hidden', delete: 'Delete', pin: 'Pin', unpin: 'Unpin', deleteReason: 'Reason for deletion', reasonInappropriate: 'Judged as inappropriate content.', reasonDuplicate: 'Duplicate post exists.', createPost: 'Admin Post', postTitle: 'Title', postContent: 'Content', submit: 'Submit', cancel: 'Cancel' }
 };
 
-export function AdminBoards({ language, adminUserId = 'admin', adminName, boardPosts = [], onUpdateBoardPosts = () => {}, onCreateBoardPost, onDeleteBoardPost, onSetPinnedBoardPost }: AdminBoardsProps) {
+export function AdminBoards({ language, adminUserId = 'admin', adminName, boardPosts = [], onUpdateBoardPosts = () => {}, onCreateBoardPost, onDeleteBoardPost, onTogglePinBoardPost, onReorderPinnedBoardPosts }: AdminBoardsProps) {
   const t = translations[language];
   const [deleteReasons, setDeleteReasons] = useState({ inappropriate: false, duplicate: false });
   const [posts, setPosts] = useState(boardPosts);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newPost, setNewPost] = useState({ title: '', content: '' });
   const [dialogState, setDialogState] = useState<{ isOpen: boolean; postId: number | null; action: 'delete' | null; }>({ isOpen: false, postId: null, action: null });
+  const [draggingPostId, setDraggingPostId] = useState<number | null>(null);
+  const [dragOverPostId, setDragOverPostId] = useState<number | null>(null);
   const openDialog = (postId: number) => { setDeleteReasons({ inappropriate: false, duplicate: false }); setDialogState({ isOpen: true, postId, action: 'delete' }); };
   const closeDialog = () => { setDialogState({ isOpen: false, postId: null, action: null }); setDeleteReasons({ inappropriate: false, duplicate: false }); };
 
@@ -84,12 +87,15 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
   };
 
   const handleTogglePin = async (post: BoardPost) => {
-    const nextPinned = post.isPinned ? null : post.id;
-    if (onSetPinnedBoardPost) {
-      await onSetPinnedBoardPost(nextPinned);
+    const nextPinned = !post.isPinned;
+    if (onTogglePinBoardPost) {
+      await onTogglePinBoardPost(post.id, nextPinned);
       return;
     }
-    const updated = posts.map((p) => ({ ...p, isPinned: p.id === nextPinned }));
+    const maxOrder = posts.reduce((acc, p) => (p.pinOrder ?? -1) > acc ? (p.pinOrder ?? -1) : acc, -1);
+    const updated = posts.map((p) => p.id === post.id
+      ? { ...p, isPinned: nextPinned, pinOrder: nextPinned ? maxOrder + 1 : null }
+      : p);
     setPosts(updated);
     onUpdateBoardPosts(updated);
   };
@@ -101,18 +107,73 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
     const parsed = new Date(post.time).getTime();
     return Number.isNaN(parsed) ? 0 : parsed;
   };
-  const displayPosts = [...posts.filter((p) => !p.isDeleted)].sort((a, b) => {
-    const pinDiff = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
-    if (pinDiff !== 0) return pinDiff;
-    const announcementDiff = Number(isAnnouncementPost(b)) - Number(isAnnouncementPost(a));
-    if (announcementDiff !== 0) return announcementDiff;
-    return getPostTimeValue(b) - getPostTimeValue(a);
-  });
+
+  const visiblePosts = useMemo(() => posts.filter((p) => !p.isDeleted), [posts]);
+  const pinnedPosts = useMemo(() => visiblePosts
+    .filter((p) => p.isPinned)
+    .sort((a, b) => (a.pinOrder ?? Number.MAX_SAFE_INTEGER) - (b.pinOrder ?? Number.MAX_SAFE_INTEGER)),
+  [visiblePosts]);
+  const unpinnedPosts = useMemo(() => visiblePosts
+    .filter((p) => !p.isPinned)
+    .sort((a, b) => {
+      const announcementDiff = Number(isAnnouncementPost(b)) - Number(isAnnouncementPost(a));
+      if (announcementDiff !== 0) return announcementDiff;
+      return getPostTimeValue(b) - getPostTimeValue(a);
+    }),
+  [visiblePosts]);
+
+  const commitPinnedOrder = async (orderedIds: number[]) => {
+    const orderById = new Map(orderedIds.map((id, idx) => [id, idx]));
+    const updated = posts.map((p) => orderById.has(p.id) ? { ...p, pinOrder: orderById.get(p.id) ?? null } : p);
+    setPosts(updated);
+    if (onReorderPinnedBoardPosts) {
+      await onReorderPinnedBoardPosts(orderedIds);
+    } else {
+      onUpdateBoardPosts(updated);
+    }
+  };
+
+  const handleDragStart = (postId: number) => (e: React.DragEvent<HTMLElement>) => {
+    setDraggingPostId(postId);
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', String(postId));
+    } catch {
+      // some browsers throw when data type is not allowed
+    }
+  };
+  const handleDragOver = (postId: number) => (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (postId !== dragOverPostId) setDragOverPostId(postId);
+  };
+  const handleDragLeave = () => {
+    setDragOverPostId(null);
+  };
+  const handleDrop = (targetPostId: number) => async (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    const sourceId = draggingPostId;
+    setDraggingPostId(null);
+    setDragOverPostId(null);
+    if (sourceId === null || sourceId === targetPostId) return;
+    const ids = pinnedPosts.map((p) => p.id);
+    const fromIndex = ids.indexOf(sourceId);
+    const toIndex = ids.indexOf(targetPostId);
+    if (fromIndex < 0 || toIndex < 0) return;
+    const reordered = [...ids];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    await commitPinnedOrder(reordered);
+  };
+  const handleDragEnd = () => {
+    setDraggingPostId(null);
+    setDragOverPostId(null);
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Badge variant="outline">{displayPosts.length} {t.allPosts}</Badge>
+        <Badge variant="outline">{visiblePosts.length} {t.allPosts}</Badge>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">
@@ -134,8 +195,55 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
         </Dialog>
       </div>
 
+      <section className="space-y-3 rounded-lg border border-dashed border-[#A5D8F3] bg-[#F4FAFD] p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium text-[#3D3D4E]">
+            <Pin className="w-4 h-4 fill-[#3D3D4E]" />
+            <span>{t.pinnedSection}</span>
+            <Badge variant="secondary" className="bg-white text-[#3D3D4E]">{pinnedPosts.length}</Badge>
+          </div>
+          {pinnedPosts.length > 1 && <span className="text-xs text-gray-500">{t.pinnedHint}</span>}
+        </div>
+        {pinnedPosts.length === 0 ? (
+          <p className="text-sm text-gray-500">{t.pinnedEmpty}</p>
+        ) : (
+          <ul className="space-y-2">
+            {pinnedPosts.map((post, index) => (
+              <li
+                key={post.id}
+                draggable
+                onDragStart={handleDragStart(post.id)}
+                onDragOver={handleDragOver(post.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop(post.id)}
+                onDragEnd={handleDragEnd}
+                className={`flex items-center gap-3 rounded-md border bg-white p-3 transition-shadow ${draggingPostId === post.id ? 'opacity-60' : ''} ${dragOverPostId === post.id && draggingPostId !== post.id ? 'border-[#49B1E4] shadow-md' : 'border-gray-200'}`}
+              >
+                <span className="cursor-grab text-gray-400 active:cursor-grabbing" aria-label="drag handle"><GripVertical className="w-4 h-4" /></span>
+                <span className="w-6 text-center text-xs font-medium text-gray-500">{index + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-medium text-[#3D3D4E]">{post.title}</p>
+                  <p className="truncate text-xs text-gray-500">{post.author}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleTogglePin(post)}
+                  aria-label={t.unpin}
+                  title={t.unpin}
+                  className="border-[#3D3D4E] text-[#3D3D4E] hover:bg-gray-100 px-2"
+                >
+                  <Pin className="w-4 h-4 fill-[#3D3D4E]" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <div className="grid md:grid-cols-2 gap-4">
-        {displayPosts.map((post) => (
+        {[...pinnedPosts, ...unpinnedPosts].map((post) => (
           <Card key={post.id} className={`hover:shadow-lg transition-shadow ${post.isHidden ? 'bg-gray-50 border-gray-300' : ''} ${post.tag === 'event' && post.peopleNeeded === 0 ? 'bg-amber-50 border-amber-200' : ''}`}>
             <CardHeader>
               <div className="flex items-start justify-between">

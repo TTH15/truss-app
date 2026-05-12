@@ -34,6 +34,7 @@ export async function sendMessageRow(input: {
 export async function sendBulkMessagesRow(input: {
   senderId: string;
   senderName: string;
+  broadcastId?: number | null;
   messages: Array<{
     receiverId: string;
     text: string;
@@ -53,8 +54,20 @@ export async function sendBulkMessagesRow(input: {
     is_broadcast: message.isBroadcast ?? false,
     broadcast_subject: message.broadcastSubject ?? null,
     broadcast_subject_en: message.broadcastSubjectEn ?? null,
+    broadcast_id: input.broadcastId ?? null,
   }));
   const { error } = await supabase.from("messages").insert(rows);
+  return { error: toErrorOrNull(error) };
+}
+
+export async function cancelBroadcastRow(
+  broadcastId: number
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase
+    .from("admin_broadcasts")
+    .update({ cancelled_at: new Date().toISOString() })
+    .eq("id", broadcastId)
+    .is("cancelled_at", null);
   return { error: toErrorOrNull(error) };
 }
 

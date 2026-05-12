@@ -41,9 +41,11 @@ interface AdminPageProps {
   onUpdateBoardPosts: (posts: BoardPost[]) => void;
   onCreateBoardPost?: (post: Omit<BoardPost, 'id' | 'replies'>) => Promise<void>;
   onDeleteBoardPost?: (postId: number) => Promise<void>;
-  onSetPinnedBoardPost?: (postId: number | null) => Promise<void>;
+  onTogglePinBoardPost?: (postId: number, pinned: boolean) => Promise<void>;
+  onReorderPinnedBoardPosts?: (orderedPostIds: number[]) => Promise<void>;
   onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
-  onSendBulkMessages?: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string }>) => Promise<void>;
+  onSendBulkMessages?: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; broadcastId?: number | null }>) => Promise<void>;
+  onCancelBroadcast?: (broadcastId: number) => Promise<void>;
 }
 
 type AdminTab = 'members' | 'events' | 'gallery' | 'boards' | 'chat';
@@ -71,7 +73,7 @@ const translations = {
   }
 };
 
-export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, membersLoading = false, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onDeleteBoardPost, onSetPinnedBoardPost, onSendBulkEmail, onSendBulkMessages }: AdminPageProps) {
+export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, membersLoading = false, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onDeleteBoardPost, onTogglePinBoardPost, onReorderPinnedBoardPosts, onSendBulkEmail, onSendBulkMessages, onCancelBroadcast }: AdminPageProps) {
   const t = translations[language];
   const ADMIN_TAB_STORAGE_KEY = `truss-admin-tab-${user.id}`;
   const [currentTab, setCurrentTab] = useState<AdminTab>('members');
@@ -163,8 +165,8 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
           {currentTab === 'members' && <AdminMembersManagement language={language} pendingUsers={pendingUsers} approvedMembers={approvedMembers} isLoading={membersLoading} onApproveUser={onApproveUser} onRejectUser={onRejectUser} onRequestReupload={onRequestReupload} onOpenChat={onOpenMemberChat} onSendBulkEmail={onSendBulkEmail} onConfirmFeePayment={onConfirmFeePayment} onSetRenewalStatus={onSetRenewalStatus} onDeleteUser={onDeleteUser} />}
           {currentTab === 'events' && <AdminEvents language={language} events={events} eventParticipants={eventParticipants} onCreateEvent={onCreateEvent} onUpdateEvent={onUpdateEvent} onDeleteEvent={onDeleteEvent} onSendBulkEmail={onSendBulkEmail} />}
           {currentTab === 'gallery' && <AdminGallery language={language} />}
-          {currentTab === 'boards' && <AdminBoards language={language} adminUserId={user.id} adminName={user.name} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onDeleteBoardPost={onDeleteBoardPost} onSetPinnedBoardPost={onSetPinnedBoardPost} />}
-          {currentTab === 'chat' && <AdminChat language={language} adminUserId={user.id} messageThreads={messageThreads} onUpdateMessageThreads={onUpdateMessageThreads} onSendMessage={onSendMessage} onSendBulkMessages={onSendBulkMessages} approvedMembers={approvedMembers} pendingUsers={pendingUsers} chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={onUpdateChatThreadMetadata} selectedChatUserId={selectedChatUserId} onOpenMemberChat={onOpenMemberChat} />}
+          {currentTab === 'boards' && <AdminBoards language={language} adminUserId={user.id} adminName={user.name} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onDeleteBoardPost={onDeleteBoardPost} onTogglePinBoardPost={onTogglePinBoardPost} onReorderPinnedBoardPosts={onReorderPinnedBoardPosts} />}
+          {currentTab === 'chat' && <AdminChat language={language} adminUserId={user.id} messageThreads={messageThreads} onUpdateMessageThreads={onUpdateMessageThreads} onSendMessage={onSendMessage} onSendBulkMessages={onSendBulkMessages} onCancelBroadcast={onCancelBroadcast} approvedMembers={approvedMembers} pendingUsers={pendingUsers} chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={onUpdateChatThreadMetadata} selectedChatUserId={selectedChatUserId} onOpenMemberChat={onOpenMemberChat} />}
         </main>
       </div>
 

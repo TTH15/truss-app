@@ -150,6 +150,7 @@ export interface DbMessage {
   is_broadcast: boolean;
   broadcast_subject: string | null;
   broadcast_subject_en: string | null;
+  broadcast_id: number | null;
   created_at: string;
 }
 
@@ -181,6 +182,7 @@ export interface DbAdminBroadcast {
   status: 'sent' | 'scheduled';
   scheduled_at: string | null;
   sent_at: string;
+  cancelled_at: string | null;
   created_at: string;
 }
 
@@ -224,6 +226,7 @@ export interface DbBoardPost {
   category: string | null;
   date: string | null;
   is_pinned: boolean;
+  pin_order: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -453,6 +456,10 @@ export interface Database {
       };
       decrement_interested: {
         Args: { post_id: number };
+        Returns: void;
+      };
+      delete_board_post: {
+        Args: { p_post_id: number };
         Returns: void;
       };
       increment_photo_likes: {
