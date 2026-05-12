@@ -104,16 +104,11 @@ export async function queryMessageThreadsAndMetadata(): Promise<{
   const { data, error } = await supabase
     .from("messages")
     .select("*")
+    .is("cancelled_at", null)
     .order("time", { ascending: true });
   if (error) throw error;
-  const { data: cancelledBroadcasts } = await supabase
-    .from("admin_broadcasts")
-    .select("id")
-    .not("cancelled_at", "is", null);
-  const cancelledIds = new Set((cancelledBroadcasts ?? []).map((row) => row.id));
   const threads: MessageThread = {};
   (data ?? []).forEach((m) => {
-    if (m.broadcast_id != null && cancelledIds.has(m.broadcast_id)) return;
     const threadUserId = m.is_admin ? m.receiver_id : m.sender_id;
     if (!threadUserId) return;
     if (!threads[threadUserId]) threads[threadUserId] = [];

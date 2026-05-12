@@ -63,12 +63,23 @@ export async function sendBulkMessagesRow(input: {
 export async function cancelBroadcastRow(
   broadcastId: number
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
+  const cancelledAt = new Date().toISOString();
+  const { data, error } = await supabase
     .from("admin_broadcasts")
-    .update({ cancelled_at: new Date().toISOString() })
+    .update({ cancelled_at: cancelledAt })
     .eq("id", broadcastId)
+    .is("cancelled_at", null)
+    .select("id");
+  if (error) return { error: toErrorOrNull(error) };
+  if (!data || data.length === 0) {
+    return { error: new Error("broadcast not found or already cancelled") };
+  }
+  const { error: messagesError } = await supabase
+    .from("messages")
+    .update({ cancelled_at: cancelledAt })
+    .eq("broadcast_id", broadcastId)
     .is("cancelled_at", null);
-  return { error: toErrorOrNull(error) };
+  return { error: toErrorOrNull(messagesError) };
 }
 
 export async function sendBroadcastRow(input: {

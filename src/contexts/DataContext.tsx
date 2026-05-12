@@ -323,6 +323,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const messagesChannel = supabase.channel(`messages-${user.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, () => fetchMessages())
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `is_broadcast=eq.true` }, () => fetchMessages())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, () => fetchMessages())
       .subscribe();
     const notificationsChannel = supabase.channel(`notifications-${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => fetchNotifications())

@@ -151,6 +151,7 @@ export interface DbMessage {
   broadcast_subject: string | null;
   broadcast_subject_en: string | null;
   broadcast_id: number | null;
+  cancelled_at: string | null;
   created_at: string;
 }
 
@@ -294,7 +295,7 @@ export type DbEventInsert = Omit<DbEvent, 'id' | 'created_at' | 'updated_at'> & 
 export type DbEventParticipantInsert = Omit<DbEventParticipant, 'id'>;
 export type DbEventParticipantUpdate = Partial<DbEventParticipantInsert>;
 
-export type DbMessageInsert = Omit<DbMessage, 'id' | 'created_at'>;
+export type DbMessageInsert = Omit<DbMessage, 'id' | 'created_at' | 'cancelled_at'> & { cancelled_at?: string | null };
 export type DbAdminBroadcastInsert = Omit<DbAdminBroadcast, 'id' | 'created_at'> & { id?: number };
 
 export type DbNotificationInsert = Omit<DbNotification, 'id' | 'created_at'> & {
@@ -319,7 +320,7 @@ export type DbUserUpdate = Partial<Omit<DbUser, 'id' | 'created_at' | 'updated_a
 
 export type DbEventUpdate = Partial<Omit<DbEvent, 'id' | 'created_at' | 'updated_at'>>;
 
-export type DbMessageUpdate = Partial<Pick<DbMessage, 'read' | 'pinned' | 'flagged'>>;
+export type DbMessageUpdate = Partial<Pick<DbMessage, 'read' | 'pinned' | 'flagged' | 'cancelled_at'>>;
 export type DbAdminBroadcastUpdate = Partial<Omit<DbAdminBroadcast, 'id' | 'admin_user_id' | 'created_at'>>;
 
 export type DbNotificationUpdate = Partial<Pick<DbNotification, 'read'>>;
