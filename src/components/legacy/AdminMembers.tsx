@@ -69,6 +69,7 @@ const translations = {
     downloadInfo: '情報ダウンロード',
     downloadCsv: 'CSVダウンロード',
     downloadXlsx: 'XLSXダウンロード',
+    downloadTemplate: '部員名簿（提出用）',
     bulkDelete: '削除',
     close: '閉じる',
     apply: '適用',
@@ -78,6 +79,8 @@ const translations = {
     confirmBulkDelete: '選択したメンバーを削除します。よろしいですか？',
     csvDownloaded: 'CSVをダウンロードしました',
     xlsxDownloaded: 'XLSXをダウンロードしました',
+    templateDownloaded: '部員名簿をダウンロードしました',
+    templateDownloadFailed: 'テンプレートのダウンロードに失敗しました',
     chat: '個別チャット',
     selectAll: 'すべて選択',
     noMemberSelected: 'メンバーを選択してください',
@@ -116,6 +119,7 @@ const translations = {
     downloadInfo: 'Download Info',
     downloadCsv: 'Download CSV',
     downloadXlsx: 'Download XLSX',
+    downloadTemplate: 'Member Roster (Submission Form)',
     bulkDelete: 'Delete',
     close: 'Close',
     apply: 'Apply',
@@ -125,6 +129,8 @@ const translations = {
     confirmBulkDelete: 'Delete selected members?',
     csvDownloaded: 'CSV downloaded',
     xlsxDownloaded: 'XLSX downloaded',
+    templateDownloaded: 'Member roster downloaded',
+    templateDownloadFailed: 'Failed to download template',
     chat: 'Chat',
     selectAll: 'Select All',
     noMemberSelected: 'Please select members',
@@ -317,6 +323,63 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Members');
     XLSX.writeFile(workbook, `members_${new Date().toISOString().slice(0, 10)}.xlsx`);
     toast.success(t.xlsxDownloaded);
+  };
+  const handleBulkDownloadTemplate = async () => {
+    const rows = getSelectedMemberList();
+    if (rows.length === 0) return toast.error(t.noMemberSelected);
+    try {
+      const [ExcelJSModule, response] = await Promise.all([
+        import('exceljs'),
+        fetch('/20260401_03_buinmeibo.xlsx'),
+      ]);
+      if (!response.ok) throw new Error(`Template fetch failed: ${response.status}`);
+      const buffer = await response.arrayBuffer();
+      const ExcelJS = ExcelJSModule.default ?? ExcelJSModule;
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+      const sheet = workbook.getWorksheet('提出用');
+      if (!sheet) throw new Error('提出用 sheet missing');
+
+      const TEMPLATE_ROWS = 55;
+      const LAST_TEMPLATE_ROW = 11 + TEMPLATE_ROWS; // row 66 (採番=55)
+      if (rows.length > TEMPLATE_ROWS) {
+        const extra = rows.length - TEMPLATE_ROWS;
+        sheet.duplicateRow(LAST_TEMPLATE_ROW, extra, false);
+        for (let i = 0; i < extra; i++) {
+          sheet.getCell(`C${LAST_TEMPLATE_ROW + 1 + i}`).value = TEMPLATE_ROWS + 1 + i;
+        }
+      }
+
+      const now = new Date();
+      sheet.getCell('J3').value = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日現在`;
+      sheet.getCell('E4').value = '神戸大学留学生支援サークル Truss';
+      sheet.getCell('G5').value = rows.length;
+
+      rows.forEach((m, i) => {
+        const r = 12 + i;
+        sheet.getCell(`E${r}`).value = m.studentNumber ?? '';
+        sheet.getCell(`F${r}`).value = m.name;
+        sheet.getCell(`G${r}`).value = m.phone ?? '';
+        sheet.getCell(`H${r}`).value = m.email;
+        sheet.getCell(`I${r}`).value = m.organizations ?? '';
+      });
+
+      const out = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `部員名簿_${now.toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      toast.success(t.templateDownloaded);
+    } catch (err) {
+      console.error('[AdminMembers] template download failed', err);
+      toast.error(t.templateDownloadFailed);
+    }
   };
   const handleBulkDelete = async () => {
     if (!onDeleteUser) return;
@@ -637,6 +700,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={handleBulkDownloadCsv} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1"><Download className="w-4 h-4" />{t.downloadCsv}</Button>
                   <Button onClick={handleBulkDownloadXlsx} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1"><Download className="w-4 h-4" />{t.downloadXlsx}</Button>
+                  <Button onClick={() => void handleBulkDownloadTemplate()} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1"><Download className="w-4 h-4" />{t.downloadTemplate}</Button>
                 </div>
               </div>
 
