@@ -99,7 +99,17 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
     const lastMessage = messages[messages.length - 1];
     const user = approvedMembers.find((m) => m.id === userId) || pendingUsers?.find((m) => m.id === userId);
     const metadata = chatThreadMetadata[userId] || {};
-    return { userId, userName: user?.name || 'Unknown User', userAvatar: user?.nickname ? user.nickname.charAt(0).toUpperCase() : 'U', lastMessage: lastMessage?.text || '', lastMessageTime: lastMessage?.time || '', unreadCount: messages.filter((m) => !m.isAdmin && !m.read).length, pinned: metadata.pinned || false, flagged: metadata.flagged || false };
+    const rawTime = lastMessage?.time || '';
+    return {
+      userId,
+      userName: user?.name || 'Unknown User',
+      userAvatar: user?.nickname ? user.nickname.charAt(0).toUpperCase() : 'U',
+      lastMessage: lastMessage?.text || '',
+      lastMessageTime: rawTime ? formatMessageTime(rawTime) : '',
+      unreadCount: messages.filter((m) => !m.isAdmin && !m.read).length,
+      pinned: metadata.pinned || false,
+      flagged: metadata.flagged || false,
+    };
   });
   const sortedUsers = [...usersWithMessages].sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
   const selectedUser = selectedUserId ? usersWithMessages.find((u) => u.userId === selectedUserId) : null;
@@ -167,9 +177,9 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
         </div>
         <div className={`flex items-center gap-2 mt-1 ${message.isAdmin ? 'justify-end' : 'justify-start'}`}>
           <p className="text-xs text-gray-400">{formatMessageTime(message.time)}</p>
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-            <button onClick={() => togglePin(message.id)} className={`p-1 rounded hover:bg-gray-200 transition-colors ${message.pinned ? 'text-yellow-500' : 'text-gray-400'}`}><Pin className="w-3.5 h-3.5" /></button>
-            <button onClick={() => toggleFlag(message.id)} className={`p-1 rounded hover:bg-gray-200 transition-colors ${message.flagged ? 'text-red-500' : 'text-gray-400'}`}><Flag className="w-3.5 h-3.5" /></button>
+          <div className="flex gap-1 opacity-0 transition-opacity pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100">
+            <button type="button" onClick={() => togglePin(message.id)} className={`p-1 rounded hover:bg-gray-200 transition-colors ${message.pinned ? 'text-yellow-500' : 'text-gray-400'}`}><Pin className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => toggleFlag(message.id)} className={`p-1 rounded hover:bg-gray-200 transition-colors ${message.flagged ? 'text-red-500' : 'text-gray-400'}`}><Flag className="w-3.5 h-3.5" /></button>
           </div>
         </div>
       </div>
@@ -184,7 +194,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
             {sortedUsers.length === 0 ? <div className="p-4 text-center text-gray-500 text-sm">{t.noMessages}</div> : (
               <div>{sortedUsers.map((user) => (
                 <div key={user.userId} className={`relative w-full text-left hover:bg-gray-50 transition-colors border-b border-gray-200 group ${selectedUserId === user.userId ? 'bg-blue-50 border-l-4 border-[#49B1E4]' : ''}`}>
-                  <button onClick={() => handleSelectUser(user.userId)} className="w-full p-4 text-left relative">
+                  <button type="button" onClick={() => handleSelectUser(user.userId)} className="w-full p-4 pr-12 text-left relative">
                     <div className="flex items-start gap-3">
                       <div className="shrink-0 relative">
                         <Avatar className="w-10 h-10"><AvatarFallback className="bg-[#49B1E4] text-white">{user.userAvatar}</AvatarFallback></Avatar>
@@ -193,9 +203,9 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                       <div className="flex-1 min-w-0"><p className="font-medium text-gray-900 truncate">{user.userName}</p><p className="text-xs text-gray-500 truncate">{user.lastMessage}</p><div className="flex items-center gap-2 mt-1"><p className="text-xs text-gray-400">{user.lastMessageTime}</p>{user.unreadCount > 0 && <div className="bg-red-500 text-white text-xs rounded-full h-4 min-w-[16px] px-1.5 flex items-center justify-center font-medium">{user.unreadCount}</div>}</div></div>
                     </div>
                   </button>
-                  <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => toggleThreadPin(user.userId, e)} className="p-1 rounded hover:bg-gray-200 text-gray-600 hover:text-yellow-600 transition-colors" title={user.pinned ? t.unpinThread : t.pinThread}><Pin className="w-3.5 h-3.5" /></button>
-                    <button onClick={(e) => toggleThreadFlag(user.userId, e)} className="p-1 rounded hover:bg-gray-200 text-gray-600 hover:text-red-600 transition-colors" title={user.flagged ? t.unflagThread : t.flagThread}><Flag className="w-3.5 h-3.5" /></button>
+                  <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 transition-opacity pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100">
+                    <button type="button" onClick={(e) => toggleThreadPin(user.userId, e)} className="p-1 rounded hover:bg-gray-200 text-gray-600 hover:text-yellow-600 transition-colors" title={user.pinned ? t.unpinThread : t.pinThread}><Pin className="w-3.5 h-3.5" /></button>
+                    <button type="button" onClick={(e) => toggleThreadFlag(user.userId, e)} className="p-1 rounded hover:bg-gray-200 text-gray-600 hover:text-red-600 transition-colors" title={user.flagged ? t.unflagThread : t.flagThread}><Flag className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
               ))}</div>
