@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -17,9 +17,9 @@ interface MessagesPageProps {
   messageHistory: MessageHistory;
   setMessageHistory: (history: MessageHistory | ((prev: MessageHistory) => MessageHistory)) => void;
   messageThreads: MessageThread;
-  onUpdateMessageThreads: (threads: MessageThread) => void;
+  onUpdateMessageThreads: Dispatch<SetStateAction<MessageThread>>;
   chatThreadMetadata: ChatThreadMetadata;
-  onUpdateChatThreadMetadata: (metadata: ChatThreadMetadata) => void;
+  onUpdateChatThreadMetadata: Dispatch<SetStateAction<ChatThreadMetadata>>;
 }
 interface Message { id: number; sender: 'user' | 'other'; text: string; time: string; pinned?: boolean; flagged?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; }
 interface MessageHistory { [recipientId: string]: Message[]; }

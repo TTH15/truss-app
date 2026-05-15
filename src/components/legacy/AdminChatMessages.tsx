@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -10,12 +10,12 @@ import { toast } from 'sonner';
 interface AdminChatMessagesProps {
   language: Language;
   messageThreads: MessageThread;
-  onUpdateMessageThreads: (threads: MessageThread) => void;
+  onUpdateMessageThreads: Dispatch<SetStateAction<MessageThread>>;
   onSendMessage?: (receiverId: string, text: string, isAdmin?: boolean) => Promise<void>;
   approvedMembers?: UserType[];
   pendingUsers?: UserType[];
   chatThreadMetadata: ChatThreadMetadata;
-  onUpdateChatThreadMetadata: (metadata: ChatThreadMetadata) => void;
+  onUpdateChatThreadMetadata: Dispatch<SetStateAction<ChatThreadMetadata>>;
   selectedChatUserId?: string | null;
   onOpenMemberChat?: (userId: string) => void;
 }
@@ -73,12 +73,23 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
   useEffect(() => {
     if (!selectedChatUserId) return;
     setSelectedUserId(selectedChatUserId);
-    if (!messageThreads[selectedChatUserId]) onUpdateMessageThreads({ ...messageThreads, [selectedChatUserId]: [] });
-    const messages = messageThreads[selectedChatUserId] || [];
-    if (messages.some((m) => !m.isAdmin && !m.read)) onUpdateMessageThreads({ ...messageThreads, [selectedChatUserId]: messages.map((m) => m.isAdmin ? m : { ...m, read: true }) });
-    const currentMetadata = chatThreadMetadata[selectedChatUserId] || {};
-    if (currentMetadata.unreadCount && currentMetadata.unreadCount > 0) onUpdateChatThreadMetadata({ ...chatThreadMetadata, [selectedChatUserId]: { ...currentMetadata, unreadCount: 0 } });
-  }, [selectedChatUserId]);
+    onUpdateMessageThreads((prev) => {
+      const messages = prev[selectedChatUserId] || [];
+      if (!messages.some((m) => !m.isAdmin && !m.read)) return prev;
+      return {
+        ...prev,
+        [selectedChatUserId]: messages.map((m) => (m.isAdmin ? m : { ...m, read: true })),
+      };
+    });
+    onUpdateChatThreadMetadata((prev) => {
+      const currentMetadata = prev[selectedChatUserId] || {};
+      if (!(currentMetadata.unreadCount && currentMetadata.unreadCount > 0)) return prev;
+      return {
+        ...prev,
+        [selectedChatUserId]: { ...currentMetadata, unreadCount: 0 },
+      };
+    });
+  }, [selectedChatUserId, messageThreads, onUpdateMessageThreads, onUpdateChatThreadMetadata]);
 
   const allUserIds = new Set<string>();
   approvedMembers.forEach((member) => allUserIds.add(member.id));
@@ -96,10 +107,22 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
 
   const handleSelectUser = (userId: string) => {
     setSelectedUserId(userId);
-    const messages = messageThreads[userId] || [];
-    if (messages.some((m) => !m.isAdmin && !m.read)) onUpdateMessageThreads({ ...messageThreads, [userId]: messages.map((m) => m.isAdmin ? m : { ...m, read: true }) });
-    const currentMetadata = chatThreadMetadata[userId] || {};
-    if (currentMetadata.unreadCount && currentMetadata.unreadCount > 0) onUpdateChatThreadMetadata({ ...chatThreadMetadata, [userId]: { ...currentMetadata, unreadCount: 0 } });
+    onUpdateMessageThreads((prev) => {
+      const messages = prev[userId] || [];
+      if (!messages.some((m) => !m.isAdmin && !m.read)) return prev;
+      return {
+        ...prev,
+        [userId]: messages.map((m) => (m.isAdmin ? m : { ...m, read: true })),
+      };
+    });
+    onUpdateChatThreadMetadata((prev) => {
+      const currentMetadata = prev[userId] || {};
+      if (!(currentMetadata.unreadCount && currentMetadata.unreadCount > 0)) return prev;
+      return {
+        ...prev,
+        [userId]: { ...currentMetadata, unreadCount: 0 },
+      };
+    });
   };
 
   const handleSendMessage = async () => {
@@ -120,8 +143,20 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
 
   const togglePin = (messageId: number) => { if (!selectedUserId) return; onUpdateMessageThreads({ ...messageThreads, [selectedUserId]: (messageThreads[selectedUserId] || []).map((m) => m.id === messageId ? { ...m, pinned: !m.pinned } : m) }); };
   const toggleFlag = (messageId: number) => { if (!selectedUserId) return; onUpdateMessageThreads({ ...messageThreads, [selectedUserId]: (messageThreads[selectedUserId] || []).map((m) => m.id === messageId ? { ...m, flagged: !m.flagged } : m) }); };
-  const toggleThreadPin = (userId: string, e: React.MouseEvent) => { e.stopPropagation(); const currentMetadata = chatThreadMetadata[userId] || {}; onUpdateChatThreadMetadata({ ...chatThreadMetadata, [userId]: { ...currentMetadata, pinned: !currentMetadata.pinned } }); };
-  const toggleThreadFlag = (userId: string, e: React.MouseEvent) => { e.stopPropagation(); const currentMetadata = chatThreadMetadata[userId] || {}; onUpdateChatThreadMetadata({ ...chatThreadMetadata, [userId]: { ...currentMetadata, flagged: !currentMetadata.flagged } }); };
+  const toggleThreadPin = (userId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onUpdateChatThreadMetadata((prev) => {
+      const currentMetadata = prev[userId] || {};
+      return { ...prev, [userId]: { ...currentMetadata, pinned: !currentMetadata.pinned } };
+    });
+  };
+  const toggleThreadFlag = (userId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onUpdateChatThreadMetadata((prev) => {
+      const currentMetadata = prev[userId] || {};
+      return { ...prev, [userId]: { ...currentMetadata, flagged: !currentMetadata.flagged } };
+    });
+  };
   const renderMessage = (message: Message) => (
     <div key={message.id} className={`flex ${message.isAdmin ? 'justify-end' : 'justify-start'} group`}>
       <div className={`max-w-[75%] ${message.isAdmin ? 'order-2' : 'order-1'}`}>

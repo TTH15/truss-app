@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { AdminChatMessages } from './AdminChatMessages';
 import { translateText } from '../../utils/translate';
 import type { Language, MessageThread, User as UserType, ChatThreadMetadata } from '../../domain/types/app';
+import type { Dispatch, SetStateAction } from 'react';
 import type { DbAdminBroadcast } from '../../types/database.types';
 import { supabase } from '../../lib/supabase';
 
@@ -19,14 +20,14 @@ interface AdminChatProps {
   adminUserId: string;
   language: Language;
   messageThreads: MessageThread;
-  onUpdateMessageThreads: (threads: MessageThread) => void;
+  onUpdateMessageThreads: Dispatch<SetStateAction<MessageThread>>;
   onSendMessage?: (receiverId: string, text: string, isAdmin?: boolean) => Promise<void>;
   onSendBulkMessages?: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; broadcastId?: number | null }>) => Promise<void>;
   onCancelBroadcast?: (broadcastId: number) => Promise<void>;
   approvedMembers?: UserType[];
   pendingUsers?: UserType[];
   chatThreadMetadata: ChatThreadMetadata;
-  onUpdateChatThreadMetadata: (metadata: ChatThreadMetadata) => void;
+  onUpdateChatThreadMetadata: Dispatch<SetStateAction<ChatThreadMetadata>>;
   selectedChatUserId?: string | null;
   onOpenMemberChat?: (userId: string) => void;
 }

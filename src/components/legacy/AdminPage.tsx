@@ -9,6 +9,7 @@ import { AdminGallery } from './AdminGallery';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
 import type { User as UserType, Language, Event, EventParticipant, MessageThread, ChatThreadMetadata, Notification, BoardPost } from '../../domain/types/app';
+import type { Dispatch, SetStateAction } from 'react';
 
 interface AdminPageProps {
   user: UserType;
@@ -30,10 +31,10 @@ interface AdminPageProps {
   onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void | Promise<void>;
   onDeleteUser?: (userId: string) => void;
   messageThreads: MessageThread;
-  onUpdateMessageThreads: (threads: MessageThread) => void;
+  onUpdateMessageThreads: Dispatch<SetStateAction<MessageThread>>;
   onSendMessage?: (receiverId: string, text: string, isAdmin?: boolean) => Promise<void>;
   chatThreadMetadata: ChatThreadMetadata;
-  onUpdateChatThreadMetadata: (metadata: ChatThreadMetadata) => void;
+  onUpdateChatThreadMetadata: Dispatch<SetStateAction<ChatThreadMetadata>>;
   selectedChatUserId: string | null;
   onOpenMemberChat: (userId: string) => void;
   onUpdateNotifications: (notifications: Notification[]) => void;
