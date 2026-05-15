@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import {
   queryEvents,
   queryPendingAndApprovedUsers,
+  queryStaffInboxUserId,
   queryMessageThreadsAndMetadata,
   queryNotificationsForUser,
   queryBoardPostsWithReplies,
@@ -70,6 +71,8 @@ interface DataContextType {
   events: Event[];
   pendingUsers: User[];
   approvedMembers: User[];
+  /** 一般メンバーが運営へ DM する際の receiver（RLS のため users 一覧からは取れない） */
+  staffInboxUserId: string | null;
   messageThreads: MessageThread;
   chatThreadMetadata: ChatThreadMetadata;
   notifications: Notification[];
@@ -155,6 +158,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<Event[]>([]);
   const [pendingUsers, setPendingUsers] = useState<User[]>([]);
   const [approvedMembers, setApprovedMembers] = useState<User[]>([]);
+  const [staffInboxUserId, setStaffInboxUserId] = useState<string | null>(null);
   const [messageThreads, setMessageThreads] = useState<MessageThread>({});
   const [chatThreadMetadata, setChatThreadMetadata] = useState<ChatThreadMetadata>({});
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -228,6 +232,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
     usersFetchInFlight.current = run;
     return run;
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (!user) {
+      setStaffInboxUserId(null);
+      return;
+    }
+    if (user.isAdmin === true) {
+      setStaffInboxUserId(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const id = await queryStaffInboxUserId();
+        if (!cancelled) setStaffInboxUserId(id);
+      } catch (error) {
+        console.error('Error fetching staff inbox user id:', error);
+        if (!cancelled) setStaffInboxUserId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, user?.approved, user?.isAdmin]);
 
   const fetchMessages = useCallback(async () => {
     if (!user) return;
@@ -742,7 +770,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const value: DataContextType = {
-    events, pendingUsers, approvedMembers, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading,
+    events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading,
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
     approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, resetMembershipForNewYear, deleteUser,
     sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, updateChatMetadata,

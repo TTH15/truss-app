@@ -72,6 +72,14 @@ export async function queryEvents(): Promise<Event[]> {
   return rows.map(mapDbEventRowToEvent);
 }
 
+/** 承認済み（または管理者）のみ RPC が UUID を返す。RLS 下で users を一覧できない一般メンバー向け。 */
+export async function queryStaffInboxUserId(): Promise<string | null> {
+  const { data, error } = await supabase.rpc("get_staff_inbox_user_id");
+  if (error) throw error;
+  if (data == null || typeof data !== "string") return null;
+  return data;
+}
+
 export async function queryPendingAndApprovedUsers(): Promise<{
   pending: User[];
   approved: User[];

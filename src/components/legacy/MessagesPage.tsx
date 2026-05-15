@@ -65,7 +65,7 @@ const formatMessageTime = (raw: string) => {
 
 export function MessagesPage({ language, user, recipientName, recipientAvatar, isAdmin = false, onBack, messageHistory, setMessageHistory, messageThreads, onUpdateMessageThreads }: MessagesPageProps) {
   const t = translations[language];
-  const { markAllMessagesAsReadForUser, sendMessage, approvedMembers } = useData();
+  const { markAllMessagesAsReadForUser, sendMessage, approvedMembers, staffInboxUserId } = useData();
   const hasMarkedAsRead = useRef(false);
   useEffect(() => { if (isAdmin && user.id && !hasMarkedAsRead.current) { hasMarkedAsRead.current = true; markAllMessagesAsReadForUser(user.id); } }, [isAdmin, user.id, markAllMessagesAsReadForUser]);
   const getInitialMessage = () => ({ id: 1, sender: 'other' as const, text: language === 'ja' ? 'こんにちは！リアクションありがとうございます。' : 'Hello! Thanks for your reaction.', time: '14:30' });
@@ -89,7 +89,7 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
     const text = newMessage;
     const message: Message = { id: messages.length + 1, sender: 'user', text, time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) };
     if (isAdmin) {
-      const adminUserId = approvedMembers.find((member) => member.isAdmin)?.id;
+      const adminUserId = staffInboxUserId ?? approvedMembers.find((member) => member.isAdmin)?.id;
       if (!adminUserId) {
         toast.error(language === 'ja' ? '運営アカウントが見つかりませんでした' : 'Admin account was not found');
         return;

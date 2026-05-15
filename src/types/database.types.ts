@@ -471,6 +471,10 @@ export interface Database {
         Args: { photo_id: number };
         Returns: void;
       };
+      get_staff_inbox_user_id: {
+        Args: Record<string, never>;
+        Returns: string | null;
+      };
     };
     Enums: {
       user_category: UserCategory;

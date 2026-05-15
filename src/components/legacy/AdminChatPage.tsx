@@ -53,8 +53,8 @@ const formatMessageTime = (raw: string) => {
 
 export function AdminChatPage({ language, user, onBack }: AdminChatPageProps) {
   const t = translations[language];
-  const { messageThreads, sendMessage, markAllMessagesAsReadForUser, approvedMembers } = useData();
-  const adminUserId = approvedMembers.find((member) => member.isAdmin)?.id ?? null;
+  const { messageThreads, sendMessage, markAllMessagesAsReadForUser, approvedMembers, staffInboxUserId } = useData();
+  const adminUserId = staffInboxUserId ?? approvedMembers.find((member) => member.isAdmin)?.id ?? null;
   useEffect(() => { if (user.id) markAllMessagesAsReadForUser(user.id); }, [user.id, markAllMessagesAsReadForUser]);
   const getMessagesFromSupabase = (): Message[] => {
     const thread = messageThreads[user.id];
