@@ -9,26 +9,33 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrashCan, faUpload, faEye, faWandMagicSparkles, faFloppyDisk, faRotateLeft } from '@fortawesome/free-solid-svg-icons';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import type { Language } from '../../domain/types/app';
-import imgEventSample from '@/assets/c4e8899bf782af1b6b9889d032b63d8a0c141f8b.png';
+import type { Language, Event as DomainEvent, EventParticipant as DomainEventParticipant } from '../../domain/types/app';
 import { BulkEmailModal } from './BulkEmailModal';
 import { translateText } from '../../utils/translate';
 import { uploadEventImage } from '../../lib/supabase';
 import { applyMosaicAtPoint } from '../../lib/mosaicCanvas';
 import { supabase } from '../../lib/supabase';
 import { EVENT_ICON_OPTIONS, getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '../../lib/event-icons';
+import { linkifyText } from '../../lib/linkify';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
-type AdminEvent = any;
-type AdminEventParticipant = any;
+// Supabaseの生データはドメイン型に無い snake_case フィールドを含むことがあるため許容しておく
+type AdminEvent = DomainEvent & { event_icon?: string };
+type AdminEventParticipant = DomainEventParticipant & {
+  id?: string;
+  user_id?: string;
+  is_attended?: boolean;
+  is_paid?: boolean;
+};
+type AdminEventFormData = Record<string, unknown>;
 
 interface AdminEventsProps {
   language: Language;
   events?: AdminEvent[];
   eventParticipants?: { [eventId: number]: AdminEventParticipant[] };
-  onCreateEvent?: (eventData: any) => Promise<void>;
-  onUpdateEvent?: (eventId: number, eventData: any) => Promise<void>;
+  onCreateEvent?: (eventData: AdminEventFormData) => Promise<void>;
+  onUpdateEvent?: (eventId: number, eventData: AdminEventFormData) => Promise<void>;
   onDeleteEvent?: (eventId: number) => Promise<void>;
   onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
 }
@@ -134,87 +141,8 @@ const translations = {
   }
 };
 
-// サンプルイベントデータ（モック）
-const sampleEvents: AdminEvent[] = [
-  {
-    id: 1,
-    titleJa: '国際料理大会',
-    titleEn: 'International Cooking Contest',
-    descriptionJa: '世界各国の料理を作って楽しみましょう！',
-    descriptionEn: "Let's cook and enjoy dishes from around the world!",
-    date: '2026-04-01',
-    startTime: '13:00',
-    endTime: '16:00',
-    location: 'https://maps.google.com/?q=university+hall',
-    maxParticipants: 50,
-    currentParticipants: 35,
-    lineGroupUrl: 'https://line.me/ti/g/cooking',
-    participants: [],
-  },
-  {
-    id: 2,
-    titleJa: 'スポーツ大会',
-    titleEn: 'Sports Day',
-    descriptionJa: 'みんなでスポーツを楽しもう！',
-    descriptionEn: "Let's enjoy sports together!",
-    date: '2026-04-01',
-    startTime: '10:00',
-    endTime: '14:00',
-    location: 'https://maps.google.com/?q=sports+field',
-    maxParticipants: 60,
-    currentParticipants: 45,
-    participants: [],
-  },
-  {
-    id: 3,
-    titleJa: 'お花見大会',
-    titleEn: 'Cherry Blossom Party',
-    descriptionJa: '上野公園で花見を楽しみましょう！お花見団子やその他和食を準備しています！友達を誘ってお越しください！',
-    descriptionEn: "Let's enjoy cherry blossoms at Ueno Park! We'll have dango and other Japanese food! Feel free to bring friends!",
-    date: '2026-04-15',
-    startTime: '13:00',
-    endTime: '17:00',
-    location: 'https://maps.google.com/?q=上野公園',
-    maxParticipants: 50,
-    currentParticipants: 50,
-    image: imgEventSample,
-    lineGroupUrl: 'https://line.me/ti/g/hanami',
-    participants: [
-      { id: '1', name: '田中太郎', email: 'Taro@gmail.com', attended: true, paid: true },
-      { id: '2', name: '支払い済み', email: 'Taro@gmail.com', attended: false, paid: true },
-      { id: '3', name: '田中次郎', email: 'Jiro@gmail.com', attended: true, paid: false },
-      { id: '4', name: '佐藤花子', email: 'Hanako@koku-ac.jp', attended: true, paid: true },
-    ],
-  },
-  {
-    id: 4,
-    titleJa: '言語交換カフェ',
-    titleEn: 'Language Exchange Cafe',
-    descriptionJa: 'カフェで言語交換を楽しもう！',
-    descriptionEn: 'Enjoy language exchange at a cafe!',
-    date: '2026-04-22',
-    startTime: '15:00',
-    endTime: '17:00',
-    location: 'https://maps.google.com/?q=student+cafe',
-    maxParticipants: 30,
-    currentParticipants: 20,
-    participants: [],
-  },
-  {
-    id: 5,
-    titleJa: 'ゲーム大会',
-    titleEn: 'Game Tournament',
-    descriptionJa: 'ボードゲームやビデオゲームで盛り上がろう！',
-    descriptionEn: "Let's have fun with board games and video games!",
-    date: '2026-04-29',
-    startTime: '14:00',
-    endTime: '18:00',
-    location: 'https://maps.google.com/?q=student+lounge',
-    maxParticipants: 40,
-    currentParticipants: 25,
-    participants: [],
-  },
-];
+// タブ切り替えや画面遷移でフォームがアンマウントされても編集内容を復元できるようにするための一時保存キー
+const EVENT_DRAFT_STORAGE_KEY = 'truss-admin-event-draft-v1';
 
 export function AdminEvents({
   language,
@@ -262,6 +190,7 @@ export function AdminEvents({
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
   const [participantStatusOverrides, setParticipantStatusOverrides] = useState<Record<string, { attended?: boolean; paid?: boolean }>>({});
   const [initialEventSnapshot, setInitialEventSnapshot] = useState('');
+  const draftRestoredRef = useRef(false);
 
   const [edgeZone, setEdgeZone] = useState<'left' | 'right' | null>(null);
   const [monthSwitching, setMonthSwitching] = useState(false);
@@ -303,13 +232,12 @@ export function AdminEvents({
     };
   };
 
-  // 新規イントフォーム用の状態
-  const [newEvent, setNewEvent] = useState({
+  const getEmptyEventForm = (date: string = '') => ({
     titleJa: '',
     titleEn: '',
     descriptionJa: '',
     descriptionEn: '',
-    date: '',
+    date,
     startTime: '',
     endTime: '',
     location: '',
@@ -322,6 +250,9 @@ export function AdminEvents({
     eventColor: '#49B1E4',
     eventIconKey: DEFAULT_EVENT_ICON_KEY,
   });
+
+  // 新規イントフォーム用の状態
+  const [newEvent, setNewEvent] = useState(getEmptyEventForm());
 
   const eventColors = ['#49B1E4', '#4285F4', '#34A853', '#FBBC04', '#EA4335', '#A142F4'];
 
@@ -562,29 +493,22 @@ export function AdminEvents({
     }
   };
 
+  const clearEventDraft = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.removeItem(EVENT_DRAFT_STORAGE_KEY);
+    } catch {
+      // ストレージが使用できない環境では何もしない
+    }
+  };
+
   const handleCloseForm = () => {
     setShowNewEventForm(false);
     setSelectedEvent(null);
     setEditMode(false);
-    setNewEvent({
-      titleJa: '',
-      titleEn: '',
-      descriptionJa: '',
-      descriptionEn: '',
-      date: '',
-      startTime: '',
-      endTime: '',
-      location: '',
-      locationEn: '',
-      googleMapUrl: '',
-      participationFee: '0',
-      maxParticipants: '',
-      lineGroupUrl: '',
-      image: null,
-      eventColor: '#49B1E4',
-      eventIconKey: DEFAULT_EVENT_ICON_KEY,
-    });
+    setNewEvent(getEmptyEventForm());
     setInitialEventSnapshot('');
+    clearEventDraft();
   };
 
   const handleSaveEvent = () => {
@@ -926,6 +850,110 @@ export function AdminEvents({
     if (!initialEventSnapshot) return false;
     return JSON.stringify(newEvent) !== initialEventSnapshot;
   }, [newEvent, initialEventSnapshot]);
+
+  // タブ切り替えなどでこのコンポーネントがアンマウントされる前に保存した下書きを、再マウント時に一度だけ復元する
+  useEffect(() => {
+    if (draftRestoredRef.current) return;
+    if (typeof window === 'undefined') return;
+
+    let raw: string | null = null;
+    try {
+      raw = window.localStorage.getItem(EVENT_DRAFT_STORAGE_KEY);
+    } catch {
+      draftRestoredRef.current = true;
+      return;
+    }
+    if (!raw) {
+      draftRestoredRef.current = true;
+      return;
+    }
+
+    let draft: { mode: 'create' | 'edit'; eventId?: AdminEvent['id']; date?: string; formData?: typeof newEvent } | null = null;
+    try {
+      draft = JSON.parse(raw);
+    } catch {
+      draft = null;
+    }
+    if (!draft || !draft.formData) {
+      draftRestoredRef.current = true;
+      clearEventDraft();
+      return;
+    }
+
+    if (draft.mode === 'edit') {
+      // 編集対象のイベントが一覧に読み込まれるまで待つ
+      if (propsEvents.length === 0) return;
+      const target = propsEvents.find((ev) => String(ev.id) === String(draft.eventId));
+      if (!target) {
+        draftRestoredRef.current = true;
+        clearEventDraft();
+        return;
+      }
+      setSelectedEvent(target);
+      setEditMode(true);
+      setShowNewEventForm(false);
+      const { startTime, endTime } = parseEventTime(target);
+      const baseline = {
+        titleJa: getEventText(target, 'title', 'ja'),
+        titleEn: getEventText(target, 'title', 'en'),
+        descriptionJa: getEventText(target, 'description', 'ja'),
+        descriptionEn: getEventText(target, 'description', 'en'),
+        date: target.date || '',
+        startTime,
+        endTime,
+        location: getEventText(target, 'location', 'ja'),
+        locationEn: getEventText(target, 'location', 'en'),
+        googleMapUrl: target.googleMapUrl || '',
+        participationFee: String(target.participationFee ?? 0),
+        maxParticipants: String(target.maxParticipants || ''),
+        lineGroupUrl: target.lineGroupLink || target.lineGroupUrl || '',
+        image: target.image || null,
+        eventColor: target.eventColor || '#49B1E4',
+        eventIconKey: target.eventIconKey || target.event_icon || DEFAULT_EVENT_ICON_KEY,
+      };
+      setInitialEventSnapshot(JSON.stringify(baseline));
+    } else {
+      setSelectedDate(draft.date ?? null);
+      setShowNewEventForm(true);
+      setSelectedEvent(null);
+      setEditMode(false);
+      setInitialEventSnapshot(JSON.stringify(getEmptyEventForm(draft.date || '')));
+    }
+    setNewEvent(draft.formData);
+    draftRestoredRef.current = true;
+    toast.success(language === 'ja' ? '編集中だった内容を復元しました' : 'Restored your unsaved draft');
+  }, [propsEvents, language]);
+
+  // フォームを開いている間、入力内容を一定間隔でローカルに一時保存する（タブ切替・画面遷移対策）
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!draftRestoredRef.current) return;
+    const isFormOpen = showNewEventForm || (Boolean(selectedEvent) && editMode);
+    if (!isFormOpen) return;
+
+    const timer = window.setTimeout(() => {
+      const draft = editMode && selectedEvent
+        ? { mode: 'edit' as const, eventId: selectedEvent.id, formData: newEvent }
+        : { mode: 'create' as const, date: selectedDate, formData: newEvent };
+      try {
+        window.localStorage.setItem(EVENT_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      } catch {
+        // ストレージ容量超過などは無視する
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [newEvent, showNewEventForm, editMode, selectedEvent, selectedDate]);
+
+  // ブラウザタブを閉じる・再読み込みする場合にも未保存の変更を警告する
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   useEffect(() => {
     if (!imageEditorOpen || !imageEditorSource) return;
@@ -1500,7 +1528,9 @@ export function AdminEvents({
                   {language === 'ja' ? 'イベント説明' : 'Event Description'}
                 </h4>
                 <p className="text-[#3D3D4E] text-sm leading-relaxed whitespace-pre-wrap">
-                  {selectedEventDetailDescription || (language === 'ja' ? '説明文がありません' : 'No description')}
+                  {selectedEventDetailDescription
+                    ? linkifyText(selectedEventDetailDescription)
+                    : (language === 'ja' ? '説明文がありません' : 'No description')}
                 </p>
               </div>
 

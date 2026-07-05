@@ -6,6 +6,7 @@ import { Checkbox } from '../ui/checkbox';
 import type { Language, Event, User } from '../../domain/types/app';
 import { getMissingProfileFields, describeMissingProfileFields } from '../../lib/profile-completion';
 import { googleMapsHrefForEvent } from '../../lib/event-map-link';
+import { linkifyText } from '../../lib/linkify';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '../../lib/event-icons';
 
@@ -76,6 +77,9 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
     if (!ev?.date) return;
     const parsed = new Date(`${ev.date}T12:00:00`);
     if (Number.isNaN(parsed.getTime())) return;
+    // 外部（通知等）から渡される highlightEventId の変化に応じてカレンダー表示月を合わせる必要があり、
+    // event handler 化が難しいので effect 内 setState を許可する
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCalendarMonth(parsed.getMonth());
     setCalendarYear(parsed.getFullYear());
   }, [highlightEventId, events]);
@@ -89,6 +93,9 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
     if (!openEventId) return;
     const target = events.find((event) => event.id === openEventId);
     if (!target) return;
+    // 外部から渡される openEventId の変化に応じて詳細モーダルを開き、親に処理済みを通知する必要があり、
+    // event handler 化が難しいので effect 内 setState を許可する
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDetailEvent(target);
     setDetailModalOpen(true);
     onOpenEventHandled?.();
@@ -314,7 +321,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
                   </button>
                 )}
               </div>
-              <div className="border-t pt-4"><h4 className="font-semibold text-[#3D3D4E] mb-2">{t.description}</h4><p className="text-[#6B6B7A] whitespace-pre-wrap leading-relaxed">{language === 'ja' ? (detailEvent.descriptionJa || detailEvent.description || t.noDescription) : (detailEvent.descriptionEn || detailEvent.descriptionJa || detailEvent.description || t.noDescription)}</p></div>
+              <div className="border-t pt-4"><h4 className="font-semibold text-[#3D3D4E] mb-2">{t.description}</h4><p className="text-[#6B6B7A] whitespace-pre-wrap leading-relaxed">{linkifyText(language === 'ja' ? (detailEvent.descriptionJa || detailEvent.description || t.noDescription) : (detailEvent.descriptionEn || detailEvent.descriptionJa || detailEvent.description || t.noDescription))}</p></div>
               <div className="flex gap-3 pt-4 border-t">
                 {detailEvent.status === 'upcoming' && <Button className={`flex-1 ${attendingEvents.has(detailEvent.id) ? 'bg-gray-400' : 'bg-[#49B1E4] hover:bg-[#3A9FD3]'}`} onClick={() => { setDetailModalOpen(false); handleAttendClick(detailEvent); }}>{attendingEvents.has(detailEvent.id) ? t.registered : t.attend}</Button>}
                 {detailEvent.status === 'past' && detailEvent.photos && <Button variant="outline" className="flex-1"><Camera className="w-4 h-4 mr-2" />{t.viewPhotos} ({detailEvent.photos})</Button>}
