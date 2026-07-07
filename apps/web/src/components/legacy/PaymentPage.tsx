@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { ArrowLeft, Smartphone, Wallet } from 'lucide-react';
-import type { Language, Event } from '../../domain/types/app';
+import type { Language, Event } from '@truss/core';
 
 interface PaymentPageProps {
   language: Language;

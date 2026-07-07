@@ -2,7 +2,7 @@ import { Button } from '../ui/button';
 import { Shield } from 'lucide-react';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
-import type { Language } from '../../domain/types/app';
+import type { Language } from '@truss/core';
 
 interface LandingPageProps {
   onGetStarted: () => void;

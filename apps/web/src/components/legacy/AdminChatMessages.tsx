@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { MessageCircle, Send, Pin, Flag, ArrowLeft } from 'lucide-react';
-import type { Language, MessageThread, User as UserType, Message, ChatThreadMetadata } from '../../domain/types/app';
+import type { Language, MessageThread, User as UserType, Message, ChatThreadMetadata } from '@truss/core';
 import { toast } from 'sonner';
 
 interface AdminChatMessagesProps {

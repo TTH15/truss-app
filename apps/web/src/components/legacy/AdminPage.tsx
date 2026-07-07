@@ -8,7 +8,7 @@ import { AdminChat } from './AdminChat';
 import { AdminGallery } from './AdminGallery';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
-import type { User as UserType, Language, Event, EventParticipant, MessageThread, ChatThreadMetadata, Notification, BoardPost } from '../../domain/types/app';
+import type { User as UserType, Language, Event, EventParticipant, MessageThread, ChatThreadMetadata, Notification, BoardPost } from '@truss/core';
 import type { Dispatch, SetStateAction } from 'react';
 
 interface AdminPageProps {

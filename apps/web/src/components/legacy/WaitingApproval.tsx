@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { CheckCircle2, Clock, Mail } from 'lucide-react';
-import type { Language } from '../../domain/types/app';
+import type { Language } from '@truss/core';
 
 interface WaitingApprovalProps {
   language: Language;

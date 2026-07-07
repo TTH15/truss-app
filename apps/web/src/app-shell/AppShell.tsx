@@ -15,7 +15,7 @@ export type {
   BoardPost,
   BoardPostReply,
   GalleryPhoto,
-} from "../domain/types/app";
+} from "@truss/core";
 
 export default function AppShell(props: {
   initialPage?: "landing" | "auth-selection" | "auth-complete" | "login" | "admin-login" | "email-verification" | "initial-registration" | "profile" | "dashboard" | "admin";

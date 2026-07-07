@@ -11,7 +11,7 @@ import type {
   DbBoardPost,
   DbBoardPostReply,
   DbGalleryPhoto,
-} from "../../types/database.types";
+} from "../types/database.types";
 import { DEFAULT_EVENT_ICON_KEY } from "../event-icons";
 import type {
   User,
@@ -22,7 +22,7 @@ import type {
   BoardPost,
   BoardPostReply,
   GalleryPhoto,
-} from "../../domain/types/app";
+} from "../types/app";
 
 export function mapDbUserRowToUser(row: DbUser): User {
   return {

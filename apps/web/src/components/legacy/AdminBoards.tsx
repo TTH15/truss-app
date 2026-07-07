@@ -7,8 +7,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
-import type { Language, BoardPost } from '../../domain/types/app';
-import { normalizeBoardContent } from '../../lib/board-content';
+import type { Language, BoardPost } from '@truss/core';
+import { normalizeBoardContent } from '@truss/core';
 
 interface AdminBoardsProps {
   language: Language;

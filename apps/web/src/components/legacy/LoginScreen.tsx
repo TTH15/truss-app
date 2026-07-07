@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Language } from "../../domain/types/app";
+import type { Language } from "@truss/core";
 import { Shield } from "lucide-react";
 import Link from "next/link";
 import { Button } from "../ui/button";

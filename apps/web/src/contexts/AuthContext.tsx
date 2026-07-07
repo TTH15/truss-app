@@ -3,11 +3,13 @@
 // =============================================
 
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@truss/core';
 import { getAppOrigin } from '../lib/app-origin';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
-import type { User as AppUser, RegistrationStep } from '../domain/types/app';
-import { isProfileCompleteForParticipation } from '../lib/profile-completion';
+import type { User as AppUser } from '@truss/core';
+import { isProfileCompleteForParticipation } from '@truss/core';
+import { queryUserByAuthId } from '@truss/core';
+import { updateUserProfileRow } from '@truss/core';
 
 interface AuthContextType {
   session: Session | null;
@@ -54,55 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userRef.current = user;
   }, [user]);
 
-  const fetchAppUser = async (authId: string): Promise<AppUser | null> => {
-    try {
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Query timeout after 15s')), 15000);
-      });
-      const queryPromise = supabase.from('users').select('*').eq('auth_id', authId).maybeSingle();
-      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
-      if (error || !data) return null;
-      const row = {
-        id: data.id,
-        email: data.email,
-        name: data.name || '',
-        nickname: data.nickname || '',
-        furigana: data.furigana || '',
-        birthday: data.birthday || '',
-        languages: data.languages || [],
-        birthCountry: data.country || '',
-        category: data.category,
-        approved: data.approved,
-        isAdmin: data.is_admin,
-        avatarPath: data.avatar_path || undefined,
-        studentIdImage: data.student_id_image || undefined,
-        studentNumber: data.student_number || undefined,
-        grade: data.grade || undefined,
-        major: data.major || undefined,
-        phone: data.phone || undefined,
-        organizations: data.organizations || undefined,
-        blocked: data.blocked,
-        registrationStep: data.registration_step as RegistrationStep,
-        emailVerified: data.email_verified,
-        initialRegistered: data.initial_registered,
-        profileCompleted: data.profile_completed,
-        feePaid: data.fee_paid,
-        membershipYear: data.membership_year || undefined,
-        isRenewal: data.is_renewal || false,
-        studentIdReuploadRequested: data.student_id_reupload_requested,
-        reuploadReason: data.reupload_reason || undefined,
-        requestedAt: data.requested_at || undefined,
-      };
-      if (!row.profileCompleted && isProfileCompleteForParticipation(row)) {
-        void supabase.from('users').update({ profile_completed: true }).eq('id', row.id);
-        row.profileCompleted = true;
-      }
-      return row;
-    } catch (_error) {
-      return null;
-    }
-  };
-
   useEffect(() => {
     let mounted = true;
     const initAuth = async () => {
@@ -134,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setSupabaseUser(session?.user || null);
         if (session?.user) {
-          const appUser = await fetchAppUser(session.user.id);
+          const appUser = await queryUserByAuthId(session.user.id);
           if (mounted && appUser) {
             setUser(appUser);
             setCachedUser(appUser);
@@ -166,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           // public.users の取得完了まで loading にしておく（未取得の一瞬で初期登録へ誤遷移しない）
           setLoading(true);
-          const appUser = await fetchAppUser(session.user.id);
+          const appUser = await queryUserByAuthId(session.user.id);
           if (appUser && mounted) {
             setUser(appUser);
             setCachedUser(appUser);
@@ -263,7 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const computedComplete = isProfileCompleteForParticipation(merged);
       dbUpdates.profile_completed = computedComplete;
 
-      const { error } = await supabase.from('users').update(dbUpdates).eq('id', user.id);
+      const { error } = await updateUserProfileRow(user.id, dbUpdates);
       if (error) return { error };
       const updatedUser = { ...merged, profileCompleted: computedComplete };
       setUser(updatedUser);
@@ -276,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = async () => {
     if (!supabaseUser) return;
-    const appUser = await fetchAppUser(supabaseUser.id);
+    const appUser = await queryUserByAuthId(supabaseUser.id);
     setUser(appUser);
     if (appUser) setCachedUser(appUser);
     else setCachedUser(null);

@@ -1,4 +1,4 @@
-import type { Language } from "../domain/types/app";
+import type { Language } from "./types/app";
 
 /** Google Map 用に不適切な URL（誤って LINE 招待などが入っている場合） */
 export function isLikelyLineInviteUrl(url: string): boolean {

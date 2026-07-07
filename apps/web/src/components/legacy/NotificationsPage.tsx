@@ -1,7 +1,7 @@
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Bell, Calendar, MessageSquare, Users, Image as ImageIcon, Mail, X } from 'lucide-react';
-import type { Language, User, Notification } from '../../domain/types/app';
+import type { Language, User, Notification } from '@truss/core';
 
 interface NotificationsPageProps {
   language: Language;

@@ -1,5 +1,5 @@
 import { AdminMembers } from './AdminMembers';
-import type { Language, User } from '../../domain/types/app';
+import type { Language, User } from '@truss/core';
 
 interface AdminMembersManagementProps {
   language: Language;

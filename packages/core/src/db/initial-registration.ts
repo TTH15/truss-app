@@ -1,7 +1,7 @@
 /**
  * 初期登録フロー用の users 行（Insert / Update）を組み立てる
  */
-import type { DbUserInsert, DbUserUpdate } from "../../types/database.types";
+import type { DbUserInsert, DbUserUpdate } from "../types/database.types";
 
 export type InitialRegistrationPayload = {
   name: string;

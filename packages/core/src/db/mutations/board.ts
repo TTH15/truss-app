@@ -2,7 +2,7 @@
  * 掲示板関連の書き込み集約
  */
 import { supabase } from "../../supabase";
-import type { BoardPost, BoardPostReply } from "../../../domain/types/app";
+import type { BoardPost, BoardPostReply } from "../../types/app";
 
 function toErrorOrNull(error: { message: string } | null) {
   return error ? new Error(error.message) : null;

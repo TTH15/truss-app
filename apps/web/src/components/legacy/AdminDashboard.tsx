@@ -6,7 +6,7 @@ import { AdminEvents } from './AdminEvents';
 import { AdminMembers } from './AdminMembers';
 import { AdminBoards } from './AdminBoards';
 import { AdminGallery } from './AdminGallery';
-import type { User, Language } from '../../domain/types/app';
+import type { User, Language } from '@truss/core';
 
 interface AdminDashboardProps {
   language: Language;

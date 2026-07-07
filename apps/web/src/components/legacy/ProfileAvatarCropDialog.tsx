@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "../ui/button";
 import { Slider } from "../ui/slider";
 import { getCroppedImgAsJpegBlob } from "../../lib/avatar-crop";
-import type { Language } from "../../domain/types/app";
+import type { Language } from "@truss/core";
 
 const translations = {
   ja: {

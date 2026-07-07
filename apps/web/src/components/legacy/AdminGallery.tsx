@@ -2,10 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Upload, X, Trash2, Image as ImageIcon, Eye, Sparkles, Undo2, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Language } from '../../domain/types/app';
+import type { Language } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { GALLERY_PHOTO_ACCEPT, isGalleryPhotoMimeAllowed } from '../../lib/db/mutations/gallery';
+import { GALLERY_PHOTO_ACCEPT, isGalleryPhotoMimeAllowed } from '@truss/core';
 import { applyMosaicAtPoint } from '../../lib/mosaicCanvas';
 import { AdminGalleryApprovals } from './AdminGalleryApprovals';
 

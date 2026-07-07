@@ -112,3 +112,11 @@ export async function deleteUserRow(
   return { error: toErrorOrNull(error) };
 }
 
+export async function updateUserProfileRow(
+  userId: string,
+  dbUpdates: Record<string, unknown>
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase.from("users").update(dbUpdates).eq("id", userId);
+  return { error: toErrorOrNull(error) };
+}
+

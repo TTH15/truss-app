@@ -3,12 +3,12 @@ import { Button } from '../ui/button';
 import { Heart, Users, Calendar, Camera, MapPin, Clock, MessageCircle, ExternalLink, Share2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Checkbox } from '../ui/checkbox';
-import type { Language, Event, User } from '../../domain/types/app';
-import { getMissingProfileFields, describeMissingProfileFields } from '../../lib/profile-completion';
-import { googleMapsHrefForEvent } from '../../lib/event-map-link';
+import type { Language, Event, User } from '@truss/core';
+import { getMissingProfileFields, describeMissingProfileFields } from '@truss/core';
+import { googleMapsHrefForEvent } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '../../lib/event-icons';
+import { getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '@truss/core';
 
 interface EventsPageProps {
   language: Language;

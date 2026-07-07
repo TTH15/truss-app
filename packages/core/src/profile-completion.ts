@@ -1,4 +1,4 @@
-import type { Language, User } from "../domain/types/app";
+import type { Language, User } from "./types/app";
 
 type ProfileCheckUser = Pick<
   User,

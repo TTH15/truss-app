@@ -16,11 +16,11 @@ import { MessagesPage } from './MessagesPage';
 import { LimitedAccessBanner } from './LimitedAccessBanner';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
-import type { User as UserType, Language, Event, MessageThread, ChatThreadMetadata, Notification, BoardPost, BoardPostReply } from '../../domain/types/app';
+import type { User as UserType, Language, Event, MessageThread, ChatThreadMetadata, Notification, BoardPost, BoardPostReply } from '@truss/core';
 import type { Dispatch, SetStateAction } from 'react';
-import { isProfileCompleteForParticipation } from '../../lib/profile-completion';
+import { isProfileCompleteForParticipation } from '@truss/core';
 import { toast } from 'sonner';
-import { uploadStudentIdImage } from '../../lib/supabase';
+import { uploadStudentIdImage } from '@truss/core';
 import {
   STUDENT_ID_ERROR_CODES,
   dataUrlToJpegFile,

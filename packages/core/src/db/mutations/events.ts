@@ -2,7 +2,7 @@
  * events テーブルへの書き込み（ドメイン Event ↔ DB 列の変換をここに集約）
  */
 import { supabase } from "../../supabase";
-import type { Event } from "../../../domain/types/app";
+import type { Event } from "../../types/app";
 import { DEFAULT_EVENT_ICON_KEY } from "../../event-icons";
 
 export type EventCreateInput = Omit<Event, "id" | "currentParticipants" | "likes">;

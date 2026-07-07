@@ -13,15 +13,15 @@ import { faWallet } from '@fortawesome/free-solid-svg-icons';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import { queryFeeSettings } from '../../lib/db/queries/fee-settings';
-import { upsertFeeSettingsRow } from '../../lib/db/mutations/fee-settings';
+import { queryFeeSettings } from '@truss/core';
+import { upsertFeeSettingsRow } from '@truss/core';
 import { BulkEmailModal } from './BulkEmailModal';
 import { ReuploadRequestModal } from './ReuploadRequestModal';
 import { MemberDetailModal } from './MemberDetailModal';
 import { AdminApprovals } from './AdminApprovals';
 import svgPaths from '../../imports/svg-u7k8r9dq17';
 import svgPaths2 from '../../imports/svg-40vpfbujgn';
-import type { Language, User } from '../../domain/types/app';
+import type { Language, User } from '@truss/core';
 
 interface AdminMembersProps {
   language: Language;

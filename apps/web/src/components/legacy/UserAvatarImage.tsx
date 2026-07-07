@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 import { startTransition, useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { getAvatarSignedUrl } from "../../lib/supabase";
+import { getAvatarSignedUrl } from "@truss/core";
 import { cn } from "../ui/utils";
 
 function getInitials(name: string) {

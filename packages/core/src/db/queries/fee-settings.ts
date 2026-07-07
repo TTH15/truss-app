@@ -2,7 +2,7 @@
  * fee_settings の読み取り（単一行）
  */
 import { supabase } from "../../supabase";
-import type { DbFeeSettings } from "../../../types/database.types";
+import type { DbFeeSettings } from "../../types/database.types";
 
 export type FeeSettings = {
   annualFee: number;

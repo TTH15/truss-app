@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { Checkbox } from '../ui/checkbox';
 import { toast } from 'sonner';
-import type { Language, User } from '../../domain/types/app';
+import type { Language, User } from '@truss/core';
 import { ConfirmDialog } from './ConfirmDialog';
 import { StudentIdImage } from './StudentIdImage';
 

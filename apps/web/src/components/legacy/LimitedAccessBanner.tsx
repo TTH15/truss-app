@@ -1,4 +1,4 @@
-import type { Language, User } from '../../domain/types/app';
+import type { Language, User } from '@truss/core';
 
 interface LimitedAccessBannerProps {
   language: Language;

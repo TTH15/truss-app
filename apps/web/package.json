@@ -10,6 +10,7 @@
     "migrate:event-images": "node scripts/migrate-event-images-to-storage.mjs"
   },
   "dependencies": {
+    "@truss/core": "*",
     "@fortawesome/fontawesome-svg-core": "^7.2.0",
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
     "@fortawesome/react-fontawesome": "^3.3.0",

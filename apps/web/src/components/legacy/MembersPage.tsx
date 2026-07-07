@@ -4,7 +4,7 @@ import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { UserAvatarImage } from './UserAvatarImage';
 import { Search, Globe2 } from 'lucide-react';
-import type { Language, User } from '../../domain/types/app';
+import type { Language, User } from '@truss/core';
 
 interface MembersPageProps {
   language: Language;

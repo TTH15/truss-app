@@ -4,7 +4,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { ArrowLeft } from 'lucide-react';
-import type { Language } from '../../domain/types/app';
+import type { Language } from '@truss/core';
 
 interface AuthPageProps {
   onLogin: (email: string, password: string) => void;

@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import trussImage from '@/assets/8fbefa8d40d592af0e3f6e45ca9c793cfbb1b1c6.png';
-import type { Language, User, Event } from '../../domain/types/app';
+import type { Language, User, Event } from '@truss/core';
 
 interface HomePageProps {
   language: Language;

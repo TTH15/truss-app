@@ -14,14 +14,14 @@ import { AuthCompleteScreen } from '../components/legacy/AuthCompleteScreen';
 import { Toaster, toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import { supabase, uploadStudentIdImage } from '../lib/supabase';
+import { supabase, uploadStudentIdImage } from '@truss/core';
 import {
   buildInitialRegistrationUserInsert,
   buildInitialRegistrationUserUpdate,
-} from '../lib/db/initial-registration';
+} from '@truss/core';
 import { dataUrlToJpegFile } from '../lib/student-id-image';
 import '../styles/globals.css';
-import type { Event, Language, User } from '../domain/types/app';
+import type { Event, Language, User } from '@truss/core';
 
 const ADMIN_PATH = '/admin-z8x4m2q9r7';
 const ADMIN_SESSION_KEY = 'truss-admin-session';
@@ -42,7 +42,7 @@ export type {
   BoardPost,
   BoardPostReply,
   GalleryPhoto,
-} from '../domain/types/app';
+} from '@truss/core';
 
 type PageState =
   | 'landing'

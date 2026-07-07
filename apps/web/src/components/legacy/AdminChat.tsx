@@ -11,10 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { AdminChatMessages } from './AdminChatMessages';
 import { translateText } from '../../utils/translate';
-import type { Language, MessageThread, User as UserType, ChatThreadMetadata } from '../../domain/types/app';
+import type { Language, MessageThread, User as UserType, ChatThreadMetadata } from '@truss/core';
 import type { Dispatch, SetStateAction } from 'react';
-import type { DbAdminBroadcast } from '../../types/database.types';
-import { supabase } from '../../lib/supabase';
+import type { DbAdminBroadcast } from '@truss/core';
+import { supabase } from '@truss/core';
 
 interface AdminChatProps {
   adminUserId: string;

@@ -7,8 +7,8 @@ import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { BoardPostWithReplies } from './BoardPostWithReplies';
-import type { Language, User, BoardPost, BoardPostReply } from '../../domain/types/app';
-import { normalizeBoardContent } from '../../lib/board-content';
+import type { Language, User, BoardPost, BoardPostReply } from '@truss/core';
+import { normalizeBoardContent } from '@truss/core';
 
 interface BulletinBoardProps {
   language: Language;

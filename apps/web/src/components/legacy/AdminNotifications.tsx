@@ -8,7 +8,7 @@ import { Badge } from '../ui/badge';
 import { Plus, Send, Trash2, Mail, Users, Calendar, MessageSquare, Bell } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Checkbox } from '../ui/checkbox';
-import type { Language } from '../../domain/types/app';
+import type { Language } from '@truss/core';
 
 interface AdminNotificationsProps {
   language: Language;

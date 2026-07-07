@@ -5,7 +5,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Mail, ArrowLeft, Check, FileText, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Language } from '../../domain/types/app';
+import type { Language } from '@truss/core';
 
 interface EmailVerificationProps {
   language: Language;

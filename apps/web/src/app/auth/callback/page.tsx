@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "../../../lib/supabase";
+import { supabase } from "@truss/core";
 
 function AuthCallbackContent() {
   const router = useRouter();

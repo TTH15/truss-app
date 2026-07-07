@@ -1,5 +1,5 @@
 import { Mail, Clock } from 'lucide-react';
-import type { Language } from '../../domain/types/app';
+import type { Language } from '@truss/core';
 
 interface AdminMessagesListPageProps {
   language: Language;

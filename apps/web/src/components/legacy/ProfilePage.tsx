@@ -6,10 +6,10 @@ import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { Globe2, MapPin, Mail, Edit, Phone, Users, Save, X, GraduationCap, IdCard } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Language, User } from '../../domain/types/app';
+import type { Language, User } from '@truss/core';
 import { UserAvatarImage } from './UserAvatarImage';
 import { ProfileAvatarCropDialog } from './ProfileAvatarCropDialog';
-import { uploadUserAvatar } from '../../lib/supabase';
+import { uploadUserAvatar } from '@truss/core';
 
 interface ProfilePageProps {
   language: Language;

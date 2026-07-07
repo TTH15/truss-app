@@ -5,7 +5,7 @@ import { Badge } from '../ui/badge';
 import { CheckCircle, XCircle, Calendar, User } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { toast } from 'sonner';
-import type { Language, GalleryPhoto } from '../../domain/types/app';
+import type { Language, GalleryPhoto } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 
 interface AdminGalleryApprovalsProps { language: Language; }

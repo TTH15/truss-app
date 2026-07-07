@@ -4,8 +4,8 @@ import { Button } from '../ui/button';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Input } from '../ui/input';
 import { Hand, Globe2, Calendar, MessageCircle, Send, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
-import type { Language, User } from '../../domain/types/app';
-import { normalizeBoardContent } from '../../lib/board-content';
+import type { Language, User } from '@truss/core';
+import { normalizeBoardContent } from '@truss/core';
 
 interface Reply { id: number; author: string; authorAvatar: string; content: string; time: string; }
 interface Post { id: number; author: string; authorAvatar: string; title: string; content: string; language: string; peopleNeeded: number; interested: number; tag: 'languageExchange' | 'studyGroup' | 'event'; time: string; image?: string; expiryDate?: string; replies?: Reply[]; authorId?: string; }

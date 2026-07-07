@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { useState } from 'react';
-import type { Language } from '../../domain/types/app';
+import type { Language } from '@truss/core';
 
 interface ReuploadRequestModalProps {
   isOpen: boolean;

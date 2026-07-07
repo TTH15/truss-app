@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ArrowLeft, Send, Pin, Flag, Mail } from 'lucide-react';
-import type { Language, User } from '../../domain/types/app';
+import type { Language, User } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { toast } from 'sonner';
 

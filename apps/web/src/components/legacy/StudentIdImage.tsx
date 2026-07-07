@@ -1,8 +1,8 @@
 "use client";
 
 import { startTransition, useEffect, useState } from "react";
-import type { Language } from "../../domain/types/app";
-import { getStudentIdSignedUrl } from "../../lib/supabase";
+import type { Language } from "@truss/core";
+import { getStudentIdSignedUrl } from "@truss/core";
 
 function isDirectImageSrc(value: string): boolean {
   return value.startsWith("data:") || value.startsWith("http://") || value.startsWith("https://") || value.startsWith("blob:");

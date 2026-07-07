@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ArrowLeft, Send, Pin, Flag } from 'lucide-react';
-import type { Language, User, Message as AppMessage, MessageThread, ChatThreadMetadata } from '../../domain/types/app';
+import type { Language, User, Message as AppMessage, MessageThread, ChatThreadMetadata } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { toast } from 'sonner';
 

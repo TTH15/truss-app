@@ -2,7 +2,7 @@
  * ギャラリー関連の書き込み集約
  */
 import { supabase, uploadGalleryPhoto as uploadGalleryPhotoToStorage } from "../../supabase";
-import type { GalleryPhoto } from "../../../domain/types/app";
+import type { GalleryPhoto } from "../../types/app";
 
 function toErrorOrNull(error: { message: string } | null) {
   return error ? new Error(error.message) : null;

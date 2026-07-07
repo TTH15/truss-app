@@ -6,13 +6,13 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { toast } from 'sonner';
 import Masonry from 'react-responsive-masonry';
-import type { Language, User } from '../../domain/types/app';
+import type { Language, User } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import {
   GALLERY_PHOTO_ACCEPT,
   GALLERY_UPLOAD_UNSUPPORTED_MIME_MESSAGE,
   isGalleryPhotoMimeAllowed,
-} from '../../lib/db/mutations/gallery';
+} from '@truss/core';
 
 interface GalleryPageProps { language: Language; currentUser?: User | null; }
 const translations = {

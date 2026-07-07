@@ -4,7 +4,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { X } from 'lucide-react';
-import type { User, Language } from '../../domain/types/app';
+import type { User, Language } from '@truss/core';
 
 interface ProfileRegistrationProps {
   email: string;

@@ -3,27 +3,27 @@
 // =============================================
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@truss/core';
+import { queryEvents } from '@truss/core';
+import { queryEventParticipantsGrouped } from '@truss/core';
 import {
-  queryEvents,
   queryPendingAndApprovedUsers,
   queryStaffInboxUserId,
-  queryMessageThreadsAndMetadata,
-  queryNotificationsForUser,
-  queryBoardPostsWithReplies,
-  queryGalleryPhotos,
-  queryEventParticipantsGrouped,
-} from '../lib/db/queries/public-reads';
+} from '@truss/core';
+import { queryMessageThreadsAndMetadata } from '@truss/core';
+import { queryNotificationsForUser } from '@truss/core';
+import { queryBoardPostsWithReplies } from '@truss/core';
+import { queryGalleryPhotos } from '@truss/core';
 import {
   insertEventRow,
   updateEventRow,
   deleteEventRow,
-} from '../lib/db/mutations/events';
+} from '@truss/core';
 import {
   registerEventParticipant,
   unregisterEventParticipant,
   toggleEventLikeForUser,
-} from '../lib/db/mutations/events-participation';
+} from '@truss/core';
 import {
   approvePendingUserRow,
   rejectUserRow,
@@ -32,7 +32,7 @@ import {
   setRenewalStatusRow,
   resetMembershipForNewYearRow,
   deleteUserRow,
-} from '../lib/db/mutations/users';
+} from '@truss/core';
 import {
   createBoardPostRow,
   addReplyRow,
@@ -40,14 +40,14 @@ import {
   deleteBoardPostRow,
   togglePinBoardPostRow,
   reorderPinnedBoardPostsRow,
-} from '../lib/db/mutations/board';
+} from '@truss/core';
 import {
   uploadGalleryPhotoRow,
   deleteGalleryPhotoRow,
   approveGalleryPhotoRow,
   likeGalleryPhotoRow,
   type UploadGalleryPhotoInput,
-} from '../lib/db/mutations/gallery';
+} from '@truss/core';
 import {
   sendMessageRow,
   sendBulkMessagesRow,
@@ -56,16 +56,16 @@ import {
   markAllMessagesAsReadForUserRow,
   updateChatMetadataRow,
   cancelBroadcastRow,
-} from '../lib/db/mutations/messages';
+} from '@truss/core';
 import {
   markNotificationAsReadRow,
   dismissNotificationRow,
-} from '../lib/db/mutations/notifications';
+} from '@truss/core';
 import { useAuth } from './AuthContext';
 import type {
   User, Event, EventParticipant, Message, MessageThread,
   ChatThreadMetadata, Notification, BoardPost, BoardPostReply, GalleryPhoto
-} from '../domain/types/app';
+} from '@truss/core';
 
 interface DataContextType {
   events: Event[];

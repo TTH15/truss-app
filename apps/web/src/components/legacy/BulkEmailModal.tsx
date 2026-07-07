@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import svgPaths from '../../imports/svg-i9shrrkve7';
 import { toast } from 'sonner';
 import { translateText } from '../../utils/translate';
-import type { Language } from '../../domain/types/app';
+import type { Language } from '@truss/core';
 
 interface BulkEmailModalProps {
   isOpen: boolean;

@@ -11,7 +11,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { EditableApplicantDialog } from './EditableApplicantDialog';
 import { StudentIdImage } from './StudentIdImage';
 import { toast } from 'sonner';
-import type { Language, User } from '../../domain/types/app';
+import type { Language, User } from '@truss/core';
 
 interface AdminApprovalsProps {
   language: Language;

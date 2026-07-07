@@ -1,99 +1,51 @@
 // =============================================
-// Truss App - Supabase Client Configuration
+// Truss App - Supabase Client Factory
 // =============================================
 
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '../types/database.types';
-import { getAppOrigin } from './app-origin';
+import { createClient, SupportedStorage } from '@supabase/supabase-js';
+import type { Database } from './types/database.types';
 
-// Environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
-const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey);
+export interface SupabaseClientOverrides {
+  url?: string;
+  anonKey?: string;
+  storage?: SupportedStorage;
+  storageKey?: string;
+  detectSessionInUrl?: boolean;
+  flowType?: 'pkce' | 'implicit';
+}
 
-// Create Supabase client
 // Supabase JS v2.99 の GenericTable 互換性確保のため、database.types.ts 側で Db* Row に index signature を追加
-export const supabase = createClient<Database>(
-  hasSupabaseEnv ? supabaseUrl : 'http://localhost:54321',
-  hasSupabaseEnv ? supabaseAnonKey : 'public-anon-key',
-  {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    storageKey: 'truss-app-auth',
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    flowType: 'pkce',
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-  }
-);
+export function createSupabaseClient(overrides: SupabaseClientOverrides = {}) {
+  const supabaseUrl = overrides.url ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const supabaseAnonKey = overrides.anonKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey);
+
+  return createClient<Database>(
+    hasSupabaseEnv ? supabaseUrl : 'http://localhost:54321',
+    hasSupabaseEnv ? supabaseAnonKey : 'public-anon-key',
+    {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: overrides.detectSessionInUrl ?? true,
+        storageKey: overrides.storageKey ?? 'truss-app-auth',
+        storage: overrides.storage ?? (typeof window !== 'undefined' ? window.localStorage : undefined),
+        flowType: overrides.flowType ?? 'pkce',
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+    }
+  );
+}
+
+export const supabase = createSupabaseClient();
 
 // =============================================
-// Auth Helper Functions
+// Storage Helper Functions
 // =============================================
-
-export async function signUp(email: string, password: string) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${getAppOrigin()}/auth/callback`,
-    },
-  });
-  return { data, error };
-}
-
-export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  return { data, error };
-}
-
-export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  return { error };
-}
-
-export async function getSession() {
-  const { data, error } = await supabase.auth.getSession();
-  return { session: data.session, error };
-}
-
-export async function getCurrentUser() {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  return { user, error };
-}
-
-export async function resetPassword(email: string) {
-  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${getAppOrigin()}/auth/reset-password`,
-  });
-  return { data, error };
-}
-
-export async function updatePassword(newPassword: string) {
-  const { data, error } = await supabase.auth.updateUser({
-    password: newPassword,
-  });
-  return { data, error };
-}
-
-export async function sendMagicLink(email: string) {
-  const { data, error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${getAppOrigin()}/auth/callback`,
-    },
-  });
-  return { data, error };
-}
 
 const BUCKETS = {
   STUDENT_ID_IMAGES: 'student-id-images',
@@ -235,77 +187,6 @@ export async function getAvatarSignedUrl(path: string, expiresIn = 3600) {
     .from(BUCKETS.USER_AVATARS)
     .createSignedUrl(path, expiresIn);
   return { url: data?.signedUrl ?? null, error };
-}
-
-export function subscribeToMessages(
-  userId: string,
-  callback: (payload: { new: Database['public']['Tables']['messages']['Row'] }) => void
-) {
-  return supabase
-    .channel(`messages:${userId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `receiver_id=eq.${userId}`,
-      },
-      callback
-    )
-    .subscribe();
-}
-
-export function subscribeToNotifications(
-  userId: string,
-  callback: (payload: { new: Database['public']['Tables']['notifications']['Row'] }) => void
-) {
-  return supabase
-    .channel(`notifications:${userId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${userId}`,
-      },
-      callback
-    )
-    .subscribe();
-}
-
-export function subscribeToEventParticipants(
-  eventId: number,
-  callback: (payload: {
-    eventType: 'INSERT' | 'DELETE';
-    new?: Database['public']['Tables']['event_participants']['Row'];
-    old?: Database['public']['Tables']['event_participants']['Row'];
-  }) => void
-) {
-  return supabase
-    .channel(`event_participants:${eventId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'event_participants',
-        filter: `event_id=eq.${eventId}`,
-      },
-      (payload) => {
-        callback({
-          eventType: payload.eventType as 'INSERT' | 'DELETE',
-          new: payload.new as Database['public']['Tables']['event_participants']['Row'],
-          old: payload.old as Database['public']['Tables']['event_participants']['Row'],
-        });
-      }
-    )
-    .subscribe();
-}
-
-export function unsubscribe(channel: ReturnType<typeof supabase.channel>) {
-  supabase.removeChannel(channel);
 }
 
 export default supabase;

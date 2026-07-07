@@ -1,7 +1,7 @@
 import { X, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import type { Language, User } from '../../domain/types/app';
+import type { Language, User } from '@truss/core';
 import { useState } from 'react';
 
 interface MemberDetailModalProps {
