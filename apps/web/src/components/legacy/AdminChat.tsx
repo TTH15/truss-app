@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
@@ -107,7 +107,17 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
     }
   };
 
+  const lastLoadedBroadcastsRef = useRef<{ adminUserId: string; language: Language } | null>(null);
+
   useEffect(() => {
+    if (activeTab !== 'broadcast') return;
+    // 同じ管理者・同じ表示言語で取得済みなら、タブを離れて戻ってきただけでは再取得しない
+    if (
+      lastLoadedBroadcastsRef.current?.adminUserId === adminUserId &&
+      lastLoadedBroadcastsRef.current?.language === language
+    ) {
+      return;
+    }
     const loadBroadcasts = async () => {
       setIsLoadingBroadcasts(true);
       const { data, error } = await supabase
@@ -121,9 +131,10 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
         toast.error(language === 'ja' ? '一斉送信履歴の取得に失敗しました' : 'Failed to load broadcast history');
         return;
       }
+      lastLoadedBroadcastsRef.current = { adminUserId, language };
       setBroadcasts((data ?? []).map((row) => mapBroadcastRow(row)));
     };
-    if (activeTab === 'broadcast') void loadBroadcasts();
+    void loadBroadcasts();
   }, [adminUserId, activeTab, language]);
 
   const handleTranslateJaToEn = async () => {

@@ -245,12 +245,12 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
 
       <div className="grid md:grid-cols-2 gap-4">
         {[...pinnedPosts, ...unpinnedPosts].map((post) => (
-          <Card key={post.id} className={`hover:shadow-lg transition-shadow ${post.isHidden ? 'bg-gray-50 border-gray-300' : ''} ${post.tag === 'event' && post.peopleNeeded === 0 ? 'bg-amber-50 border-amber-200' : ''}`}>
+          <Card key={post.id} className={`min-w-0 hover:shadow-lg transition-shadow ${post.isHidden ? 'bg-gray-50 border-gray-300' : ''} ${post.tag === 'event' && post.peopleNeeded === 0 ? 'bg-amber-50 border-amber-200' : ''}`}>
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CardTitle className={post.isHidden ? 'text-gray-500' : ''}>{post.title}</CardTitle>
+                  <div className="flex items-center gap-2 mb-2 min-w-0">
+                    <CardTitle className={`min-w-0 break-words [overflow-wrap:anywhere] ${post.isHidden ? 'text-gray-500' : ''}`}>{post.title}</CardTitle>
                     {post.isPinned && <Pin className="w-4 h-4 text-[#3D3D4E] fill-[#3D3D4E]" />}
                     {post.tag === 'event' && post.peopleNeeded === 0 && <Badge className="bg-amber-500 text-white">{language === 'ja' ? 'お知らせ' : 'Announcement'}</Badge>}
                     {post.isHidden && <Badge variant="secondary" className="bg-gray-200 text-gray-700"><EyeOff className="w-3 h-3 mr-1" />{t.hidden}</Badge>}

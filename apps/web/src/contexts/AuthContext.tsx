@@ -51,10 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(() => getCachedUser());
   const [loading, setLoading] = useState(true);
   const userRef = useRef<AppUser | null>(user);
+  const authUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     userRef.current = user;
   }, [user]);
+
+  useEffect(() => {
+    authUserIdRef.current = supabaseUser?.id ?? null;
+  }, [supabaseUser]);
 
   useEffect(() => {
     let mounted = true;
@@ -109,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void (async () => {
         if (!mounted) return;
         if (event === 'INITIAL_SESSION') return;
+        const previousAuthUserId = authUserIdRef.current;
         setSession(session);
         setSupabaseUser(session?.user || null);
         if (event === 'TOKEN_REFRESHED') {
@@ -117,6 +123,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         if (session?.user) {
+          // タブ復帰時のブラウザ側自動リフレッシュ等で同一ユーザーの SIGNED_IN が再送されることがある。
+          // 別ユーザーへの切り替わりではない場合は再フェッチ・ローディング表示をスキップする
+          if (session.user.id === previousAuthUserId && userRef.current) {
+            setLoading(false);
+            return;
+          }
           // public.users の取得完了まで loading にしておく（未取得の一瞬で初期登録へ誤遷移しない）
           setLoading(true);
           const appUser = await queryUserByAuthId(session.user.id);
