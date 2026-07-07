@@ -348,11 +348,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) return;
-    const messagesChannel = supabase.channel(`messages-${user.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, () => fetchMessages())
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `is_broadcast=eq.true` }, () => fetchMessages())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, () => fetchMessages())
-      .subscribe();
+    // 運営宛メッセージは「運営受信箱」(staffInboxUserId、最古の管理者アカウント)宛に固定されるため、
+    // 自分が受信者と一致しない管理者は receiver_id フィルタでは新着に気付けない。
+    // 管理者は全メッセージのRLS読み取り権限を持つため、フィルタなしで購読する。
+    const messagesChannel = isAdmin
+      ? supabase.channel(`messages-${user.id}`)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => fetchMessages())
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => fetchMessages())
+          .subscribe()
+      : supabase.channel(`messages-${user.id}`)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, () => fetchMessages())
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `is_broadcast=eq.true` }, () => fetchMessages())
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, () => fetchMessages())
+          .subscribe();
     const notificationsChannel = supabase.channel(`notifications-${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => fetchNotifications())
       .subscribe();
@@ -360,7 +368,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(notificationsChannel);
     };
-  }, [user, fetchMessages, fetchNotifications]);
+  }, [user, isAdmin, fetchMessages, fetchNotifications]);
 
   const createEvent = async (eventData: Omit<Event, 'id' | 'currentParticipants' | 'likes'>) => {
     try {
