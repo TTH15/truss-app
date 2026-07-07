@@ -6,6 +6,7 @@ import { ArrowLeft, Send, Pin, Flag } from 'lucide-react';
 import type { Language, User, Message as AppMessage, MessageThread, ChatThreadMetadata } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { toast } from 'sonner';
+import { formatDateLabel, formatMessageTime, parseMessageDate, toDateKey } from '../../lib/chat-time';
 
 interface MessagesPageProps {
   language: Language;
@@ -24,44 +25,6 @@ interface MessagesPageProps {
 interface Message { id: number; sender: 'user' | 'other'; text: string; time: string; pinned?: boolean; flagged?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; }
 interface MessageHistory { [recipientId: string]: Message[]; }
 const translations = { ja: { typeMessage: 'メッセージを入力...' }, en: { typeMessage: 'Type a message...' } };
-const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
-const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-const parseMessageDate = (raw: string) => {
-  const parsed = new Date(raw);
-  if (!Number.isNaN(parsed.getTime())) return parsed;
-  const hm = raw.match(/^(\d{1,2}):(\d{2})$/);
-  if (hm) {
-    const now = new Date();
-    now.setHours(Number(hm[1]), Number(hm[2]), 0, 0);
-    return now;
-  }
-  return new Date();
-};
-
-const toDateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-
-const formatDateLabel = (date: Date, language: Language) => {
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfTarget = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diffDays = Math.round((startOfToday.getTime() - startOfTarget.getTime()) / 86400000);
-  if (diffDays === 0) return language === 'ja' ? '今日' : 'Today';
-  if (diffDays === 1) return language === 'ja' ? '昨日' : 'Yesterday';
-  const weekdays = language === 'ja' ? WEEKDAYS_JA : WEEKDAYS_EN;
-  const weekday = weekdays[date.getDay()];
-  if (date.getFullYear() < now.getFullYear()) {
-    return language === 'ja'
-      ? `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, '0')}月${String(date.getDate()).padStart(2, '0')}日 ${weekday}`
-      : `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${weekday}`;
-  }
-  return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${weekday}`;
-};
-
-const formatMessageTime = (raw: string) => {
-  const parsed = parseMessageDate(raw);
-  return `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`;
-};
 
 export function MessagesPage({ language, user, recipientName, recipientAvatar, isAdmin = false, onBack, messageHistory, setMessageHistory, messageThreads, onUpdateMessageThreads }: MessagesPageProps) {
   const t = translations[language];
