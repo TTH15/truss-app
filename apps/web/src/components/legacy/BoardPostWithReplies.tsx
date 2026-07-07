@@ -6,6 +6,7 @@ import { Input } from '../ui/input';
 import { Hand, Globe2, Calendar, MessageCircle, Send, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import type { Language, User } from '@truss/core';
 import { normalizeBoardContent } from '@truss/core';
+import { linkifyText } from '../../lib/linkify';
 
 interface Reply { id: number; author: string; authorAvatar: string; content: string; time: string; }
 interface Post { id: number; author: string; authorAvatar: string; title: string; content: string; language: string; peopleNeeded: number; interested: number; tag: 'languageExchange' | 'studyGroup' | 'event'; time: string; image?: string; expiryDate?: string; replies?: Reply[]; authorId?: string; }
@@ -54,7 +55,7 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
             </div>
           </div>
           <h3 className="text-[#3D3D4E] mb-1">{post.title}</h3>
-          <p className={`text-sm text-gray-600 mb-1 whitespace-pre-line break-words [overflow-wrap:anywhere] ${isContentExpanded ? '' : 'line-clamp-2'}`}>{normalizedContent}</p>
+          <p className={`text-sm text-gray-600 mb-1 whitespace-pre-line break-words [overflow-wrap:anywhere] ${isContentExpanded ? '' : 'line-clamp-2'}`}>{linkifyText(normalizedContent)}</p>
           {shouldShowExpandButton && (
             <Button
               type="button"
@@ -122,7 +123,7 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
                 {post.replies.map((reply) => (
                   <div key={reply.id} className="flex gap-2 pl-4">
                     <Avatar className="w-7 h-7 shrink-0"><AvatarFallback className="bg-linear-to-br from-purple-500 to-pink-500 text-white text-xs">{reply.authorAvatar}</AvatarFallback></Avatar>
-                    <div className="flex-1 bg-gray-50 rounded-lg p-3"><div className="flex items-center justify-between mb-1"><p className="text-sm text-[#3D3D4E]">{reply.author}</p><p className="text-xs text-gray-500">{reply.time}</p></div><p className="text-sm text-gray-700 whitespace-pre-line break-words [overflow-wrap:anywhere]">{normalizeBoardContent(reply.content)}</p></div>
+                    <div className="flex-1 bg-gray-50 rounded-lg p-3"><div className="flex items-center justify-between mb-1"><p className="text-sm text-[#3D3D4E]">{reply.author}</p><p className="text-xs text-gray-500">{reply.time}</p></div><p className="text-sm text-gray-700 whitespace-pre-line break-words [overflow-wrap:anywhere]">{linkifyText(normalizeBoardContent(reply.content))}</p></div>
                   </div>
                 ))}
               </div>

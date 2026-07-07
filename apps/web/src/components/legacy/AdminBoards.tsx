@@ -9,6 +9,7 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import type { Language, BoardPost } from '@truss/core';
 import { normalizeBoardContent } from '@truss/core';
+import { linkifyText } from '../../lib/linkify';
 
 interface AdminBoardsProps {
   language: Language;
@@ -255,7 +256,7 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
                     {post.tag === 'event' && post.peopleNeeded === 0 && <Badge className="bg-amber-500 text-white">{language === 'ja' ? 'お知らせ' : 'Announcement'}</Badge>}
                     {post.isHidden && <Badge variant="secondary" className="bg-gray-200 text-gray-700"><EyeOff className="w-3 h-3 mr-1" />{t.hidden}</Badge>}
                   </div>
-                  <CardDescription className={`whitespace-pre-line break-words [overflow-wrap:anywhere] ${post.isHidden ? 'line-through' : ''}`}>{normalizeBoardContent(post.content)}</CardDescription>
+                  <CardDescription className={`whitespace-pre-line break-words [overflow-wrap:anywhere] ${post.isHidden ? 'line-through' : ''}`}>{linkifyText(normalizeBoardContent(post.content))}</CardDescription>
                 </div>
                 <div className="ml-2 shrink-0">
                   <Button variant="outline" size="sm" onClick={() => openDialog(post.id)} className="border-[#A5D8F3] text-[#49B1E4] hover:bg-[#E8F6FC]"><Trash2 className="w-4 h-4" /></Button>

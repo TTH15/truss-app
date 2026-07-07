@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { BoardPostWithReplies } from './BoardPostWithReplies';
 import type { Language, User, BoardPost, BoardPostReply } from '@truss/core';
 import { normalizeBoardContent } from '@truss/core';
+import { linkifyText } from '../../lib/linkify';
 
 interface BulletinBoardProps {
   language: Language;
@@ -211,7 +212,7 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
             {currentStory.image && <img src={currentStory.image} alt={currentStory.title} className="w-full h-full object-cover" />}
             <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 text-white z-30">
               <h2 className="text-2xl mb-3">{currentStory.title}</h2>
-              <p className="text-white/90 text-sm mb-4 line-clamp-3 whitespace-pre-line break-words [overflow-wrap:anywhere]">{normalizeBoardContent(currentStory.content)}</p>
+              <p className="text-white/90 text-sm mb-4 line-clamp-3 whitespace-pre-line break-words [overflow-wrap:anywhere]">{linkifyText(normalizeBoardContent(currentStory.content))}</p>
               <div className="flex gap-2 items-center bg-white/20 backdrop-blur-sm rounded-full p-2"><Input placeholder={t.addComment} value={replyInput[currentStory.id] || ''} onChange={(e) => setReplyInput({ ...replyInput, [currentStory.id]: e.target.value })} className="flex-1 bg-transparent border-none text-white placeholder:text-white/70 focus-visible:ring-0" /><Button size="sm" onClick={() => { if (replyInput[currentStory.id]?.trim()) { handleAddReply(currentStory.id, replyInput[currentStory.id]); setReplyInput({ ...replyInput, [currentStory.id]: '' }); } }} disabled={!replyInput[currentStory.id]?.trim()} className="bg-[#49B1E4] hover:bg-[#3A9FD3] rounded-full h-8 w-8 p-0"><Send className="w-4 h-4" /></Button></div>
             </div>
           </div>
