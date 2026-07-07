@@ -54,7 +54,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
   }, [selectedChatUserId, messageThreads, onUpdateMessageThreads, onUpdateChatThreadMetadata]);
 
   const allUserIds = new Set<string>();
-  approvedMembers.forEach((member) => allUserIds.add(member.id));
+  approvedMembers.forEach((member) => { if (!member.isAdmin) allUserIds.add(member.id); });
   Object.keys(messageThreads).forEach((userId) => allUserIds.add(userId));
   const usersWithMessages = Array.from(allUserIds).map((userId) => {
     const messages = messageThreads[userId] || [];
