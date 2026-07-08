@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { PassportScreen } from '@/screens/PassportScreen';
 
-export default function PassportScreen() {
-  return <PlaceholderScreen title="Passport" description="プロフィール・スタンプグリッド（実装予定）" />;
+export default function Passport() {
+  return <PassportScreen />;
 }

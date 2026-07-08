@@ -13,6 +13,7 @@ import AppTabs from '@/components/app-tabs';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { DataProvider } from '@/contexts/DataContext';
 import { InitialRegistrationScreen } from '@/screens/InitialRegistrationScreen';
 import { LoginScreen } from '@/screens/LoginScreen';
 import { RegistrationStatusScreen } from '@/screens/RegistrationStatusScreen';
@@ -51,7 +52,11 @@ function RootNavigator() {
     return <RegistrationStatusScreen />;
   }
 
-  return <AppTabs />;
+  return (
+    <DataProvider>
+      <AppTabs />
+    </DataProvider>
+  );
 }
 
 export default function RootLayout() {
