@@ -2,6 +2,11 @@
  * users テーブル関連の書き込みを集約
  */
 import { deleteStudentIdImageByPath, supabase } from "../../supabase";
+import {
+  buildInitialRegistrationUserInsert,
+  buildInitialRegistrationUserUpdate,
+  type InitialRegistrationPayload,
+} from "../initial-registration";
 
 function toErrorOrNull(error: { message: string } | null) {
   return error ? new Error(error.message) : null;
@@ -117,6 +122,38 @@ export async function updateUserProfileRow(
   dbUpdates: Record<string, unknown>
 ): Promise<{ error: Error | null }> {
   const { error } = await supabase.from("users").update(dbUpdates).eq("id", userId);
+  return { error: toErrorOrNull(error) };
+}
+
+/**
+ * 初期登録の送信を確定する。auth_id に紐づく users 行が既にあれば update、
+ * なければ insert（OAuthサインアップ等で行が事前作成されている場合と、
+ * メール/パスワードサインアップで未作成の場合の両方に対応）。
+ */
+export async function completeInitialRegistrationRow(
+  authId: string,
+  email: string,
+  data: InitialRegistrationPayload
+): Promise<{ error: Error | null }> {
+  const requestedAt = new Date().toISOString().split("T")[0];
+  const { data: existing, error: checkError } = await supabase
+    .from("users")
+    .select("id")
+    .eq("auth_id", authId)
+    .maybeSingle();
+  if (checkError) return { error: toErrorOrNull(checkError) };
+
+  if (existing) {
+    const { error } = await supabase
+      .from("users")
+      .update(buildInitialRegistrationUserUpdate(data, requestedAt))
+      .eq("auth_id", authId);
+    return { error: toErrorOrNull(error) };
+  }
+
+  const { error } = await supabase
+    .from("users")
+    .insert(buildInitialRegistrationUserInsert(authId, email, data, requestedAt));
   return { error: toErrorOrNull(error) };
 }
 

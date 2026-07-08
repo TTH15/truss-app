@@ -12,7 +12,7 @@ interface LoginScreenProps {
 }
 
 export function LoginScreen({ onNavigateToSignUp }: LoginScreenProps) {
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, signInAsMockUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -96,6 +96,14 @@ export function LoginScreen({ onNavigateToSignUp }: LoginScreenProps) {
             アカウントをお持ちでない方はこちら
           </ThemedText>
         </Pressable>
+
+        {__DEV__ && (
+          <Pressable style={styles.devButton} onPress={signInAsMockUser}>
+            <ThemedText type="small" themeColor="textSecondary">
+              [DEV] モックユーザーでタブ画面を確認
+            </ThemedText>
+          </Pressable>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -140,5 +148,14 @@ const styles = StyleSheet.create({
   },
   error: {
     color: '#D14343',
+  },
+  devButton: {
+    marginTop: Spacing.four,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#B0B0B0',
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
   },
 });

@@ -13,11 +13,14 @@ import AppTabs from '@/components/app-tabs';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { InitialRegistrationScreen } from '@/screens/InitialRegistrationScreen';
 import { LoginScreen } from '@/screens/LoginScreen';
-import { ProfileRegistrationScreen } from '@/screens/ProfileRegistrationScreen';
+import { RegistrationStatusScreen } from '@/screens/RegistrationStatusScreen';
 import { SignUpScreen } from '@/screens/SignUpScreen';
 
 SplashScreen.preventAutoHideAsync();
+
+const PRE_REGISTRATION_STEPS = new Set(['email_input', 'email_sent', 'email_verified', 'initial_registration']);
 
 function RootNavigator() {
   const { session, user, loading } = useAuth();
@@ -40,8 +43,12 @@ function RootNavigator() {
     );
   }
 
-  if (!user || user.registrationStep !== 'fully_active') {
-    return <ProfileRegistrationScreen />;
+  if (!user || PRE_REGISTRATION_STEPS.has(user.registrationStep)) {
+    return <InitialRegistrationScreen />;
+  }
+
+  if (user.registrationStep !== 'fully_active') {
+    return <RegistrationStatusScreen />;
   }
 
   return <AppTabs />;

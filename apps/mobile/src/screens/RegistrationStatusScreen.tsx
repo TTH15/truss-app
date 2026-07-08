@@ -6,19 +6,28 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
+const STATUS_MESSAGES: Record<string, string> = {
+  waiting_approval: '運営の承認をお待ちください。承認され次第、ご利用いただけます。',
+  approved_limited: '承認されました。一部機能が制限された状態です。',
+  profile_completion: 'プロフィールの入力を完了してください（実装予定）。',
+  fee_payment: '会費のお支払いをお願いします（実装予定）。',
+};
+
 /**
- * Web版の InitialRegistration/ProfileRegistration 相当のフォームは未実装（Phase 4で移植予定）。
- * ここではログイン〜プロフィール登録への導線が疎通することのみ確認する。
+ * 初期登録は完了しているが `fully_active` に達していない状態（承認待ち等）のスタブ画面。
+ * Web版に専用の待機画面はなくDashboard内のバナーで表現しているが、
+ * モバイルはまだDashboard相当の画面がないため単独画面として用意する。
  */
-export function ProfileRegistrationScreen() {
+export function RegistrationStatusScreen() {
   const { user, signOut } = useAuth();
+  const message = (user?.registrationStep && STATUS_MESSAGES[user.registrationStep]) || '手続き中です。';
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="subtitle">プロフィール登録</ThemedText>
+        <ThemedText type="subtitle">Truss</ThemedText>
         <ThemedText type="default" themeColor="textSecondary" style={styles.description}>
-          {user?.email} さん、ようこそ。プロフィール登録フォームは実装予定です。
+          {message}
         </ThemedText>
         <Pressable onPress={() => void signOut()}>
           <ThemedText type="link" themeColor="tint">

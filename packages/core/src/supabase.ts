@@ -67,8 +67,12 @@ const BUCKETS = {
   BOARD_POST_IMAGES: 'board-post-images',
 } as const;
 
-/** ログイン中ユーザーの UID（Supabase Auth）配下へ保存。path の先頭は必ず auth.uid()（Storage RLS と一致） */
-export async function uploadStudentIdImage(file: File) {
+/**
+ * ログイン中ユーザーの UID（Supabase Auth）配下へ保存。path の先頭は必ず auth.uid()（Storage RLS と一致）
+ * `Blob`を受け取る（Web の `File` は `Blob` を継承しているためそのまま渡せる。
+ * モバイルは `expo-image-manipulator` 等で得た `Blob` を渡す想定）
+ */
+export async function uploadStudentIdImage(file: Blob) {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   const authUser = authData?.user;
   if (!authUser) {
