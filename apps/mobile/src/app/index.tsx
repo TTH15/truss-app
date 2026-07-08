@@ -6,13 +6,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import { CheckinScannerScreen } from '@/screens/CheckinScannerScreen';
 import { TrussEmbassyScreen } from '@/screens/TrussEmbassyScreen';
 
 export default function HomeScreen() {
+  const { user } = useAuth();
   const { chatThreadMetadata } = useData();
   const colors = Colors.light;
   const [embassyOpen, setEmbassyOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const unreadCount = Object.values(chatThreadMetadata).reduce((sum, meta) => sum + (meta.unreadCount || 0), 0);
 
@@ -43,10 +47,30 @@ export default function HomeScreen() {
           )}
           <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
         </Pressable>
+
+        {user?.isAdmin && (
+          <Pressable
+            style={[styles.embassyCard, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}
+            onPress={() => setScannerOpen(true)}
+          >
+            <View style={[styles.embassyIcon, { backgroundColor: colors.backgroundSelected }]}>
+              <Ionicons name="qr-code-outline" size={22} color={colors.tint} />
+            </View>
+            <View style={styles.embassyTextGroup}>
+              <ThemedText type="smallBold">チェックインスキャナー</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">運営用: QRコードで出席確認</ThemedText>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
+        )}
       </SafeAreaView>
 
       <Modal visible={embassyOpen} animationType="slide" onRequestClose={() => setEmbassyOpen(false)}>
         <TrussEmbassyScreen onClose={() => setEmbassyOpen(false)} />
+      </Modal>
+
+      <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
+        <CheckinScannerScreen onClose={() => setScannerOpen(false)} />
       </Modal>
     </ThemedView>
   );

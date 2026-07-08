@@ -33,6 +33,22 @@ export async function registerEventParticipant(
   return { error: toErrorOrNull(rpcError) };
 }
 
+/**
+ * QRチェックイン・運営スキャナー画面から呼ばれる。`attended` の更新はRLSで管理者のみに
+ * 制限されているため（event_participants_update_admin_only）、非管理者が呼んでもDB側で拒否される。
+ */
+export async function confirmEventAttendance(
+  eventId: number,
+  userId: string
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase
+    .from("event_participants")
+    .update({ attended: true })
+    .eq("event_id", eventId)
+    .eq("user_id", userId);
+  return { error: toErrorOrNull(error) };
+}
+
 export async function unregisterEventParticipant(
   eventId: number,
   userId: string

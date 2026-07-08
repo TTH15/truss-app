@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { ChatThreadMetadata, Event, EventParticipant, GalleryPhoto, MessageThread, UploadGalleryPhotoInput } from '@truss/core';
 import {
+  confirmEventAttendance as confirmEventAttendanceRow,
   likeGalleryPhotoRow,
   markAllMessagesAsReadForUserRow,
   queryEventParticipantsGrouped,
@@ -34,6 +35,7 @@ interface DataContextType {
   galleryPhotos: GalleryPhoto[];
   uploadGalleryPhoto: (input: UploadGalleryPhotoInput) => Promise<void>;
   likeGalleryPhoto: (photoId: number) => Promise<void>;
+  confirmEventAttendance: (eventId: number, userId: string) => Promise<{ error: Error | null }>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -193,6 +195,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const confirmEventAttendance = async (eventId: number, userId: string) => {
+    const { error } = await confirmEventAttendanceRow(eventId, userId);
+    if (!error) await fetchEventParticipants();
+    return { error };
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -211,6 +219,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         galleryPhotos,
         uploadGalleryPhoto,
         likeGalleryPhoto,
+        confirmEventAttendance,
       }}
     >
       {children}

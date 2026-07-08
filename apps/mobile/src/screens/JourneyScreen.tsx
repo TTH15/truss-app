@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react';
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EventTicket } from '@/components/EventTicket';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
@@ -28,6 +29,7 @@ export function JourneyScreen() {
   const [detailEvent, setDetailEvent] = useState<Event | null>(null);
   const [registrationFlow, setRegistrationFlow] = useState<RegistrationFlow>('none');
   const [photoRefusal, setPhotoRefusal] = useState(false);
+  const [ticketEvent, setTicketEvent] = useState<Event | null>(null);
 
   const attendingEventIds = useMemo(() => {
     if (!user) return new Set<number>();
@@ -219,6 +221,16 @@ export function JourneyScreen() {
                   </ThemedText>
                 </Pressable>
               )}
+
+              {detailEvent.status === 'upcoming' && attendingEventIds.has(detailEvent.id) && (
+                <Pressable
+                  style={[styles.ticketButton, { borderColor: colors.tint }]}
+                  onPress={() => setTicketEvent(detailEvent)}
+                >
+                  <Ionicons name="qr-code-outline" size={18} color={colors.tint} />
+                  <ThemedText style={{ color: colors.tint }}>チケットを表示</ThemedText>
+                </Pressable>
+              )}
             </ScrollView>
           </SafeAreaView>
         )}
@@ -272,6 +284,17 @@ export function JourneyScreen() {
             )}
           </View>
         </View>
+      </Modal>
+
+      <Modal visible={!!ticketEvent} animationType="fade" transparent onRequestClose={() => setTicketEvent(null)}>
+        <Pressable style={styles.ticketBackdrop} onPress={() => setTicketEvent(null)}>
+          <Pressable style={styles.ticketWrapper} onPress={(e) => e.stopPropagation()}>
+            {ticketEvent && user && <EventTicket event={ticketEvent} userId={user.id} />}
+            <Pressable style={styles.ticketCloseButton} onPress={() => setTicketEvent(null)}>
+              <ThemedText themeColor="textSecondary">閉じる</ThemedText>
+            </Pressable>
+          </Pressable>
+        </Pressable>
       </Modal>
     </ThemedView>
   );
@@ -472,5 +495,29 @@ const styles = StyleSheet.create({
   },
   closeLink: {
     textAlign: 'center',
+  },
+  ticketButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.one,
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+  },
+  ticketBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.four,
+  },
+  ticketWrapper: {
+    alignSelf: 'stretch',
+    gap: Spacing.three,
+  },
+  ticketCloseButton: {
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
   },
 });
