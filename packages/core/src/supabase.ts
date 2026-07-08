@@ -41,7 +41,19 @@ export function createSupabaseClient(overrides: SupabaseClientOverrides = {}) {
   );
 }
 
-export const supabase = createSupabaseClient();
+// eslint-disable-next-line prefer-const -- setSupabaseClient() が呼び出し側からこの束縛を差し替える
+export let supabase = createSupabaseClient();
+
+/**
+ * apps/web・apps/mobile 等、呼び出し側が自身の環境（storage/URL等）に合わせて
+ * 生成したクライアントに差し替える。db/queries・db/mutations 配下は本ファイルの
+ * `supabase` を import して使うため、ES Modules の live binding によりこの後は
+ * 差し替え後のクライアントが参照される。アプリ起動時、他のクエリが実行される前に
+ * 一度だけ呼び出すこと。
+ */
+export function setSupabaseClient(client: ReturnType<typeof createSupabaseClient>): void {
+  supabase = client;
+}
 
 // =============================================
 // Storage Helper Functions
