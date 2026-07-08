@@ -19,9 +19,8 @@
   - 管理者アカウントが複数存在する場合にチャットのリアルタイム更新が届かない不具合を修正
 - **「運営受信箱のシステムID化」完了・コミット・push済み**（下記横断タスク参照）。
 - **Phase 3（`apps/mobile`新規作成）着手・スキャフォールドと認証・ナビゲーション基盤が完了**。iOS Simulator（Expo Go）上でのビルド・起動・フォント表示まで実機確認済み。詳細はPhase 3セクション参照。
-- **次にやること**: Node.jsのバージョンアップ（下記参照）→ Google Cloud Console / Supabase DashboardでのOAuthリダイレクトURL登録 → Phase 4（画面移植）またはPhase 3残タスク（大学ドメイン警告のWeb版実装、サブアカウントリンク等）。
-
-**環境上の注意**: 現在のNode.js（v20.17.0）はReact Native 0.86 / Expo SDK 57の要求バージョン（`^20.19.4 || ^22.13.0 || ^24.3.0`）を下回っており、`npm install`/Metro起動時に`EBADENGINE`警告が出る（動作はするが非推奨）。`nvm`/`volta`等でNode 22 LTS系へのアップグレードを推奨。
+- **Node.jsをv20.17.0→v22.23.1へアップグレード済み**（`nvm`をHomebrewで導入し`.zshenv`/`.zprofile`に初期化処理を追加、`nvm alias default 22`を設定）。リポジトリに`.nvmrc`（`22`）とルート`package.json`の`engines`フィールドを追加。EBADENGINE警告は解消し、`expo export --platform web`で発生していたNode 20起因のWebSocket欠如エラーも解消（Web出力は`output: "single"`に変更し、SSR起因の別エラーも回避）。
+- **次にやること**: Google Cloud Console / Supabase DashboardでのOAuthリダイレクトURL登録 → Phase 4（画面移植）またはPhase 3残タスク（大学ドメイン警告のWeb版実装、サブアカウントリンク等）。
 
 ---
 
