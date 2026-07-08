@@ -26,6 +26,7 @@ export function TrussEmbassyScreen({ onClose }: TrussEmbassyScreenProps) {
   const [pickedAttachment, setPickedAttachment] = useState<PickedChatAttachment | null>(null);
   const [picking, setPicking] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const scrollRef = useRef<ScrollView>(null);
   const hasMarkedRead = useRef(false);
@@ -79,6 +80,7 @@ export function TrussEmbassyScreen({ onClose }: TrussEmbassyScreenProps) {
     const trimmed = text.trim();
     if ((!trimmed && !pickedAttachment) || sending) return;
     setSending(true);
+    setSendError(null);
     try {
       let attachmentPath: string | undefined;
       let attachmentType: string | undefined;
@@ -91,11 +93,12 @@ export function TrussEmbassyScreen({ onClose }: TrussEmbassyScreenProps) {
         attachmentPath = path;
         attachmentType = pickedAttachment.contentType;
       }
+      await sendMessageToStaff(trimmed || '（添付ファイル）', { category, attachmentPath, attachmentType });
       setText('');
       setPickedAttachment(null);
-      await sendMessageToStaff(trimmed || '（添付ファイル）', { category, attachmentPath, attachmentType });
     } catch (error) {
       console.error('Error sending message:', error);
+      setSendError(error instanceof Error ? error.message : '送信に失敗しました。もう一度お試しください。');
     } finally {
       setSending(false);
     }
@@ -190,6 +193,10 @@ export function TrussEmbassyScreen({ onClose }: TrussEmbassyScreenProps) {
         )}
 
         <SafeAreaView edges={['bottom']} style={[styles.inputArea, { borderColor: colors.border }]}>
+          {sendError && (
+            <ThemedText type="small" style={styles.sendErrorText}>{sendError}</ThemedText>
+          )}
+
           <Pressable
             style={[styles.categoryPill, { borderColor: colors.border }]}
             onPress={() => setCategoryPickerOpen(true)}
@@ -367,6 +374,9 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.four,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
+  },
+  sendErrorText: {
+    color: '#D14343',
   },
   inputRow: {
     flexDirection: 'row',

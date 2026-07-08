@@ -35,18 +35,25 @@ export async function registerEventParticipant(
 
 /**
  * QRチェックイン・運営スキャナー画面から呼ばれる。`attended` の更新はRLSで管理者のみに
- * 制限されているため（event_participants_update_admin_only）、非管理者が呼んでもDB側で拒否される。
+ * 制限されているため（event_participants_update_admin_only）、非管理者が呼んでもDB側では
+ * エラーにならず0件更新で成功扱いになる（PostgRESTの仕様）。`.select()`で更新後の行を
+ * 明示的に取得し、0件だった場合はエラーとして扱う。
  */
 export async function confirmEventAttendance(
   eventId: number,
   userId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("event_participants")
     .update({ attended: true })
     .eq("event_id", eventId)
-    .eq("user_id", userId);
-  return { error: toErrorOrNull(error) };
+    .eq("user_id", userId)
+    .select("id");
+  if (error) return { error: toErrorOrNull(error) };
+  if (!data || data.length === 0) {
+    return { error: new Error("出席の確認に失敗しました（権限がないか、参加者が見つかりません）") };
+  }
+  return { error: null };
 }
 
 export async function unregisterEventParticipant(

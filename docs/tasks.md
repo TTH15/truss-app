@@ -26,7 +26,12 @@
 - **dev用Supabaseプロジェクト（`truss-app-dev`、ref: `cuhggonkdpsidysjzjvj`）を用意・全マイグレーション適用済み**。`npm run dev`/`npx expo start`はローカル実行時に自動でこちらへ接続（`.env.development.local`、詳細は[`mobile-manual-testing.md`](./mobile-manual-testing.md)参照）。dev管理者アカウント: `dev@truss.com` / `dev1234`
 - **Truss Embassyチャット強化（カテゴリ分類・双方向既読・画像添付）実装完了・push済み**（下記Phase 4セクション参照）。**本番DBへのマイグレーション（`026_truss_chat_enhancement.sql`）適用はユーザーがDashboardから手動実施予定、未実施**
 - **モバイルのモーダル系画面（Truss Embassy/QRスキャナー/Memories写真追加/Journeyイベント詳細）でヘッダーがステータスバーと被る不具合を修正・push済み**（`SafeAreaView`の自動計算が`<Modal>`内で信頼できなかったため`useSafeAreaInsets()`による明示的対応に変更）。Truss Embassyのカテゴリ選択も常時表示チップ4個→タップ式の1個のピルボタンに簡略化
-- **次にやること**: dev DBを使い各画面を実際に動かして不具合を洗い出す作業に着手（`mobile-manual-testing.md`の①〜⑥を順に実施）。
+- **dev DBに対する実データE2E検証を実施・不具合2件を発見・修正・push済み**（テスト用一般会員アカウント`test-member@truss-dev.local`と1件のテストイベントをdev DBに作成し、実際の認証セッションで各ミューテーション関数を直接実行して検証。モバイルUIのタップ操作は伴わないため、画面の見た目や具体的な操作性は別途実機での確認が必要）:
+  - ✅ 初期登録フォーム送信→承認→`fully_active`遷移→タブ画面表示、まで正常動作を確認（不具合なし）
+  - ✅ Journeyイベント参加登録、正常動作を確認（`current_participants`カウント含む）
+  - 🐛→修正済み: **Truss Embassyでメッセージ送信のサイレント消失** — `sendMessageToStaff`が`staffInboxUserId`未取得時（画面を開いてすぐ送信した場合など）に何もせず成功扱いでresolveしてしまい、入力欄はクリアされるのにメッセージがDBに書き込まれない不具合。エラーを投げるよう修正し、`TrussEmbassyScreen`側もエラー時は入力を保持してインライン表示するよう修正
+  - 🐛→修正済み: **QRチェックイン確認のサイレント失敗** — `confirmEventAttendance`がRLSに拒否された場合（0件更新）もPostgRESTはエラーを返さないため成功扱いになっていた不具合。`.select()`で更新後の行を明示的に取得し、0件なら明示的にエラーを返すよう修正。RLS自体（一般会員は自分の出席を確認できない）は正しく機能していたことも確認済み
+- **次にやること**: モバイル実機でのタップ操作を伴うUI動作確認（`mobile-manual-testing.md`の手順、特に②Passport・⑤Memories・⑥QRスキャナーの実機カメラ）。
 
 ---
 

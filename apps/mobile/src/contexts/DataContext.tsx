@@ -154,7 +154,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     text: string,
     options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string }
   ) => {
-    if (!user || !staffInboxUserId) return;
+    if (!user) return;
+    if (!staffInboxUserId) throw new Error('運営受信箱の準備がまだ完了していません。少し待ってから再度お試しください。');
     try {
       const { error } = await sendMessageRow({
         senderId: user.id,
