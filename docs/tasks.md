@@ -6,7 +6,7 @@
 
 ---
 
-## 現在の状態（2026-07-07、新セッション引き継ぎ用）
+## 現在の状態（2026-07-09、新セッション引き継ぎ用）
 
 - リポジトリを `~/Developer/truss-app` へ移行済み（旧パス `~/Documents/Kobe-u/Truss/truss-app` からの移行経緯は git履歴・過去セッション参照）。
 - **Phase 1（モノレポ化）完了・コミット・push済み**（`apps/web`への移設、workspaces化、`.gitignore`修正、AGENTS.md分離）。Vercel Root Directoryは`apps/web`に変更済み（ユーザー側で実施）。
@@ -23,7 +23,10 @@
 - **`apps/mobile/.env`セットアップ、Supabase Dashboard Redirect URL登録完了**（`truss://auth/callback`追加済み、Web用URLは維持）。Google Cloud Console側は変更不要（Supabase固定コールバックURLを既に使用中のため）。
 - **今後の認証プランに追加**: 個人メール追加（Magic Link/OTP、大学メール失効後の恒久的な復旧手段）、Passkey追加（利便性向上目的、`@experimental`解除待ち）。詳細はPhase 3「認証移行まわり」参照。
 - **Phase 4の主要画面（プロフィール登録フォーム・Passport・Journey・Truss Embassy・Memories・Connections）+ QRコードイベントチェックイン実装完了**。詳細はPhase 4セクション参照。
-- **次にやること**: 実データでのE2E動作確認（各画面「未検証」項目、手順は[`mobile-manual-testing.md`](./mobile-manual-testing.md)参照）、またはTruss Embassyチャット強化（Phase 4セクション内、スキーマ変更のみで着手可）。
+- **dev用Supabaseプロジェクト（`truss-app-dev`、ref: `cuhggonkdpsidysjzjvj`）を用意・全マイグレーション適用済み**。`npm run dev`/`npx expo start`はローカル実行時に自動でこちらへ接続（`.env.development.local`、詳細は[`mobile-manual-testing.md`](./mobile-manual-testing.md)参照）。dev管理者アカウント: `dev@truss.com` / `dev1234`
+- **Truss Embassyチャット強化（カテゴリ分類・双方向既読・画像添付）実装完了・push済み**（下記Phase 4セクション参照）。**本番DBへのマイグレーション（`026_truss_chat_enhancement.sql`）適用はユーザーがDashboardから手動実施予定、未実施**
+- **モバイルのモーダル系画面（Truss Embassy/QRスキャナー/Memories写真追加/Journeyイベント詳細）でヘッダーがステータスバーと被る不具合を修正・push済み**（`SafeAreaView`の自動計算が`<Modal>`内で信頼できなかったため`useSafeAreaInsets()`による明示的対応に変更）。Truss Embassyのカテゴリ選択も常時表示チップ4個→タップ式の1個のピルボタンに簡略化
+- **次にやること**: dev DBを使い各画面を実際に動かして不具合を洗い出す作業に着手（`mobile-manual-testing.md`の①〜⑥を順に実施）。
 
 ---
 
