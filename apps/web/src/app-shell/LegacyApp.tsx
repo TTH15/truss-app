@@ -99,6 +99,8 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     setRenewalStatus,
     deleteUser,
     sendMessage,
+    markMemberMessagesAsRead,
+    uploadChatAttachment,
     sendBulkMessages,
     cancelBroadcast,
     markNotificationAsRead,
@@ -756,6 +758,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
           membersLoading={usersLoading}
           onRequestReupload={handleRequestReupload} onConfirmFeePayment={confirmFeePayment} onSetRenewalStatus={setRenewalStatus}
           onDeleteUser={deleteUser} messageThreads={messageThreads} onUpdateMessageThreads={setMessageThreads} onSendMessage={sendMessage}
+          onMarkMemberMessagesAsRead={markMemberMessagesAsRead} onUploadChatAttachment={uploadChatAttachment}
           chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={setChatThreadMetadata} selectedChatUserId={selectedChatUserId}
           onOpenMemberChat={handleOpenMemberChat} onUpdateNotifications={setNotifications} boardPosts={boardPosts}
           onUpdateBoardPosts={setBoardPosts} onCreateBoardPost={createBoardPost} onDeleteBoardPost={deleteBoardPost} onTogglePinBoardPost={togglePinBoardPost} onReorderPinnedBoardPosts={reorderPinnedBoardPosts} onSendBulkEmail={handleSendBulkEmail}

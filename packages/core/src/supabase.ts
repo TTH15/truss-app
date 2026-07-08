@@ -65,6 +65,7 @@ const BUCKETS = {
   GALLERY_PHOTOS: 'gallery-photos',
   USER_AVATARS: 'user-avatars',
   BOARD_POST_IMAGES: 'board-post-images',
+  CHAT_ATTACHMENTS: 'chat-attachments',
 } as const;
 
 /**
@@ -226,6 +227,35 @@ export async function uploadUserAvatar(userId: string, file: File) {
 export async function getAvatarSignedUrl(path: string, expiresIn = 3600) {
   const { data, error } = await supabase.storage
     .from(BUCKETS.USER_AVATARS)
+    .createSignedUrl(path, expiresIn);
+  return { url: data?.signedUrl ?? null, error };
+}
+
+/** チャット添付は非公開バケットのため、fileName（path）をDBに保存し表示時に署名付きURLを発行する */
+export async function uploadChatAttachment(
+  userId: string,
+  blob: Blob,
+  meta: { fileExt: string; contentType: string }
+) {
+  const timestamp = Date.now();
+  const suffix =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+  const fileName = `${userId}/${timestamp}-${suffix}.${meta.fileExt}`;
+
+  const { error } = await supabase.storage.from(BUCKETS.CHAT_ATTACHMENTS).upload(fileName, blob, {
+    contentType: meta.contentType,
+    upsert: false,
+  });
+
+  if (error) return { path: null as string | null, error };
+  return { path: fileName, error: null };
+}
+
+export async function getChatAttachmentSignedUrl(path: string, expiresIn = 3600) {
+  const { data, error } = await supabase.storage
+    .from(BUCKETS.CHAT_ATTACHMENTS)
     .createSignedUrl(path, expiresIn);
   return { url: data?.signedUrl ?? null, error };
 }

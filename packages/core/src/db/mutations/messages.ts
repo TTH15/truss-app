@@ -2,6 +2,7 @@
  * チャット/メッセージ関連の書き込み集約
  */
 import { supabase } from "../../supabase";
+import type { MessageCategory } from "../../types/app";
 
 function toErrorOrNull(error: { message: string } | null) {
   return error ? new Error(error.message) : null;
@@ -16,6 +17,9 @@ export async function sendMessageRow(input: {
   isBroadcast?: boolean;
   broadcastSubject?: string;
   broadcastSubjectEn?: string;
+  category?: MessageCategory;
+  attachmentPath?: string;
+  attachmentType?: string;
 }): Promise<{ error: Error | null }> {
   const { error } = await supabase.from("messages").insert({
     sender_id: input.senderId,
@@ -26,6 +30,9 @@ export async function sendMessageRow(input: {
     is_broadcast: input.isBroadcast ?? false,
     broadcast_subject: input.broadcastSubject ?? null,
     broadcast_subject_en: input.broadcastSubjectEn ?? null,
+    category: input.category ?? null,
+    attachment_path: input.attachmentPath ?? null,
+    attachment_type: input.attachmentType ?? null,
   });
 
   return { error: toErrorOrNull(error) };
@@ -108,19 +115,33 @@ export async function markMessageAsReadRow(
 ): Promise<{ error: Error | null }> {
   const { error } = await supabase
     .from("messages")
-    .update({ read: true })
+    .update({ read: true, read_at: new Date().toISOString() })
     .eq("id", messageId);
   return { error: toErrorOrNull(error) };
 }
 
+/** 会員が運営（staffInboxUserId宛）からのメッセージを既読にする */
 export async function markAllMessagesAsReadForUserRow(
   userId: string
 ): Promise<{ error: Error | null }> {
   const { error } = await supabase
     .from("messages")
-    .update({ read: true })
+    .update({ read: true, read_at: new Date().toISOString() })
     .eq("receiver_id", userId)
     .eq("is_admin", true)
+    .eq("read", false);
+  return { error: toErrorOrNull(error) };
+}
+
+/** 運営がその会員（sender）からのメッセージを既読にする */
+export async function markMemberMessagesAsReadRow(
+  memberUserId: string
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase
+    .from("messages")
+    .update({ read: true, read_at: new Date().toISOString() })
+    .eq("sender_id", memberUserId)
+    .eq("is_admin", false)
     .eq("read", false);
   return { error: toErrorOrNull(error) };
 }

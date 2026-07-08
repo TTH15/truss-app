@@ -52,6 +52,7 @@ export * from "./event-map-link";
 export * from "./faculties";
 export * from "./chat-time";
 export * from "./event-checkin";
+export * from "./message-categories";
 export * from "./db/mappers";
 export * from "./db/initial-registration";
 export * from "./db/queries/board";

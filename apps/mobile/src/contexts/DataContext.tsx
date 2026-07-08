@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { ChatThreadMetadata, Event, EventParticipant, GalleryPhoto, MessageThread, UploadGalleryPhotoInput } from '@truss/core';
+import type { ChatThreadMetadata, Event, EventParticipant, GalleryPhoto, MessageCategory, MessageThread, UploadGalleryPhotoInput } from '@truss/core';
 import {
   confirmEventAttendance as confirmEventAttendanceRow,
   likeGalleryPhotoRow,
@@ -13,6 +13,7 @@ import {
   sendMessageRow,
   toggleEventLikeForUser,
   unregisterEventParticipant,
+  uploadChatAttachment as uploadChatAttachmentToStorage,
   uploadGalleryPhotoRow,
 } from '@truss/core';
 
@@ -30,8 +31,12 @@ interface DataContextType {
   messageThreads: MessageThread;
   chatThreadMetadata: ChatThreadMetadata;
   staffInboxUserId: string | null;
-  sendMessageToStaff: (text: string) => Promise<void>;
+  sendMessageToStaff: (
+    text: string,
+    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string }
+  ) => Promise<void>;
   markStaffThreadAsRead: () => Promise<void>;
+  uploadChatAttachment: (blob: Blob, meta: { fileExt: string; contentType: string }) => Promise<{ path: string | null; error: unknown }>;
   galleryPhotos: GalleryPhoto[];
   uploadGalleryPhoto: (input: UploadGalleryPhotoInput) => Promise<void>;
   likeGalleryPhoto: (photoId: number) => Promise<void>;
@@ -145,7 +150,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const sendMessageToStaff = async (text: string) => {
+  const sendMessageToStaff = async (
+    text: string,
+    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string }
+  ) => {
     if (!user || !staffInboxUserId) return;
     try {
       const { error } = await sendMessageRow({
@@ -154,6 +162,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         receiverId: staffInboxUserId,
         text,
         isAdmin: false,
+        category: options?.category,
+        attachmentPath: options?.attachmentPath,
+        attachmentType: options?.attachmentType,
       });
       if (error) throw error;
       await fetchMessages();
@@ -172,6 +183,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Error marking messages as read:', error);
     }
+  };
+
+  const uploadChatAttachment = async (blob: Blob, meta: { fileExt: string; contentType: string }) => {
+    if (!user) return { path: null, error: new Error('Not signed in') };
+    return uploadChatAttachmentToStorage(user.id, blob, meta);
   };
 
   const uploadGalleryPhoto = async (input: UploadGalleryPhotoInput) => {
@@ -216,6 +232,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         staffInboxUserId,
         sendMessageToStaff,
         markStaffThreadAsRead,
+        uploadChatAttachment,
         galleryPhotos,
         uploadGalleryPhoto,
         likeGalleryPhoto,

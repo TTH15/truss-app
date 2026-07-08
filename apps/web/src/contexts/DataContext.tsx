@@ -55,8 +55,10 @@ import {
   sendBroadcastRow,
   markMessageAsReadRow,
   markAllMessagesAsReadForUserRow,
+  markMemberMessagesAsReadRow,
   updateChatMetadataRow,
   cancelBroadcastRow,
+  uploadChatAttachment as uploadChatAttachmentToStorage,
 } from '@truss/core';
 import {
   markNotificationAsReadRow,
@@ -65,7 +67,7 @@ import {
 import { useAuth } from './AuthContext';
 import type {
   User, Event, EventParticipant, Message, MessageThread,
-  ChatThreadMetadata, Notification, BoardPost, BoardPostReply, GalleryPhoto
+  ChatThreadMetadata, Notification, BoardPost, BoardPostReply, GalleryPhoto, MessageCategory
 } from '@truss/core';
 
 interface DataContextType {
@@ -96,12 +98,19 @@ interface DataContextType {
   setRenewalStatus: (userId: string, isRenewal: boolean) => Promise<void>;
   resetMembershipForNewYear: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
-  sendMessage: (receiverId: string, text: string, isAdmin?: boolean) => Promise<void>;
+  sendMessage: (
+    receiverId: string,
+    text: string,
+    isAdmin?: boolean,
+    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string }
+  ) => Promise<void>;
   sendBulkMessages: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; broadcastId?: number | null }>) => Promise<void>;
   cancelBroadcast: (broadcastId: number) => Promise<void>;
   sendBroadcast: (text: string, subjectJa: string, subjectEn: string) => Promise<void>;
   markMessageAsRead: (messageId: number) => Promise<void>;
   markAllMessagesAsReadForUser: (userId: string) => Promise<void>;
+  markMemberMessagesAsRead: (memberUserId: string) => Promise<void>;
+  uploadChatAttachment: (blob: Blob, meta: { fileExt: string; contentType: string }) => Promise<{ path: string | null; error: unknown }>;
   updateChatMetadata: (userId: string, updates: Partial<{ pinned: boolean; flagged: boolean }>) => Promise<void>;
   markNotificationAsRead: (notificationId: string) => Promise<void>;
   dismissNotification: (notificationId: string) => Promise<void>;
@@ -541,7 +550,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const sendMessage = async (receiverId: string, text: string, isAdmin: boolean = false) => {
+  const sendMessage = async (
+    receiverId: string,
+    text: string,
+    isAdmin: boolean = false,
+    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string }
+  ) => {
     if (!user) return;
     try {
       const { error } = await sendMessageRow({
@@ -550,6 +564,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         receiverId,
         text,
         isAdmin,
+        category: options?.category,
+        attachmentPath: options?.attachmentPath,
+        attachmentType: options?.attachmentType,
       });
       if (error) throw error;
       await fetchMessages();
@@ -557,6 +574,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       console.error('Error sending message:', error);
       throw error;
     }
+  };
+
+  const uploadChatAttachment = async (blob: Blob, meta: { fileExt: string; contentType: string }) => {
+    if (!user) return { path: null, error: new Error('Not signed in') };
+    return uploadChatAttachmentToStorage(user.id, blob, meta);
   };
 
   const sendBulkMessages = async (
@@ -638,6 +660,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
     } catch (error) {
       console.error('Error marking all messages as read:', error);
+    }
+  };
+
+  /** 運営がその会員（memberUserId）からのメッセージを既読にする */
+  const markMemberMessagesAsRead = async (memberUserId: string) => {
+    try {
+      setMessageThreads(prev => {
+        const updated = { ...prev };
+        if (updated[memberUserId]) {
+          updated[memberUserId] = updated[memberUserId].map(msg => !msg.isAdmin ? { ...msg, read: true } : msg);
+        }
+        return updated;
+      });
+      const { error } = await markMemberMessagesAsReadRow(memberUserId);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error marking member messages as read:', error);
     }
   };
 
@@ -782,7 +821,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading,
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
     approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, resetMembershipForNewYear, deleteUser,
-    sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, updateChatMetadata,
+    sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, markMemberMessagesAsRead, uploadChatAttachment, updateChatMetadata,
     markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost, togglePinBoardPost, reorderPinnedBoardPosts,
     uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, likeGalleryPhoto,
     refreshEvents: () => fetchEvents(true), refreshUsers: () => fetchUsers(true), refreshMessages: fetchMessages, refreshNotifications: fetchNotifications,

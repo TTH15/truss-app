@@ -32,7 +32,14 @@ interface AdminPageProps {
   onDeleteUser?: (userId: string) => void;
   messageThreads: MessageThread;
   onUpdateMessageThreads: Dispatch<SetStateAction<MessageThread>>;
-  onSendMessage?: (receiverId: string, text: string, isAdmin?: boolean) => Promise<void>;
+  onSendMessage?: (
+    receiverId: string,
+    text: string,
+    isAdmin?: boolean,
+    options?: { attachmentPath?: string; attachmentType?: string }
+  ) => Promise<void>;
+  onMarkMemberMessagesAsRead?: (memberUserId: string) => Promise<void>;
+  onUploadChatAttachment?: (blob: Blob, meta: { fileExt: string; contentType: string }) => Promise<{ path: string | null; error: unknown }>;
   chatThreadMetadata: ChatThreadMetadata;
   onUpdateChatThreadMetadata: Dispatch<SetStateAction<ChatThreadMetadata>>;
   selectedChatUserId: string | null;
@@ -74,7 +81,7 @@ const translations = {
   }
 };
 
-export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, membersLoading = false, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onDeleteBoardPost, onTogglePinBoardPost, onReorderPinnedBoardPosts, onSendBulkEmail, onSendBulkMessages, onCancelBroadcast }: AdminPageProps) {
+export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, membersLoading = false, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, onMarkMemberMessagesAsRead, onUploadChatAttachment, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onDeleteBoardPost, onTogglePinBoardPost, onReorderPinnedBoardPosts, onSendBulkEmail, onSendBulkMessages, onCancelBroadcast }: AdminPageProps) {
   const t = translations[language];
   const ADMIN_TAB_STORAGE_KEY = `truss-admin-tab-${user.id}`;
   const [currentTab, setCurrentTab] = useState<AdminTab>('members');
@@ -167,7 +174,7 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
           {currentTab === 'events' && <AdminEvents language={language} events={events} eventParticipants={eventParticipants} onCreateEvent={onCreateEvent} onUpdateEvent={onUpdateEvent} onDeleteEvent={onDeleteEvent} onSendBulkEmail={onSendBulkEmail} />}
           {currentTab === 'gallery' && <AdminGallery language={language} />}
           {currentTab === 'boards' && <AdminBoards language={language} adminUserId={user.id} adminName={user.name} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onDeleteBoardPost={onDeleteBoardPost} onTogglePinBoardPost={onTogglePinBoardPost} onReorderPinnedBoardPosts={onReorderPinnedBoardPosts} />}
-          {currentTab === 'chat' && <AdminChat language={language} adminUserId={user.id} messageThreads={messageThreads} onUpdateMessageThreads={onUpdateMessageThreads} onSendMessage={onSendMessage} onSendBulkMessages={onSendBulkMessages} onCancelBroadcast={onCancelBroadcast} approvedMembers={approvedMembers} pendingUsers={pendingUsers} chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={onUpdateChatThreadMetadata} selectedChatUserId={selectedChatUserId} onOpenMemberChat={onOpenMemberChat} />}
+          {currentTab === 'chat' && <AdminChat language={language} adminUserId={user.id} messageThreads={messageThreads} onUpdateMessageThreads={onUpdateMessageThreads} onSendMessage={onSendMessage} onMarkMemberMessagesAsRead={onMarkMemberMessagesAsRead} onUploadChatAttachment={onUploadChatAttachment} onSendBulkMessages={onSendBulkMessages} onCancelBroadcast={onCancelBroadcast} approvedMembers={approvedMembers} pendingUsers={pendingUsers} chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={onUpdateChatThreadMetadata} selectedChatUserId={selectedChatUserId} onOpenMemberChat={onOpenMemberChat} />}
         </main>
       </div>
 

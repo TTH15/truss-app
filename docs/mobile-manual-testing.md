@@ -1,6 +1,18 @@
 # モバイル手動E2E確認手順
 
-`apps/mobile`の各画面は`__DEV__`限定のモックログイン（ログイン画面下部の「[DEV] モックユーザーでタブ画面を確認」ボタン）でUIの見た目は確認できるが、モックセッションはSupabaseに実在しないため**実際のDB読み書きは検証できない**（RLSに弾かれる、または常に0件になる）。フォーム送信・イベント参加登録・チャット送受信・写真アップロードなど、実際にデータを書き込む処理は、本番Supabaseに対して実アカウントでの手動確認が必要。
+`apps/mobile`の各画面は`__DEV__`限定のモックログイン（ログイン画面下部の「[DEV] モックユーザーでタブ画面を確認」ボタン）でUIの見た目は確認できるが、モックセッションはSupabaseに実在しないため**実際のDB読み書きは検証できない**（RLSに弾かれる、または常に0件になる）。フォーム送信・イベント参加登録・チャット送受信・写真アップロードなど、実際にデータを書き込む処理は、実アカウントでの手動確認が必要。
+
+## dev用Supabaseプロジェクトを使う（本番データに触れない）
+
+本番とは別に`truss-app-dev`プロジェクト（組織`TTH15's Org`、リージョン`ap-south-1`）を用意済み。`npm run dev`（web）・`npx expo start`（mobile）はどちらもローカル実行時に自動でこちらへ接続される:
+
+- `apps/web/.env.development.local`（`npm run dev`実行時に`.env.local`より優先される、Next.jsの標準挙動）
+- `apps/mobile/.env.development.local`（`expo start`実行時に`.env`より優先される、`@expo/env`の標準挙動）
+- どちらもgitignore対象。本番用の`.env.local`/`.env`は変更していない
+
+dev DB用の運営（管理者）アカウント: `dev@truss.com` / `dev1234`（`is_admin: true`, `approved: true`, `registration_step: fully_active`）。Web管理画面（`/admin-xxxx`）にこのアカウントでログインして使う。
+
+マイグレーションはdev DBには全て適用済み。新しいマイグレーションを追加した場合、dev DBへは`supabase link --project-ref cuhggonkdpsidysjzjvj && supabase db push`で適用できる（本番への適用とは別に、CLIのリンク先を都度確認すること）。**本番への適用は従来通りDashboard SQL Editorから手動で行う**（`supabase/README.md`参照）。
 
 ## 準備
 
@@ -49,8 +61,4 @@ npx expo start --ios   # シミュレータは起動後 `i` キー、実機はEx
 
 ## 後片付け
 
-検証が終わったら、Web管理画面からテストユーザー・テストイベント・テスト写真を削除しておく（本番データに混ざったままにしない）。
-
-## 別案: ステージング用Supabaseプロジェクト
-
-本番データを一切汚したくない場合は、別のSupabaseプロジェクトを新規作成し`supabase/migrations/*.sql`を通し番号順に流し込み、`apps/mobile/.env`（必要なら`apps/web/.env.local`も）を差し替える方法もある。ただしマイグレーション約25本の再実行が必要でセットアップの手間が大きいため、通常は上記のテストアカウント方式を優先する。
+dev DBを使っていれば本番データには一切触れないため、後片付けは不要（テストユーザー・テストイベントはdev DBに残したままでよい）。

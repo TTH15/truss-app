@@ -91,6 +91,8 @@ export interface EventParticipant {
   paid?: boolean;
 }
 
+export type MessageCategory = 'inquiry' | 'event_consult' | 'membership' | 'trouble';
+
 export interface Message {
   id: number;
   senderId: string;
@@ -99,11 +101,15 @@ export interface Message {
   time: string;
   isAdmin: boolean;
   read?: boolean;
+  readAt?: string;
   pinned?: boolean;
   flagged?: boolean;
   isBroadcast?: boolean;
   broadcastSubject?: string;
   broadcastSubjectEn?: string;
+  category?: MessageCategory;
+  attachmentPath?: string;
+  attachmentType?: string;
 }
 
 export interface MessageThread {
