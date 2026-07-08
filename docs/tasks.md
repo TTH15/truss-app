@@ -1,6 +1,6 @@
 # Truss モバイル対応 実行タスクリスト
 
-詳細な背景・設計判断は [`plan.md`](./plan.md)、UI/世界観は [`design-concept.md`](./design-concept.md) を参照。本ドキュメントは「今何が終わっていて、次に何をやるか」を追うためのチェックリスト。
+詳細な背景・設計判断は [`plan.md`](./plan.md)、UI/世界観は [`design-concept.md`](./design-concept.md) を参照。本ドキュメントは「今何が終わっていて、次に何をやるか」を追うためのチェックリスト。モバイル各画面の「未検証」項目を実データで確認する手順は [`mobile-manual-testing.md`](./mobile-manual-testing.md) を参照。
 
 進捗更新ルール: 着手したら `[ ]` → `[x]`。フェーズの並び順は依存関係の順（Phase 1が終わるまでPhase 2以降のコードは書かない）。
 
