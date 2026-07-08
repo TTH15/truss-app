@@ -8,7 +8,12 @@
 -- PART 1: 拡張機能とENUM型
 -- =============================================
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- 新しいSupabaseプロジェクトはデフォルトで拡張を`extensions`スキーマにインストール済みのため
+-- `WITH SCHEMA public`を指定しても`IF NOT EXISTS`により無視される（移動されない）。
+-- search_pathに`extensions`を含めることで、スキーマがどちらでも
+-- 以降の`uuid_generate_v4()`呼び出しを解決できるようにする
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
+SET search_path TO public, extensions;
 
 CREATE TYPE user_category AS ENUM ('japanese', 'regular-international', 'exchange');
 
