@@ -4,9 +4,9 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ArrowLeft, Send, Pin, Flag } from 'lucide-react';
 import type { Language, User, Message as AppMessage, MessageThread, ChatThreadMetadata } from '@truss/core';
+import { formatDateLabel, formatMessageTime, parseMessageDate, toDateKey } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { toast } from 'sonner';
-import { formatDateLabel, formatMessageTime, parseMessageDate, toDateKey } from '../../lib/chat-time';
 
 interface MessagesPageProps {
   language: Language;

@@ -5,8 +5,8 @@ import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { MessageCircle, Send, Pin, Flag, ArrowLeft } from 'lucide-react';
 import type { Language, MessageThread, User as UserType, Message, ChatThreadMetadata } from '@truss/core';
+import { formatDateLabel, formatMessageTime, formatRelativeListTime, parseMessageDate, toDateKey } from '@truss/core';
 import { toast } from 'sonner';
-import { formatDateLabel, formatMessageTime, formatRelativeListTime, parseMessageDate, toDateKey } from '../../lib/chat-time';
 
 interface AdminChatMessagesProps {
   language: Language;

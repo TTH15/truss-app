@@ -1,12 +1,12 @@
 /**
- * チャット関連のタイムスタンプ表示ロジック（AdminChatMessages / MessagesPage で共有）
+ * チャット関連のタイムスタンプ表示ロジック（Web/モバイル共通）
  */
-import type { Language } from '@truss/core';
+import type { Language } from "./types/app";
 
-const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
-const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAYS_JA = ["日", "月", "火", "水", "木", "金", "土"];
+const WEEKDAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const pad2 = (n: number) => String(n).padStart(2, '0');
+const pad2 = (n: number) => String(n).padStart(2, "0");
 
 /** 楽観的更新時は `HH:MM` 形式の文字列が渡ってくるため、その場合は本日の時刻として解釈する */
 export function parseMessageDate(raw: string): Date {
@@ -34,13 +34,13 @@ export const toDateKey = (date: Date) =>
 /** 会話画面の日付区切り用ラベル（今日/昨日/月日+曜日/年月日+曜日） */
 export function formatDateLabel(date: Date, language: Language): string {
   const diffDays = diffCalendarDays(date);
-  if (diffDays === 0) return language === 'ja' ? '今日' : 'Today';
-  if (diffDays === 1) return language === 'ja' ? '昨日' : 'Yesterday';
-  const weekdays = language === 'ja' ? WEEKDAYS_JA : WEEKDAYS_EN;
+  if (diffDays === 0) return language === "ja" ? "今日" : "Today";
+  if (diffDays === 1) return language === "ja" ? "昨日" : "Yesterday";
+  const weekdays = language === "ja" ? WEEKDAYS_JA : WEEKDAYS_EN;
   const weekday = weekdays[date.getDay()];
   const now = new Date();
   if (date.getFullYear() < now.getFullYear()) {
-    return language === 'ja'
+    return language === "ja"
       ? `${date.getFullYear()}年${pad2(date.getMonth() + 1)}月${pad2(date.getDate())}日 ${weekday}`
       : `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())} ${weekday}`;
   }
@@ -61,18 +61,18 @@ export function formatRelativeListTime(raw: string, language: Language): string 
   const date = parseMessageDate(raw);
   const diffDays = diffCalendarDays(date);
   if (diffDays === 0) return formatMessageTime(raw);
-  if (diffDays === 1) return language === 'ja' ? '昨日' : 'Yesterday';
+  if (diffDays === 1) return language === "ja" ? "昨日" : "Yesterday";
   if (diffDays < 7) {
-    const weekdays = language === 'ja' ? WEEKDAYS_JA : WEEKDAYS_EN;
+    const weekdays = language === "ja" ? WEEKDAYS_JA : WEEKDAYS_EN;
     return weekdays[date.getDay()];
   }
   const now = new Date();
   if (date.getFullYear() < now.getFullYear()) {
-    return language === 'ja'
+    return language === "ja"
       ? `${date.getFullYear()}年${pad2(date.getMonth() + 1)}月${pad2(date.getDate())}日`
       : `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
   }
-  return language === 'ja'
+  return language === "ja"
     ? `${pad2(date.getMonth() + 1)}月${pad2(date.getDate())}日`
     : `${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
 }

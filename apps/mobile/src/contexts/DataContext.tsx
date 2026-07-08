@@ -1,14 +1,19 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { Event, EventParticipant } from '@truss/core';
+import type { ChatThreadMetadata, Event, EventParticipant, MessageThread } from '@truss/core';
 import {
+  markAllMessagesAsReadForUserRow,
   queryEventParticipantsGrouped,
   queryEvents,
+  queryMessageThreadsAndMetadata,
+  queryStaffInboxUserId,
   registerEventParticipant,
+  sendMessageRow,
   toggleEventLikeForUser,
   unregisterEventParticipant,
 } from '@truss/core';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 interface DataContextType {
   events: Event[];
@@ -18,6 +23,11 @@ interface DataContextType {
   registerForEvent: (eventId: number, photoRefusal?: boolean) => Promise<void>;
   unregisterFromEvent: (eventId: number) => Promise<void>;
   toggleEventLike: (eventId: number) => Promise<void>;
+  messageThreads: MessageThread;
+  chatThreadMetadata: ChatThreadMetadata;
+  staffInboxUserId: string | null;
+  sendMessageToStaff: (text: string) => Promise<void>;
+  markStaffThreadAsRead: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -26,6 +36,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [eventParticipants, setEventParticipants] = useState<{ [eventId: number]: EventParticipant[] }>({});
+  const [messageThreads, setMessageThreads] = useState<MessageThread>({});
+  const [chatThreadMetadata, setChatThreadMetadata] = useState<ChatThreadMetadata>({});
+  const [staffInboxUserId, setStaffInboxUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchEvents = async () => {
@@ -36,6 +49,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchEventParticipants = async () => {
     const data = await queryEventParticipantsGrouped();
     setEventParticipants(data);
+  };
+
+  const fetchMessages = async () => {
+    const { threads, metadata } = await queryMessageThreadsAndMetadata();
+    setMessageThreads(threads);
+    setChatThreadMetadata(metadata);
   };
 
   const refresh = async () => {
@@ -51,6 +70,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    void fetchMessages();
+    void queryStaffInboxUserId()
+      .then(setStaffInboxUserId)
+      .catch((error) => console.error('Failed to load staff inbox user id:', error));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const messagesChannel = supabase
+      .channel(`messages-${user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, () => void fetchMessages())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: 'is_broadcast=eq.true' }, () => void fetchMessages())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, () => void fetchMessages())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(messagesChannel);
+    };
+  }, [user]);
 
   const registerForEvent = async (eventId: number, photoRefusal = false) => {
     if (!user) return;
@@ -91,9 +131,51 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const sendMessageToStaff = async (text: string) => {
+    if (!user || !staffInboxUserId) return;
+    try {
+      const { error } = await sendMessageRow({
+        senderId: user.id,
+        senderName: user.name,
+        receiverId: staffInboxUserId,
+        text,
+        isAdmin: false,
+      });
+      if (error) throw error;
+      await fetchMessages();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
+  };
+
+  const markStaffThreadAsRead = async () => {
+    if (!user) return;
+    try {
+      const { error } = await markAllMessagesAsReadForUserRow(user.id);
+      if (error) throw error;
+      await fetchMessages();
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
+
   return (
     <DataContext.Provider
-      value={{ events, eventParticipants, loading, refresh, registerForEvent, unregisterFromEvent, toggleEventLike }}
+      value={{
+        events,
+        eventParticipants,
+        loading,
+        refresh,
+        registerForEvent,
+        unregisterFromEvent,
+        toggleEventLike,
+        messageThreads,
+        chatThreadMetadata,
+        staffInboxUserId,
+        sendMessageToStaff,
+        markStaffThreadAsRead,
+      }}
     >
       {children}
     </DataContext.Provider>
