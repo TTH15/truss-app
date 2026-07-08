@@ -52,6 +52,7 @@ const BUCKETS = {
   EVENT_IMAGES: 'event-images',
   GALLERY_PHOTOS: 'gallery-photos',
   USER_AVATARS: 'user-avatars',
+  BOARD_POST_IMAGES: 'board-post-images',
 } as const;
 
 /** ログイン中ユーザーの UID（Supabase Auth）配下へ保存。path の先頭は必ず auth.uid()（Storage RLS と一致） */
@@ -164,6 +165,36 @@ export async function uploadGalleryPhoto(userId: string, eventId: number, file: 
 export async function deleteGalleryPhoto(filePath: string) {
   const { error } = await supabase.storage
     .from(BUCKETS.GALLERY_PHOTOS)
+    .remove([filePath]);
+  return { error };
+}
+
+export async function uploadBoardPostImage(userId: string, file: File) {
+  const fileExt = file.name.split('.').pop() || 'jpg';
+  const timestamp = Date.now();
+  const suffix =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+  const fileName = `${userId}-${timestamp}-${suffix}.${fileExt}`;
+
+  const { error } = await supabase.storage.from(BUCKETS.BOARD_POST_IMAGES).upload(fileName, file, {
+    contentType: file.type || 'image/jpeg',
+    upsert: false,
+  });
+
+  if (error) return { url: null, error };
+
+  const { data: urlData } = supabase.storage
+    .from(BUCKETS.BOARD_POST_IMAGES)
+    .getPublicUrl(fileName);
+
+  return { url: urlData.publicUrl, error: null };
+}
+
+export async function deleteBoardPostImage(filePath: string) {
+  const { error } = await supabase.storage
+    .from(BUCKETS.BOARD_POST_IMAGES)
     .remove([filePath]);
   return { error };
 }

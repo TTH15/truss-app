@@ -35,6 +35,7 @@ import {
 } from '@truss/core';
 import {
   createBoardPostRow,
+  type CreateBoardPostInput,
   addReplyRow,
   togglePostInterestForUser,
   deleteBoardPostRow,
@@ -104,7 +105,7 @@ interface DataContextType {
   updateChatMetadata: (userId: string, updates: Partial<{ pinned: boolean; flagged: boolean }>) => Promise<void>;
   markNotificationAsRead: (notificationId: string) => Promise<void>;
   dismissNotification: (notificationId: string) => Promise<void>;
-  createBoardPost: (post: Omit<BoardPost, 'id' | 'replies'>) => Promise<void>;
+  createBoardPost: (post: CreateBoardPostInput) => Promise<void>;
   addReply: (postId: number, reply: Omit<BoardPostReply, 'id'>) => Promise<void>;
   toggleInterest: (postId: number) => Promise<void>;
   deleteBoardPost: (postId: number) => Promise<void>;
@@ -670,7 +671,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const createBoardPost = async (post: Omit<BoardPost, 'id' | 'replies'>) => {
+  const createBoardPost = async (post: CreateBoardPostInput) => {
     if (!user) return;
     try {
       const { error } = await createBoardPostRow(user.id, post);

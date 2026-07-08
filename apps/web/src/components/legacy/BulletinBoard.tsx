@@ -7,7 +7,7 @@ import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { BoardPostWithReplies } from './BoardPostWithReplies';
-import type { Language, User, BoardPost, BoardPostReply } from '@truss/core';
+import type { Language, User, BoardPost, BoardPostReply, CreateBoardPostInput } from '@truss/core';
 import { normalizeBoardContent } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
 
@@ -17,7 +17,7 @@ interface BulletinBoardProps {
   onInterested: (post: { author: string; authorAvatar: string; title: string }) => void;
   boardPosts: BoardPost[];
   onUpdateBoardPosts: (posts: BoardPost[]) => void;
-  onCreateBoardPost?: (post: Omit<BoardPost, 'id' | 'replies'>) => Promise<void>;
+  onCreateBoardPost?: (post: CreateBoardPostInput) => Promise<void>;
   onAddReply?: (postId: number, reply: Omit<BoardPostReply, 'id'>) => Promise<void>;
   onToggleInterest?: (postId: number) => Promise<void>;
   onDeleteBoardPost?: (postId: number) => Promise<void>;
@@ -169,7 +169,7 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
                 <Button
                   onClick={async () => {
                     if (!canWrite) return;
-                    const post = {
+                    const post: CreateBoardPostInput = {
                       authorId: user.id,
                       author: user.name,
                       authorAvatar: user.name.substring(0, 2).toUpperCase(),
@@ -180,14 +180,25 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
                       interested: 0,
                       tag: 'languageExchange' as const,
                       time: new Date().toISOString(),
-                      image: previewUrl,
+                      imageFile: selectedFile ?? undefined,
                       displayType: newPost.displayType,
                       expiryDate: newPost.displayType === 'board' ? newPost.expiryDate : '',
                       isHidden: false,
                       isDeleted: false,
                     };
                     if (onCreateBoardPost) await onCreateBoardPost(post);
-                    else onUpdateBoardPosts([{ ...post, id: (boardPosts.length ? Math.max(...boardPosts.map((p) => p.id)) : 0) + 1, replies: [] }, ...boardPosts]);
+                    else {
+                      const { imageFile: _imageFile, ...postWithoutFile } = post;
+                      const localPost: BoardPost = {
+                        ...postWithoutFile,
+                        image: previewUrl,
+                        id: (boardPosts.length ? Math.max(...boardPosts.map((p) => p.id)) : 0) + 1,
+                        replies: [],
+                      };
+                      onUpdateBoardPosts([localPost, ...boardPosts]);
+                    }
+                    setSelectedFile(null);
+                    setPreviewUrl('');
                     setIsDialogOpen(false);
                   }}
                   className="flex-1 bg-[#49B1E4] hover:bg-[#3A9FD3]"

@@ -1,17 +1,34 @@
 /**
  * 掲示板関連の書き込み集約
  */
-import { supabase } from "../../supabase";
+import { supabase, uploadBoardPostImage as uploadBoardPostImageToStorage } from "../../supabase";
 import type { BoardPost, BoardPostReply } from "../../types/app";
 
 function toErrorOrNull(error: { message: string } | null) {
   return error ? new Error(error.message) : null;
 }
 
+/** アップロード時は imageFile で Storage に保存し、DB には公開 URL のみ保存する（image は省略可） */
+export type CreateBoardPostInput = Omit<BoardPost, "id" | "replies" | "image"> & {
+  image?: BoardPost["image"];
+  imageFile?: File;
+};
+
 export async function createBoardPostRow(
   authorId: string,
-  post: Omit<BoardPost, "id" | "replies">
+  post: CreateBoardPostInput
 ): Promise<{ error: Error | null }> {
+  let imageValue: string | null = null;
+  if (post.imageFile) {
+    const { url, error: upErr } = await uploadBoardPostImageToStorage(authorId, post.imageFile);
+    if (upErr || !url) {
+      return { error: new Error(upErr?.message ?? "画像のアップロードに失敗しました") };
+    }
+    imageValue = url;
+  } else if (post.image) {
+    imageValue = post.image;
+  }
+
   const { error } = await supabase.from("board_posts").insert({
     author_id: authorId,
     author: post.author,
@@ -22,7 +39,7 @@ export async function createBoardPostRow(
     people_needed: post.peopleNeeded,
     interested: 0,
     tag: post.tag,
-    image: post.image || null,
+    image: imageValue,
     display_type: post.displayType,
     expiry_date: post.expiryDate || null,
     is_hidden: false,

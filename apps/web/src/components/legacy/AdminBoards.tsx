@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
-import type { Language, BoardPost } from '@truss/core';
+import type { Language, BoardPost, CreateBoardPostInput } from '@truss/core';
 import { normalizeBoardContent } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
 
@@ -17,15 +17,15 @@ interface AdminBoardsProps {
   adminName?: string;
   boardPosts?: BoardPost[];
   onUpdateBoardPosts?: (posts: BoardPost[]) => void;
-  onCreateBoardPost?: (post: Omit<BoardPost, 'id' | 'replies'>) => Promise<void>;
+  onCreateBoardPost?: (post: CreateBoardPostInput) => Promise<void>;
   onDeleteBoardPost?: (postId: number) => Promise<void>;
   onTogglePinBoardPost?: (postId: number, pinned: boolean) => Promise<void>;
   onReorderPinnedBoardPosts?: (orderedPostIds: number[]) => Promise<void>;
 }
 
 const translations = {
-  ja: { title: '掲示板管理', allPosts: 'すべての投稿', pinnedSection: 'ピン留め', pinnedEmpty: 'ピン留めされた投稿はありません', pinnedHint: 'ドラッグで表示順を入れ替えられます', hidden: '非表示', delete: '削除する', pin: 'ピン留め', unpin: 'ピン解除', deleteReason: '削除する理由', reasonInappropriate: '内容が不適切だと判断されたため。', reasonDuplicate: '同じ内容の掲示板が存在するため。', createPost: '運営投稿', postTitle: 'タイトル', postContent: '内容', submit: '投稿する', cancel: 'キャンセル' },
-  en: { title: 'Board Management', allPosts: 'All Posts', pinnedSection: 'Pinned', pinnedEmpty: 'No pinned posts yet', pinnedHint: 'Drag to reorder', hidden: 'Hidden', delete: 'Delete', pin: 'Pin', unpin: 'Unpin', deleteReason: 'Reason for deletion', reasonInappropriate: 'Judged as inappropriate content.', reasonDuplicate: 'Duplicate post exists.', createPost: 'Admin Post', postTitle: 'Title', postContent: 'Content', submit: 'Submit', cancel: 'Cancel' }
+  ja: { title: '掲示板管理', allPosts: 'すべての投稿', pinnedSection: 'ピン留め', pinnedEmpty: 'ピン留めされた投稿はありません', pinnedHint: 'ドラッグで表示順を入れ替えられます', hidden: '非表示', delete: '削除する', pin: 'ピン留め', unpin: 'ピン解除', deleteReason: '削除する理由', reasonInappropriate: '内容が不適切だと判断されたため。', reasonDuplicate: '同じ内容の掲示板が存在するため。', createPost: '運営投稿', postTitle: 'タイトル', postContent: '内容', uploadImage: '画像をアップロード（任意）', submit: '投稿する', cancel: 'キャンセル' },
+  en: { title: 'Board Management', allPosts: 'All Posts', pinnedSection: 'Pinned', pinnedEmpty: 'No pinned posts yet', pinnedHint: 'Drag to reorder', hidden: 'Hidden', delete: 'Delete', pin: 'Pin', unpin: 'Unpin', deleteReason: 'Reason for deletion', reasonInappropriate: 'Judged as inappropriate content.', reasonDuplicate: 'Duplicate post exists.', createPost: 'Admin Post', postTitle: 'Title', postContent: 'Content', uploadImage: 'Upload Image (optional)', submit: 'Submit', cancel: 'Cancel' }
 };
 
 export function AdminBoards({ language, adminUserId = 'admin', adminName, boardPosts = [], onUpdateBoardPosts = () => {}, onCreateBoardPost, onDeleteBoardPost, onTogglePinBoardPost, onReorderPinnedBoardPosts }: AdminBoardsProps) {
@@ -34,6 +34,8 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
   const [posts, setPosts] = useState(boardPosts);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newPost, setNewPost] = useState({ title: '', content: '' });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
   const [dialogState, setDialogState] = useState<{ isOpen: boolean; postId: number | null; action: 'delete' | null; }>({ isOpen: false, postId: null, action: null });
   const [draggingPostId, setDraggingPostId] = useState<number | null>(null);
   const [dragOverPostId, setDragOverPostId] = useState<number | null>(null);
@@ -56,7 +58,7 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
 
   const handleCreatePost = async () => {
     if (!newPost.title.trim() || !newPost.content.trim()) return;
-    const postPayload: Omit<BoardPost, 'id' | 'replies'> = {
+    const postPayload: CreateBoardPostInput = {
       authorId: adminUserId,
       author: adminName || (language === 'ja' ? '運営' : 'Admin'),
       authorAvatar: (adminName || 'AD').substring(0, 2).toUpperCase(),
@@ -67,6 +69,7 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
       interested: 0,
       tag: 'event',
       time: new Date().toISOString(),
+      imageFile: selectedFile ?? undefined,
       displayType: 'board',
       expiryDate: '',
       isHidden: false,
@@ -75,8 +78,10 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
     if (onCreateBoardPost) {
       await onCreateBoardPost(postPayload);
     } else {
+      const { imageFile: _imageFile, ...postWithoutFile } = postPayload;
       const localPost: BoardPost = {
-        ...postPayload,
+        ...postWithoutFile,
+        image: previewUrl,
         id: (posts.length ? Math.max(...posts.map((p) => p.id)) : 0) + 1,
         replies: [],
       };
@@ -85,6 +90,8 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
       onUpdateBoardPosts(updated);
     }
     setNewPost({ title: '', content: '' });
+    setSelectedFile(null);
+    setPreviewUrl('');
     setIsCreateDialogOpen(false);
   };
 
@@ -188,6 +195,21 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
             <div className="space-y-4 py-2">
               <div className="space-y-2"><Input placeholder={t.postTitle} value={newPost.title} onChange={(e) => setNewPost((prev) => ({ ...prev, title: e.target.value }))} /></div>
               <div className="space-y-2"><Textarea placeholder={t.postContent} value={newPost.content} rows={5} onChange={(e) => setNewPost((prev) => ({ ...prev, content: e.target.value }))} /></div>
+              <div className="space-y-2">
+                <p className="text-sm text-[#6B6B7A]">{t.uploadImage}</p>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setSelectedFile(file);
+                      setPreviewUrl(URL.createObjectURL(file));
+                    }
+                  }}
+                />
+                {previewUrl && <img src={previewUrl} alt="Preview" className="w-full h-40 object-cover rounded-md" />}
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>{t.cancel}</Button>
