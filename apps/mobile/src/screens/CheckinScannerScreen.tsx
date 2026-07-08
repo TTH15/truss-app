@@ -4,7 +4,7 @@ import { parseEventCheckinPayload } from '@truss/core';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -35,6 +35,7 @@ function todayDateString(): string {
 
 export function CheckinScannerScreen({ onClose }: CheckinScannerScreenProps) {
   const colors = Colors.light;
+  const insets = useSafeAreaInsets();
   const { events, eventParticipants, confirmEventAttendance } = useData();
   const [permission, requestPermission] = useCameraPermissions();
   const [pending, setPending] = useState<PendingCheckin | null>(null);
@@ -125,9 +126,9 @@ export function CheckinScannerScreen({ onClose }: CheckinScannerScreenProps) {
         barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
         onBarcodeScanned={isPaused ? undefined : handleBarcodeScanned}
       />
-      <SafeAreaView style={styles.overlay} pointerEvents="box-none">
-        <View style={styles.headerRow}>
-          <Pressable style={styles.headerButton} onPress={onClose}>
+      <View style={styles.overlay} pointerEvents="box-none">
+        <View style={[styles.headerRow, { paddingTop: insets.top + Spacing.two }]}>
+          <Pressable style={styles.headerButton} onPress={onClose} hitSlop={8}>
             <Ionicons name="close" size={26} color="#FFFFFF" />
           </Pressable>
           <ThemedText style={styles.headerTitle}>チェックインスキャナー</ThemedText>
@@ -205,7 +206,7 @@ export function CheckinScannerScreen({ onClose }: CheckinScannerScreenProps) {
             </Pressable>
           </View>
         )}
-      </SafeAreaView>
+      </View>
     </ThemedView>
   );
 }

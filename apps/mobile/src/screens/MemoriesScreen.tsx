@@ -12,7 +12,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SelectField } from '@/components/SelectField';
 import { ThemedText } from '@/components/themed-text';
@@ -28,6 +28,7 @@ export function MemoriesScreen() {
   const { user } = useAuth();
   const { events, galleryPhotos, uploadGalleryPhoto, likeGalleryPhoto } = useData();
   const colors = Colors.light;
+  const insets = useSafeAreaInsets();
 
   const [likedPhotoIds, setLikedPhotoIds] = useState<Set<number>>(new Set());
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -163,7 +164,7 @@ export function MemoriesScreen() {
       <Modal visible={uploadOpen} animationType="slide" onRequestClose={closeUpload}>
         <ThemedView style={styles.container}>
           <SafeAreaView style={styles.safeArea}>
-            <ScrollView contentContainerStyle={styles.uploadContent}>
+            <ScrollView contentContainerStyle={[styles.uploadContent, { paddingTop: insets.top + Spacing.four }]}>
               <View style={styles.uploadHeaderRow}>
                 <ThemedText type="subtitle">写真を追加</ThemedText>
                 <Pressable onPress={closeUpload}>

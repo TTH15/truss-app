@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { formatDateLabel, formatMessageTime, getChatAttachmentSignedUrl, getMessageCategoryLabel, MESSAGE_CATEGORY_OPTIONS, parseMessageDate, toDateKey, type Message, type MessageCategory } from '@truss/core';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -19,8 +19,10 @@ export function TrussEmbassyScreen({ onClose }: TrussEmbassyScreenProps) {
   const { user } = useAuth();
   const { messageThreads, sendMessageToStaff, markStaffThreadAsRead, uploadChatAttachment } = useData();
   const colors = Colors.light;
+  const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [category, setCategory] = useState<MessageCategory>('inquiry');
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [pickedAttachment, setPickedAttachment] = useState<PickedChatAttachment | null>(null);
   const [picking, setPicking] = useState(false);
   const [sending, setSending] = useState(false);
@@ -29,6 +31,7 @@ export function TrussEmbassyScreen({ onClose }: TrussEmbassyScreenProps) {
   const hasMarkedRead = useRef(false);
 
   const messages = (user && messageThreads[user.id]) || [];
+  const selectedCategoryLabel = getMessageCategoryLabel(category, 'ja');
 
   useEffect(() => {
     if (hasMarkedRead.current) return;
@@ -100,112 +103,102 @@ export function TrussEmbassyScreen({ onClose }: TrussEmbassyScreenProps) {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={[styles.header, { borderColor: colors.border }]}>
-          <Pressable onPress={onClose} hitSlop={8}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </Pressable>
-          <View style={styles.headerTextGroup}>
-            <ThemedText type="subtitle">Truss Embassy</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">運営とのチャット</ThemedText>
-          </View>
+      <View style={[styles.header, { borderColor: colors.border, paddingTop: insets.top + Spacing.two }]}>
+        <Pressable onPress={onClose} hitSlop={12} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </Pressable>
+        <View style={styles.headerTextGroup}>
+          <ThemedText type="subtitle">Truss Embassy</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">運営とのチャット</ThemedText>
         </View>
+      </View>
 
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 44 : 0}
+      >
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.messagesContent}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         >
-          <ScrollView
-            ref={scrollRef}
-            contentContainerStyle={styles.messagesContent}
-            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-          >
-            {messages.length === 0 ? (
-              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                まだメッセージはありません。運営への質問・相談があればお気軽にどうぞ。
-              </ThemedText>
-            ) : (
-              messages.map((message, index) => {
-                const currentDate = parseMessageDate(message.time);
-                const prevDate = index > 0 ? parseMessageDate(messages[index - 1].time) : null;
-                const showDateLabel = !prevDate || toDateKey(currentDate) !== toDateKey(prevDate);
-                const isMine = !message.isAdmin;
-                const categoryLabel = getMessageCategoryLabel(message.category, 'ja');
-                const attachmentUrl = message.attachmentPath ? signedUrls[message.attachmentPath] : undefined;
-                return (
-                  <View key={message.id}>
-                    {showDateLabel && (
-                      <View style={styles.dateLabelRow}>
-                        <View style={[styles.dateLabelPill, { backgroundColor: colors.backgroundSelected }]}>
-                          <ThemedText type="small" themeColor="textSecondary">
-                            {formatDateLabel(currentDate, 'ja')}
-                          </ThemedText>
-                        </View>
-                      </View>
-                    )}
-                    {isMine && categoryLabel && (
-                      <View style={[styles.categoryRow, styles.categoryRowMine]}>
-                        <View style={[styles.categoryTag, { backgroundColor: colors.backgroundSelected }]}>
-                          <ThemedText type="small" style={{ color: colors.tint }}>{categoryLabel}</ThemedText>
-                        </View>
-                      </View>
-                    )}
-                    <View style={[styles.bubbleRow, isMine ? styles.bubbleRowMine : styles.bubbleRowTheirs]}>
-                      <View
-                        style={[
-                          styles.bubble,
-                          isMine ? { backgroundColor: colors.tint } : { backgroundColor: colors.backgroundElement },
-                        ]}
-                      >
-                        {attachmentUrl && (
-                          <Image source={{ uri: attachmentUrl }} style={styles.attachmentImage} />
-                        )}
-                        {message.text && message.text !== '（添付ファイル）' && (
-                          <ThemedText style={isMine ? styles.bubbleTextMine : undefined}>{message.text}</ThemedText>
-                        )}
+          {messages.length === 0 ? (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+              まだメッセージはありません。運営への質問・相談があればお気軽にどうぞ。
+            </ThemedText>
+          ) : (
+            messages.map((message, index) => {
+              const currentDate = parseMessageDate(message.time);
+              const prevDate = index > 0 ? parseMessageDate(messages[index - 1].time) : null;
+              const showDateLabel = !prevDate || toDateKey(currentDate) !== toDateKey(prevDate);
+              const isMine = !message.isAdmin;
+              const categoryLabel = getMessageCategoryLabel(message.category, 'ja');
+              const attachmentUrl = message.attachmentPath ? signedUrls[message.attachmentPath] : undefined;
+              return (
+                <View key={message.id}>
+                  {showDateLabel && (
+                    <View style={styles.dateLabelRow}>
+                      <View style={[styles.dateLabelPill, { backgroundColor: colors.backgroundSelected }]}>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {formatDateLabel(currentDate, 'ja')}
+                        </ThemedText>
                       </View>
                     </View>
-                    <View style={[styles.metaRow, isMine ? styles.timeTextMine : styles.timeTextTheirs]}>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {formatMessageTime(message.time)}
-                        {isMine && message.read ? '　既読' : ''}
-                      </ThemedText>
+                  )}
+                  {isMine && categoryLabel && (
+                    <View style={[styles.categoryRow, styles.categoryRowMine]}>
+                      <View style={[styles.categoryTag, { backgroundColor: colors.backgroundSelected }]}>
+                        <ThemedText type="small" style={{ color: colors.tint }}>{categoryLabel}</ThemedText>
+                      </View>
+                    </View>
+                  )}
+                  <View style={[styles.bubbleRow, isMine ? styles.bubbleRowMine : styles.bubbleRowTheirs]}>
+                    <View
+                      style={[
+                        styles.bubble,
+                        isMine ? { backgroundColor: colors.tint } : { backgroundColor: colors.backgroundElement },
+                      ]}
+                    >
+                      {attachmentUrl && (
+                        <Image source={{ uri: attachmentUrl }} style={styles.attachmentImage} />
+                      )}
+                      {message.text && message.text !== '（添付ファイル）' && (
+                        <ThemedText style={isMine ? styles.bubbleTextMine : undefined}>{message.text}</ThemedText>
+                      )}
                     </View>
                   </View>
-                );
-              })
-            )}
-          </ScrollView>
-
-          <View style={styles.categoryPickerRow}>
-            {MESSAGE_CATEGORY_OPTIONS.map((option) => (
-              <Pressable
-                key={option.key}
-                style={[
-                  styles.categoryChip,
-                  { borderColor: colors.border },
-                  category === option.key && { backgroundColor: colors.tint, borderColor: colors.tint },
-                ]}
-                onPress={() => setCategory(option.key)}
-              >
-                <ThemedText type="small" style={category === option.key ? styles.categoryChipTextActive : undefined}>
-                  {option.labelJa}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-
-          {pickedAttachment && (
-            <View style={styles.attachmentPreviewRow}>
-              <Image source={{ uri: pickedAttachment.uri }} style={styles.attachmentPreview} />
-              <Pressable onPress={() => setPickedAttachment(null)} hitSlop={8}>
-                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-              </Pressable>
-            </View>
+                  <View style={[styles.metaRow, isMine ? styles.timeTextMine : styles.timeTextTheirs]}>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {formatMessageTime(message.time)}
+                      {isMine && message.read ? '　既読' : ''}
+                    </ThemedText>
+                  </View>
+                </View>
+              );
+            })
           )}
+        </ScrollView>
 
-          <View style={[styles.inputRow, { borderColor: colors.border }]}>
+        {pickedAttachment && (
+          <View style={[styles.attachmentPreviewRow, { borderColor: colors.border }]}>
+            <Image source={{ uri: pickedAttachment.uri }} style={styles.attachmentPreview} />
+            <Pressable onPress={() => setPickedAttachment(null)} hitSlop={8}>
+              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+        )}
+
+        <SafeAreaView edges={['bottom']} style={[styles.inputArea, { borderColor: colors.border }]}>
+          <Pressable
+            style={[styles.categoryPill, { borderColor: colors.border }]}
+            onPress={() => setCategoryPickerOpen(true)}
+          >
+            <ThemedText type="small" themeColor="textSecondary">{selectedCategoryLabel}</ThemedText>
+            <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+          </Pressable>
+
+          <View style={styles.inputRow}>
             <Pressable style={styles.attachButton} onPress={() => void handlePickAttachment()} disabled={picking}>
               {picking ? (
                 <ActivityIndicator size="small" color={colors.textSecondary} />
@@ -233,17 +226,35 @@ export function TrussEmbassyScreen({ onClose }: TrussEmbassyScreenProps) {
               {sending ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Ionicons name="send" size={18} color="#FFFFFF" />}
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+
+      <Modal visible={categoryPickerOpen} transparent animationType="fade" onRequestClose={() => setCategoryPickerOpen(false)}>
+        <Pressable style={styles.categoryBackdrop} onPress={() => setCategoryPickerOpen(false)}>
+          <View style={[styles.categorySheet, { backgroundColor: colors.backgroundElement }]}>
+            <ThemedText type="smallBold" style={styles.categorySheetTitle}>相談カテゴリ</ThemedText>
+            {MESSAGE_CATEGORY_OPTIONS.map((option) => (
+              <Pressable
+                key={option.key}
+                style={[styles.categoryOption, { borderColor: colors.border }]}
+                onPress={() => {
+                  setCategory(option.key);
+                  setCategoryPickerOpen(false);
+                }}
+              >
+                <ThemedText style={category === option.key ? { color: colors.tint } : undefined}>{option.labelJa}</ThemedText>
+                {category === option.key && <Ionicons name="checkmark" size={18} color={colors.tint} />}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  safeArea: {
     flex: 1,
   },
   flex: {
@@ -254,8 +265,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
+    paddingBottom: Spacing.three,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  backButton: {
+    padding: Spacing.one,
   },
   headerTextGroup: {
     gap: 2,
@@ -324,41 +338,40 @@ const styles = StyleSheet.create({
   timeTextTheirs: {
     alignItems: 'flex-start',
   },
-  categoryPickerRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two,
-  },
-  categoryChip: {
-    borderWidth: 1,
-    borderRadius: Spacing.four,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 4,
-  },
-  categoryChipTextActive: {
-    color: '#FFFFFF',
-  },
   attachmentPreviewRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   attachmentPreview: {
     width: 56,
     height: 56,
     borderRadius: Spacing.one,
   },
+  inputArea: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.three,
+    gap: Spacing.two,
+  },
+  categoryPill: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: Spacing.four,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+  },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   attachButton: {
     width: 40,
@@ -383,5 +396,28 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.5,
+  },
+  categoryBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.four,
+  },
+  categorySheet: {
+    alignSelf: 'stretch',
+    borderRadius: Spacing.three,
+    padding: Spacing.four,
+    gap: Spacing.one,
+  },
+  categorySheetTitle: {
+    marginBottom: Spacing.two,
+  },
+  categoryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.three,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
 });

@@ -8,7 +8,7 @@ import {
 } from '@truss/core';
 import { useMemo, useState } from 'react';
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EventTicket } from '@/components/EventTicket';
 import { ThemedText } from '@/components/themed-text';
@@ -24,6 +24,7 @@ export function JourneyScreen() {
   const { user } = useAuth();
   const { events, eventParticipants, loading, registerForEvent, unregisterFromEvent, toggleEventLike } = useData();
   const colors = Colors.light;
+  const insets = useSafeAreaInsets();
 
   const [likedEvents, setLikedEvents] = useState<Set<number>>(new Set());
   const [detailEvent, setDetailEvent] = useState<Event | null>(null);
@@ -159,7 +160,7 @@ export function JourneyScreen() {
       >
         {detailEvent && (
           <SafeAreaView style={[styles.modalSafeArea, { backgroundColor: colors.background }]}>
-            <ScrollView contentContainerStyle={styles.modalContent}>
+            <ScrollView contentContainerStyle={[styles.modalContent, { paddingTop: insets.top + Spacing.four }]}>
               <View style={styles.modalHeaderRow}>
                 <ThemedText type="subtitle">イベント詳細</ThemedText>
                 <Pressable onPress={() => setDetailEvent(null)}>
