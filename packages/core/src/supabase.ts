@@ -140,32 +140,26 @@ export async function uploadEventImage(eventId: number, file: File) {
   return { url: urlData.publicUrl, error: null };
 }
 
-function inferGalleryImageContentType(file: File): string {
-  if (file.type) return file.type;
-  const ext = file.name.split('.').pop()?.toLowerCase();
-  const byExt: Record<string, string> = {
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    png: 'image/png',
-    webp: 'image/webp',
-    gif: 'image/gif',
-    heic: 'image/heic',
-    heif: 'image/heif',
-  };
-  return (ext && byExt[ext]) || 'image/jpeg';
-}
-
-export async function uploadGalleryPhoto(userId: string, eventId: number, file: File) {
-  const fileExt = file.name.split('.').pop() || 'jpg';
+/**
+ * `blob`本体には`.name`/`.type`が保証されない（Webの`File`はBlobを継承するが、
+ * モバイルの`fetch(uri).then(r => r.blob())`はどちらも持たない）ため、
+ * ファイル拡張子・content typeは呼び出し側で明示的に渡す
+ */
+export async function uploadGalleryPhoto(
+  userId: string,
+  eventId: number,
+  blob: Blob,
+  meta: { fileExt: string; contentType: string }
+) {
   const timestamp = Date.now();
   const suffix =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID().slice(0, 8)
       : Math.random().toString(36).slice(2, 10);
-  const fileName = `${eventId}/${userId}-${timestamp}-${suffix}.${fileExt}`;
+  const fileName = `${eventId}/${userId}-${timestamp}-${suffix}.${meta.fileExt}`;
 
-  const { error } = await supabase.storage.from(BUCKETS.GALLERY_PHOTOS).upload(fileName, file, {
-    contentType: inferGalleryImageContentType(file),
+  const { error } = await supabase.storage.from(BUCKETS.GALLERY_PHOTOS).upload(fileName, blob, {
+    contentType: meta.contentType,
     upsert: false,
   });
 

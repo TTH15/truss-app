@@ -64,7 +64,7 @@ export function GalleryPage({ language, currentUser }: GalleryPageProps) {
           eventId: selectedEventData.id,
           eventName: selectedEventData.name,
           eventDate: selectedEventData.date,
-          imageFile: file,
+          imageFile: { blob: file, fileName: file.name, contentType: file.type },
           height: 200,
           userId: currentUser.id,
           userName: currentUser.nickname || currentUser.name || 'Unknown',
@@ -115,7 +115,7 @@ export function GalleryPage({ language, currentUser }: GalleryPageProps) {
           <DialogHeader><DialogTitle>{t.addPhoto}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <Select value={selectedEvent} onValueChange={setSelectedEvent}><SelectTrigger className="w-full"><SelectValue placeholder={t.selectEvent} /></SelectTrigger><SelectContent>{events.map((event) => <SelectItem key={event.id} value={event.name}>{event.name}</SelectItem>)}</SelectContent></Select>
-            <div className="relative"><Upload className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><Input type="file" accept={GALLERY_PHOTO_ACCEPT} multiple onChange={(e) => { const files = e.target.files; if (!files) return; const list = Array.from(files); const ok = list.filter(isGalleryPhotoMimeAllowed); const bad = list.length - ok.length; if (bad > 0) toast.error(language === 'ja' ? `対応していない形式が ${bad} 件あります（JPEG / PNG / WebP / GIF / HEIC・HEIF）` : `${bad} file(s) skipped — only JPEG, PNG, WebP, GIF, HEIC/HEIF`); if (ok.length === 0) return; setSelectedFiles(ok); setPreviewUrls(ok.map((f) => URL.createObjectURL(f))); }} className="pl-10" /></div>
+            <div className="relative"><Upload className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><Input type="file" accept={GALLERY_PHOTO_ACCEPT} multiple onChange={(e) => { const files = e.target.files; if (!files) return; const list = Array.from(files); const ok = list.filter((f) => isGalleryPhotoMimeAllowed(f.type, f.name)); const bad = list.length - ok.length; if (bad > 0) toast.error(language === 'ja' ? `対応していない形式が ${bad} 件あります（JPEG / PNG / WebP / GIF / HEIC・HEIF）` : `${bad} file(s) skipped — only JPEG, PNG, WebP, GIF, HEIC/HEIF`); if (ok.length === 0) return; setSelectedFiles(ok); setPreviewUrls(ok.map((f) => URL.createObjectURL(f))); }} className="pl-10" /></div>
             {previewUrls.length > 0 && <div className="grid grid-cols-2 gap-4">{previewUrls.map((url, index) => <div key={index} className="relative aspect-square"><img src={url} alt="Preview" className="w-full h-full object-cover" /></div>)}</div>}
           </div>
           <DialogFooter><Button type="button" variant="outline" onClick={() => setIsAddPhotoOpen(false)}>{t.cancel}</Button><Button type="button" disabled={!selectedEvent || selectedFiles.length === 0 || isUploading} onClick={handlePhotoUpload}>{isUploading ? (language === 'ja' ? 'アップロード中...' : 'Uploading...') : t.add}</Button></DialogFooter>

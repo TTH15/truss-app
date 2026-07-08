@@ -21,13 +21,29 @@ const GALLERY_ALLOWED_MIME = new Set<string>([
   "image/heif",
 ]);
 
-export function isGalleryPhotoMimeAllowed(file: File): boolean {
-  if (file.type) {
-    return GALLERY_ALLOWED_MIME.has(file.type);
+/** contentTypeが空の場合はfileNameの拡張子から判定する（モバイルのBlobはtypeが空になりうるため） */
+export function isGalleryPhotoMimeAllowed(contentType: string, fileName?: string): boolean {
+  if (contentType) {
+    return GALLERY_ALLOWED_MIME.has(contentType);
   }
-  const ext = file.name.split(".").pop()?.toLowerCase();
+  const ext = fileName?.split(".").pop()?.toLowerCase();
   if (!ext) return false;
   return ["jpg", "jpeg", "png", "webp", "gif", "heic", "heif"].includes(ext);
+}
+
+function inferGalleryContentType(contentType: string, fileName: string): string {
+  if (contentType) return contentType;
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  const byExt: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+    heic: "image/heic",
+    heif: "image/heif",
+  };
+  return (ext && byExt[ext]) || "image/jpeg";
 }
 
 /** クライアントでトースト文言を切り替えるときに参照 */
@@ -38,20 +54,26 @@ export const GALLERY_UPLOAD_UNSUPPORTED_MIME_MESSAGE =
 export type UploadGalleryPhotoInput = Omit<
   GalleryPhoto,
   "id" | "likes" | "uploadedAt" | "approved" | "image"
-> & { image?: GalleryPhoto["image"]; imageFile?: File };
+> & {
+  image?: GalleryPhoto["image"];
+  imageFile?: { blob: Blob; fileName: string; contentType: string };
+};
 
 export async function uploadGalleryPhotoRow(
   photoData: UploadGalleryPhotoInput
 ): Promise<{ error: Error | null }> {
   let imageValue: string;
   if (photoData.imageFile) {
-    if (!isGalleryPhotoMimeAllowed(photoData.imageFile)) {
+    const { blob, fileName, contentType } = photoData.imageFile;
+    if (!isGalleryPhotoMimeAllowed(contentType, fileName)) {
       return { error: new Error(GALLERY_UPLOAD_UNSUPPORTED_MIME_MESSAGE) };
     }
+    const fileExt = fileName.split(".").pop() || "jpg";
     const { url, error: upErr } = await uploadGalleryPhotoToStorage(
       photoData.userId,
       photoData.eventId,
-      photoData.imageFile
+      blob,
+      { fileExt, contentType: inferGalleryContentType(contentType, fileName) }
     );
     if (upErr || !url) {
       return { error: new Error(upErr?.message ?? "ストレージへのアップロードに失敗しました") };

@@ -1,15 +1,18 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { ChatThreadMetadata, Event, EventParticipant, MessageThread } from '@truss/core';
+import type { ChatThreadMetadata, Event, EventParticipant, GalleryPhoto, MessageThread, UploadGalleryPhotoInput } from '@truss/core';
 import {
+  likeGalleryPhotoRow,
   markAllMessagesAsReadForUserRow,
   queryEventParticipantsGrouped,
   queryEvents,
+  queryGalleryPhotos,
   queryMessageThreadsAndMetadata,
   queryStaffInboxUserId,
   registerEventParticipant,
   sendMessageRow,
   toggleEventLikeForUser,
   unregisterEventParticipant,
+  uploadGalleryPhotoRow,
 } from '@truss/core';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +31,9 @@ interface DataContextType {
   staffInboxUserId: string | null;
   sendMessageToStaff: (text: string) => Promise<void>;
   markStaffThreadAsRead: () => Promise<void>;
+  galleryPhotos: GalleryPhoto[];
+  uploadGalleryPhoto: (input: UploadGalleryPhotoInput) => Promise<void>;
+  likeGalleryPhoto: (photoId: number) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -39,11 +45,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [messageThreads, setMessageThreads] = useState<MessageThread>({});
   const [chatThreadMetadata, setChatThreadMetadata] = useState<ChatThreadMetadata>({});
   const [staffInboxUserId, setStaffInboxUserId] = useState<string | null>(null);
+  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchEvents = async () => {
     const data = await queryEvents();
     setEvents(data);
+  };
+
+  const fetchGalleryPhotos = async () => {
+    const data = await queryGalleryPhotos();
+    setGalleryPhotos(data);
   };
 
   const fetchEventParticipants = async () => {
@@ -59,9 +71,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const refresh = async () => {
     try {
-      await Promise.all([fetchEvents(), fetchEventParticipants()]);
+      await Promise.all([fetchEvents(), fetchEventParticipants(), fetchGalleryPhotos()]);
     } catch (error) {
-      console.error('Failed to load events/participants:', error);
+      console.error('Failed to load events/participants/gallery:', error);
     } finally {
       setLoading(false);
     }
@@ -160,6 +172,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const uploadGalleryPhoto = async (input: UploadGalleryPhotoInput) => {
+    try {
+      const { error } = await uploadGalleryPhotoRow(input);
+      if (error) throw error;
+      await fetchGalleryPhotos();
+    } catch (error) {
+      console.error('Error uploading gallery photo:', error);
+      throw error;
+    }
+  };
+
+  const likeGalleryPhoto = async (photoId: number) => {
+    try {
+      const { error } = await likeGalleryPhotoRow(photoId);
+      if (error) throw error;
+      await fetchGalleryPhotos();
+    } catch (error) {
+      console.error('Error liking gallery photo:', error);
+    }
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -175,6 +208,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         staffInboxUserId,
         sendMessageToStaff,
         markStaffThreadAsRead,
+        galleryPhotos,
+        uploadGalleryPhoto,
+        likeGalleryPhoto,
       }}
     >
       {children}

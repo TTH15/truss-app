@@ -99,7 +99,7 @@ export function AdminGallery({ language }: AdminGalleryProps) {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const ok = files.filter(isGalleryPhotoMimeAllowed);
+    const ok = files.filter((f) => isGalleryPhotoMimeAllowed(f.type, f.name));
     const bad = files.length - ok.length;
     if (bad > 0) {
       toast.error(language === 'ja' ? `対応していない形式が ${bad} 件あります（JPEG / PNG / WebP / GIF / HEIC・HEIF）` : `${bad} file(s) skipped — only JPEG, PNG, WebP, GIF, HEIC/HEIF`);
@@ -201,7 +201,7 @@ export function AdminGallery({ language }: AdminGalleryProps) {
   const handleReplaceImageInEditor = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || editingFileIndex === null) return;
-    if (!isGalleryPhotoMimeAllowed(file)) {
+    if (!isGalleryPhotoMimeAllowed(file.type, file.name)) {
       toast.error(language === 'ja' ? 'この形式は使えません' : 'Unsupported file type');
       e.target.value = '';
       return;
@@ -282,7 +282,7 @@ export function AdminGallery({ language }: AdminGalleryProps) {
           eventId: eventIdNum,
           eventName: language === 'ja' ? (event?.titleJa || '') : (event?.titleEn || ''),
           eventDate: event?.date || new Date().toISOString().split('T')[0],
-          imageFile: file,
+          imageFile: { blob: file, fileName: file.name, contentType: file.type },
           height: 200,
           userId: authUser.id,
           userName: authUser.nickname || authUser.name || (language === 'ja' ? '運営管理者' : 'Admin'),
