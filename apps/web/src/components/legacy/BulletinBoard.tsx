@@ -7,6 +7,7 @@ import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { BoardPostWithReplies } from './BoardPostWithReplies';
+import { ImageDropUpload } from './ImageDropUpload';
 import type { Language, User, BoardPost, BoardPostReply, CreateBoardPostInput } from '@truss/core';
 import { normalizeBoardContent } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
@@ -24,8 +25,8 @@ interface BulletinBoardProps {
 }
 
 const translations = {
-  ja: { title: '掲示板', subtitle: '言語交換・学習パートナーを見つけよう', createPost: '新しい投稿', postTitle: 'タイトル', postContent: '内容', tags: 'タグ（任意）', tagsHint: 'タグを追加してください', addTag: 'タグを追加', commonTags: 'よく使うタグ', customTagPlaceholder: '自由記述タグを入力', selectedTags: '選択中タグ', peopleNeeded: '募集人数', uploadImage: '画像をアップロード', submit: '投稿する', cancel: 'キャンセル', languageExchange: '言語交換', studyGroup: '勉強会', event: 'イベント', displayType: '表示タイプ', storyDisplay: '1日のみ表示（ストーリー）', boardDisplay: 'ある期間まで表示（掲示板）', expiryDate: '表示期限', until: 'まで', replies: '件のリプライ', replyPlaceholder: 'リプライを入力...', sendReply: '返信', viewReplies: 'リプライを見る', addComment: 'コメントを追加...' },
-  en: { title: 'Bulletin Board', subtitle: 'Find language exchange and study partners', createPost: 'New Post', postTitle: 'Title', postContent: 'Content', tags: 'Tags (optional)', tagsHint: 'Please add tags', addTag: 'Add tags', commonTags: 'Common tags', customTagPlaceholder: 'Type a custom tag', selectedTags: 'Selected tags', peopleNeeded: 'People Needed', uploadImage: 'Upload Image', submit: 'Submit', cancel: 'Cancel', languageExchange: 'Language Exchange', studyGroup: 'Study Group', event: 'Event', displayType: 'Display Type', storyDisplay: '1 day only (Story)', boardDisplay: 'Display until date (Board)', expiryDate: 'Expiry Date', until: 'until', replies: 'replies', replyPlaceholder: 'Write a reply...', sendReply: 'Send', viewReplies: 'View replies', addComment: 'Add a comment...' }
+  ja: { title: '掲示板', subtitle: '言語交換・学習パートナーを見つけよう', createPost: '新しい投稿', postTitle: 'タイトル', postContent: '内容', tags: 'タグ（任意）', tagsHint: 'タグを追加してください', addTag: 'タグを追加', commonTags: 'よく使うタグ', customTagPlaceholder: '自由記述タグを入力', selectedTags: '選択中タグ', peopleNeeded: '募集人数', uploadImage: '画像をアップロード', uploadImageHint: '画像をドラッグ&ドロップ、またはクリックして選択', submit: '投稿する', cancel: 'キャンセル', languageExchange: '言語交換', studyGroup: '勉強会', event: 'イベント', displayType: '表示タイプ', storyDisplay: '1日のみ表示（ストーリー）', boardDisplay: 'ある期間まで表示（掲示板）', expiryDate: '表示期限', until: 'まで', replies: '件のリプライ', replyPlaceholder: 'リプライを入力...', sendReply: '返信', viewReplies: 'リプライを見る', addComment: 'コメントを追加...' },
+  en: { title: 'Bulletin Board', subtitle: 'Find language exchange and study partners', createPost: 'New Post', postTitle: 'Title', postContent: 'Content', tags: 'Tags (optional)', tagsHint: 'Please add tags', addTag: 'Add tags', commonTags: 'Common tags', customTagPlaceholder: 'Type a custom tag', selectedTags: 'Selected tags', peopleNeeded: 'People Needed', uploadImage: 'Upload Image', uploadImageHint: 'Drag & drop an image, or click to select', submit: 'Submit', cancel: 'Cancel', languageExchange: 'Language Exchange', studyGroup: 'Study Group', event: 'Event', displayType: 'Display Type', storyDisplay: '1 day only (Story)', boardDisplay: 'Display until date (Board)', expiryDate: 'Expiry Date', until: 'until', replies: 'replies', replyPlaceholder: 'Write a reply...', sendReply: 'Send', viewReplies: 'View replies', addComment: 'Add a comment...' }
 };
 const presetTags = { ja: ['English', '日本語', '中国語', '韓国語'], en: ['English', 'Japanese', 'Chinese', 'Korean'] };
 
@@ -162,7 +163,12 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
                 </Dialog>
               </div>
               <div className="space-y-2"><Label htmlFor="people-needed">{t.peopleNeeded}</Label><Input id="people-needed" type="number" min="1" value={newPost.peopleNeeded} onChange={(e) => setNewPost({ ...newPost, peopleNeeded: parseInt(e.target.value) })} /></div>
-              <div className="space-y-2"><Label htmlFor="upload-image">{t.uploadImage}</Label><Input id="upload-image" type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) { setSelectedFile(file); setPreviewUrl(URL.createObjectURL(file)); } }} />{previewUrl && <img src={previewUrl} alt="Preview" className="w-full h-40 object-cover" />}</div>
+              <ImageDropUpload
+                label={t.uploadImage}
+                hint={t.uploadImageHint}
+                previewUrl={previewUrl}
+                onFileSelected={(file) => { setSelectedFile(file); setPreviewUrl(URL.createObjectURL(file)); }}
+              />
               <div className="space-y-2"><Label htmlFor="display-type">{t.displayType}</Label><RadioGroup id="display-type" value={newPost.displayType} onValueChange={(value) => setNewPost({ ...newPost, displayType: value as 'story' | 'board' })}><div className="flex items-center space-x-2"><RadioGroupItem value="story" /><Label>{t.storyDisplay}</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="board" /><Label>{t.boardDisplay}</Label></div></RadioGroup></div>
               {newPost.displayType === 'board' && <div className="space-y-2"><Label htmlFor="expiry-date">{t.expiryDate}</Label><Input id="expiry-date" type="date" value={newPost.expiryDate} onChange={(e) => setNewPost({ ...newPost, expiryDate: e.target.value })} min={new Date().toISOString().split('T')[0]} /></div>}
               <div className="flex gap-2">
