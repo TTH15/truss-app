@@ -43,7 +43,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "チェックインQRコードを読み取るためにカメラを使用します。"
+          "cameraPermission": "QRコードの読み取りやチャットへの写真送信のためにカメラを使用します。"
         }
       ]
     ],

@@ -10,7 +10,9 @@
 - `apps/mobile/.env.development.local`（`expo start`実行時に`.env`より優先される、`@expo/env`の標準挙動）
 - どちらもgitignore対象。本番用の`.env.local`/`.env`は変更していない
 
-dev DB用の運営（管理者）アカウント: `dev@truss.com` / `dev1234`（`is_admin: true`, `approved: true`, `registration_step: fully_active`）。Web管理画面（`/admin-xxxx`）にこのアカウントでログインして使う。
+dev DB用の運営（管理者）アカウント: `dev@truss.com` / `dev1234`（`is_admin: true`, `approved: true`, `registration_step: fully_active`）。Web管理画面（`/admin-xxxx`）にこのアカウントでログインして使う。ログインには`admin_accounts`テーブル（migration 027、dev DBのみに適用済み）へのレコードが必要。
+
+dev DB用の一般会員テストアカウント: `test-member@truss-dev.local` / `test1234`（表示名「E2Eテスト太郎」、`approved: true`, `registration_step: fully_active`）。モバイルの通常ログイン画面から使う（`__DEV__`モックログインではなくこちらを使うことで実際のDB読み書きを伴うE2E確認ができる）。
 
 マイグレーションはdev DBには全て適用済み。新しいマイグレーションを追加した場合、dev DBへは`supabase link --project-ref cuhggonkdpsidysjzjvj && supabase db push`で適用できる（本番への適用とは別に、CLIのリンク先を都度確認すること）。**本番への適用は従来通りDashboard SQL Editorから手動で行う**（`supabase/README.md`参照）。
 

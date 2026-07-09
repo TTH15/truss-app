@@ -187,27 +187,29 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
   const renderMessage = (message: Message) => {
     const categoryLabel = !message.isAdmin ? getMessageCategoryLabel(message.category, language) : undefined;
     const attachmentUrl = message.attachmentPath ? signedUrls[message.attachmentPath] : undefined;
+    const showRead = message.isAdmin && message.read;
     return (
       <div key={message.id} className={`flex ${message.isAdmin ? 'justify-end' : 'justify-start'} group`}>
-        <div className={`max-w-[75%] ${message.isAdmin ? 'order-2' : 'order-1'}`}>
-          {categoryLabel && (
-            <div className="flex justify-start mb-1"><span className="text-xs bg-[#49B1E4]/15 text-[#49B1E4] px-2 py-0.5 rounded-full">{categoryLabel}</span></div>
-          )}
-          <div className={`rounded-2xl px-4 py-2 relative overflow-visible ${message.isAdmin ? 'bg-[#3D3D4E] text-white' : 'bg-gray-100 text-[#3D3D4E]'} ${message.pinned ? 'ring-2 ring-[#FFD700]' : ''}`}>
-            {message.flagged && <Flag className="w-3 h-3 text-red-500 absolute -top-1 -right-1 fill-red-500" />}
-            {message.pinned && <Pin className="w-3 h-3 text-yellow-500 absolute -top-1 -left-1 fill-yellow-500" />}
-            {attachmentUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={attachmentUrl} alt="添付画像" className="max-w-[220px] rounded-lg mb-1" />
-            )}
-            {message.text && message.text !== '（添付ファイル）' && <p className="wrap-break-word">{message.text}</p>}
+        <div className={`flex items-end gap-1.5 max-w-[85%] ${message.isAdmin ? 'flex-row-reverse' : 'flex-row'}`}>
+          {/* 既読/時刻はLINE同様、吹き出し横に2行・小さめで表示（1行の吹き出しより低くなる高さ） */}
+          <div className={`flex flex-col shrink-0 pb-0.5 ${message.isAdmin ? 'items-end' : 'items-start'}`}>
+            {showRead && <span className="text-[11px] leading-[14px] text-gray-400">{language === 'ja' ? '既読' : 'Read'}</span>}
+            <span className="text-[11px] leading-[14px] text-gray-400">{formatMessageTime(message.time)}</span>
           </div>
-          <div className={`flex items-center gap-2 mt-1 ${message.isAdmin ? 'justify-end' : 'justify-start'}`}>
-            <p className="text-xs text-gray-400">
-              {formatMessageTime(message.time)}
-              {message.isAdmin && message.read ? `　${language === 'ja' ? '既読' : 'Read'}` : ''}
-            </p>
-            <div className="flex gap-1 opacity-0 transition-opacity pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100">
+          <div className="min-w-0">
+            {categoryLabel && (
+              <div className="flex justify-start mb-1"><span className="text-xs bg-[#49B1E4]/15 text-[#49B1E4] px-2 py-0.5 rounded-full">{categoryLabel}</span></div>
+            )}
+            <div className={`rounded-2xl px-4 py-2 relative overflow-visible ${message.isAdmin ? 'bg-[#3D3D4E] text-white' : 'bg-gray-100 text-[#3D3D4E]'} ${message.pinned ? 'ring-2 ring-[#FFD700]' : ''}`}>
+              {message.flagged && <Flag className="w-3 h-3 text-red-500 absolute -top-1 -right-1 fill-red-500" />}
+              {message.pinned && <Pin className="w-3 h-3 text-yellow-500 absolute -top-1 -left-1 fill-yellow-500" />}
+              {attachmentUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={attachmentUrl} alt="添付画像" className="max-w-[220px] rounded-lg mb-1" />
+              )}
+              {message.text && message.text !== '（添付ファイル）' && <p className="wrap-break-word">{message.text}</p>}
+            </div>
+            <div className={`flex items-center gap-1 mt-1 opacity-0 transition-opacity pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 ${message.isAdmin ? 'justify-end' : 'justify-start'}`}>
               <button type="button" onClick={() => togglePin(message.id)} className={`p-1 rounded hover:bg-gray-200 transition-colors ${message.pinned ? 'text-yellow-500' : 'text-gray-400'}`}><Pin className="w-3.5 h-3.5" /></button>
               <button type="button" onClick={() => toggleFlag(message.id)} className={`p-1 rounded hover:bg-gray-200 transition-colors ${message.flagged ? 'text-red-500' : 'text-gray-400'}`}><Flag className="w-3.5 h-3.5" /></button>
             </div>
@@ -264,7 +266,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                       <div key={message.id}>
                         {shouldShowDate && (
                           <div className="flex justify-center my-4">
-                            <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                            <span className="text-xs font-medium text-gray-600 bg-gray-200 px-3 py-1 rounded-full">
                               {formatDateLabel(currentDate, language)}
                             </span>
                           </div>
