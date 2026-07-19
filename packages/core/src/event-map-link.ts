@@ -1,16 +1,8 @@
+import { isLikelyLineInviteUrl } from "@platform/utils";
 import type { Language } from "./types/app";
 
-/** Google Map 用に不適切な URL（誤って LINE 招待などが入っている場合） */
-export function isLikelyLineInviteUrl(url: string): boolean {
-  const s = url.trim().toLowerCase();
-  if (!s) return false;
-  try {
-    const host = new URL(s).hostname;
-    return host.includes("line.me") || host.includes("lin.ee");
-  } catch {
-    return /line\.(me|jp)/i.test(s) || /lin\.ee/i.test(s);
-  }
-}
+// isLikelyLineInviteUrl の実体は @platform/utils へ昇格(ADR-0002)。既存 import 互換のための再エクスポート。
+export { isLikelyLineInviteUrl } from "@platform/utils";
 
 /**
  * イベント詳細の「Google Map で開く」用 href。

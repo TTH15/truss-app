@@ -2,43 +2,22 @@
 // Truss App - Supabase Client Factory
 // =============================================
 
-import { createClient, SupportedStorage } from '@supabase/supabase-js';
+import {
+  createSupabaseClient as createPlatformSupabaseClient,
+  type SupabaseClientConfig,
+} from '@platform/supabase-client';
 import type { Database } from './types/database.types';
 
-export interface SupabaseClientOverrides {
-  url?: string;
-  anonKey?: string;
-  storage?: SupportedStorage;
-  storageKey?: string;
-  detectSessionInUrl?: boolean;
-  flowType?: 'pkce' | 'implicit';
-}
+export type SupabaseClientOverrides = Omit<SupabaseClientConfig, 'eventsPerSecond'>;
 
+// 生成の実体は @platform/supabase-client へ昇格(ADR-0002)。
+// storageKey は既存セッション互換のため truss 側で 'truss-app-auth' を明示する。
 // Supabase JS v2.99 の GenericTable 互換性確保のため、database.types.ts 側で Db* Row に index signature を追加
 export function createSupabaseClient(overrides: SupabaseClientOverrides = {}) {
-  const supabaseUrl = overrides.url ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-  const supabaseAnonKey = overrides.anonKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
-  const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey);
-
-  return createClient<Database>(
-    hasSupabaseEnv ? supabaseUrl : 'http://localhost:54321',
-    hasSupabaseEnv ? supabaseAnonKey : 'public-anon-key',
-    {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: overrides.detectSessionInUrl ?? true,
-        storageKey: overrides.storageKey ?? 'truss-app-auth',
-        storage: overrides.storage ?? (typeof window !== 'undefined' ? window.localStorage : undefined),
-        flowType: overrides.flowType ?? 'pkce',
-      },
-      realtime: {
-        params: {
-          eventsPerSecond: 10,
-        },
-      },
-    }
-  );
+  return createPlatformSupabaseClient<Database>({
+    ...overrides,
+    storageKey: overrides.storageKey ?? 'truss-app-auth',
+  });
 }
 
 // eslint-disable-next-line prefer-const -- setSupabaseClient() が呼び出し側からこの束縛を差し替える
