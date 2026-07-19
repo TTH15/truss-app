@@ -3,7 +3,7 @@ import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Input } from '../ui/input';
-import { Hand, Globe2, Calendar, MessageCircle, Send, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Hand, Globe2, Calendar, MessageCircle, Send, ChevronDown, Trash2 } from 'lucide-react';
 import type { Language, User } from '@truss/core';
 import { normalizeBoardContent } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
@@ -96,7 +96,7 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
             )}
           </div>
           <div className="border-t pt-3 mt-3">
-            <Button variant="ghost" size="sm" onClick={() => setShowReplies(!showReplies)} className="text-gray-600 hover:text-[#49B1E4] mb-2"><MessageCircle className="w-4 h-4 mr-2" />{replyCount} {t.replies}{showReplies ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}</Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowReplies(!showReplies)} className="text-gray-600 hover:text-[#49B1E4] mb-2"><MessageCircle className="w-4 h-4 mr-2" />{replyCount} {t.replies}<ChevronDown className={`w-4 h-4 ml-2 transition-transform duration-200 ${showReplies ? "rotate-180" : ""}`} /></Button>
             <div className="flex gap-2 mb-3">
               <Avatar className="w-8 h-8 shrink-0"><AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-xs">{user.name.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
               <div className="flex-1 flex gap-2">
