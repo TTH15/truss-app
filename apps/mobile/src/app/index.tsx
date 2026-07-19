@@ -8,14 +8,14 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import { useEmbassyMention } from '@/contexts/EmbassyMentionContext';
 import { CheckinScannerScreen } from '@/screens/CheckinScannerScreen';
-import { TrussEmbassyScreen } from '@/screens/TrussEmbassyScreen';
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const { chatThreadMetadata } = useData();
+  const { openEmbassy } = useEmbassyMention();
   const colors = Colors.light;
-  const [embassyOpen, setEmbassyOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
 
   const unreadCount = Object.values(chatThreadMetadata).reduce((sum, meta) => sum + (meta.unreadCount || 0), 0);
@@ -31,7 +31,7 @@ export default function HomeScreen() {
 
         <Pressable
           style={[styles.embassyCard, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}
-          onPress={() => setEmbassyOpen(true)}
+          onPress={openEmbassy}
         >
           <View style={[styles.embassyIcon, { backgroundColor: colors.backgroundSelected }]}>
             <Ionicons name="chatbubbles-outline" size={22} color={colors.tint} />
@@ -64,10 +64,6 @@ export default function HomeScreen() {
           </Pressable>
         )}
       </SafeAreaView>
-
-      <Modal visible={embassyOpen} animationType="slide" onRequestClose={() => setEmbassyOpen(false)}>
-        <TrussEmbassyScreen onClose={() => setEmbassyOpen(false)} />
-      </Modal>
 
       <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
         <CheckinScannerScreen onClose={() => setScannerOpen(false)} />

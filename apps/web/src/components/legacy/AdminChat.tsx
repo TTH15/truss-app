@@ -37,6 +37,7 @@ interface AdminChatProps {
   onUpdateChatThreadMetadata: Dispatch<SetStateAction<ChatThreadMetadata>>;
   selectedChatUserId?: string | null;
   onOpenMemberChat?: (userId: string) => void;
+  onOpenEventDetail?: (eventId: number) => void;
 }
 
 interface BroadcastMessage { id: number; subject: string; message: string; recipients: string; recipientCount: number; status: 'sent' | 'scheduled'; sentTime: string; notificationType: 'email' | 'inApp' | 'both'; cancelledAt: string | null; }
@@ -46,7 +47,7 @@ const translations = {
   en: { sendBroadcast: 'New Broadcast', recipients: 'Recipients', japanese: 'Japanese Students Only', exchange: 'Exchange Students Only', regularInternational: 'Regular International Students Only', annualFeeUnpaid: 'Annual fee unpaid only', annualFeePaid: 'Annual fee paid only', notificationType: 'Notification Type', inAppNotification: 'In-App Notification', emailNotification: 'Email Notification', scheduledDate: 'Scheduled Date/Time', selectDateTime: 'Leave empty for immediate send', send: 'Send', cancel: 'Cancel', sent: 'Sent', scheduled: 'Scheduled', members: 'Members', broadcastHistory: 'Broadcast History', memberChat: 'Member Chat', broadcast: 'Broadcast', translateToEnglish: 'Translate to English', recallBroadcast: 'Recall', cancelled: 'Cancelled', confirmRecall: 'Recall this broadcast?\nThe message will be hidden from recipients.' }
 };
 
-export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessageThreads, onSendMessage, onSendBulkMessages, onCancelBroadcast, onMarkMemberMessagesAsRead, onUploadChatAttachment, approvedMembers, pendingUsers, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat }: AdminChatProps) {
+export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessageThreads, onSendMessage, onSendBulkMessages, onCancelBroadcast, onMarkMemberMessagesAsRead, onUploadChatAttachment, approvedMembers, pendingUsers, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onOpenEventDetail }: AdminChatProps) {
   const t = translations[language];
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [year, setYear] = useState('2026');
@@ -259,7 +260,7 @@ export function AdminChat({ adminUserId, language, messageThreads, onUpdateMessa
         <div className="absolute bottom-0 left-0 right-0 border-b border-[#E5E7EB]" />
       </div>
 
-      {activeTab === 'chat' && <AdminChatMessages language={language} messageThreads={messageThreads} onUpdateMessageThreads={onUpdateMessageThreads} onSendMessage={onSendMessage} onMarkMemberMessagesAsRead={onMarkMemberMessagesAsRead} onUploadChatAttachment={onUploadChatAttachment} approvedMembers={approvedMembers} pendingUsers={pendingUsers} chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={onUpdateChatThreadMetadata} selectedChatUserId={selectedChatUserId} onOpenMemberChat={onOpenMemberChat} />}
+      {activeTab === 'chat' && <AdminChatMessages language={language} messageThreads={messageThreads} onUpdateMessageThreads={onUpdateMessageThreads} onSendMessage={onSendMessage} onMarkMemberMessagesAsRead={onMarkMemberMessagesAsRead} onUploadChatAttachment={onUploadChatAttachment} approvedMembers={approvedMembers} pendingUsers={pendingUsers} chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={onUpdateChatThreadMetadata} selectedChatUserId={selectedChatUserId} onOpenMemberChat={onOpenMemberChat} onOpenEventDetail={onOpenEventDetail} />}
 
       {activeTab === 'broadcast' && (
         <div className="space-y-6">

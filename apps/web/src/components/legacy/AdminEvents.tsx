@@ -38,6 +38,9 @@ interface AdminEventsProps {
   onUpdateEvent?: (eventId: number, eventData: AdminEventFormData) => Promise<void>;
   onDeleteEvent?: (eventId: number) => Promise<void>;
   onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
+  /** チャットのメンション等、外部から特定イベントの詳細を開きたい場合に指定する */
+  focusEventId?: number;
+  onFocusEventHandled?: () => void;
 }
 
 const translations = {
@@ -152,6 +155,8 @@ export function AdminEvents({
   onUpdateEvent = async () => { },
   onDeleteEvent = async () => { },
   onSendBulkEmail,
+  focusEventId,
+  onFocusEventHandled,
 }: AdminEventsProps) {
   const t = translations[language];
   const now = new Date();
@@ -191,6 +196,18 @@ export function AdminEvents({
   const [participantStatusOverrides, setParticipantStatusOverrides] = useState<Record<string, { attended?: boolean; paid?: boolean }>>({});
   const [initialEventSnapshot, setInitialEventSnapshot] = useState('');
   const draftRestoredRef = useRef(false);
+
+  useEffect(() => {
+    if (!focusEventId) return;
+    const target = propsEvents.find((event) => event.id === focusEventId);
+    if (!target) return;
+    // 外部（チャットのメンション等）から渡されるfocusEventIdの変化に応じて詳細を開き、
+    // 親に処理済みを通知する必要があり、event handler化が難しいのでeffect内setStateを許可する
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedEvent(target);
+    setEditMode(false);
+    onFocusEventHandled?.();
+  }, [focusEventId, propsEvents, onFocusEventHandled]);
 
   const [edgeZone, setEdgeZone] = useState<'left' | 'right' | null>(null);
   const [monthSwitching, setMonthSwitching] = useState(false);

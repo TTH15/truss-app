@@ -85,6 +85,7 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
   const t = translations[language];
   const ADMIN_TAB_STORAGE_KEY = `truss-admin-tab-${user.id}`;
   const [currentTab, setCurrentTab] = useState<AdminTab>('members');
+  const [focusEventId, setFocusEventId] = useState<number | null>(null);
 
   useEffect(() => {
     try {
@@ -110,6 +111,12 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
       setCurrentTab('chat');
     }
   }, [selectedChatUserId]);
+
+  useEffect(() => {
+    if (focusEventId) {
+      setCurrentTab('events');
+    }
+  }, [focusEventId]);
 
   const totalUnreadCount = Object.keys(messageThreads).reduce((total, userId) => {
     const messages = messageThreads[userId] || [];
@@ -171,10 +178,10 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
 
         <main className="flex-1 container mx-auto px-4 py-8 pb-24 lg:pb-8">
           {currentTab === 'members' && <AdminMembersManagement language={language} pendingUsers={pendingUsers} approvedMembers={approvedMembers} isLoading={membersLoading} onApproveUser={onApproveUser} onRejectUser={onRejectUser} onRequestReupload={onRequestReupload} onOpenChat={onOpenMemberChat} onSendBulkEmail={onSendBulkEmail} onConfirmFeePayment={onConfirmFeePayment} onSetRenewalStatus={onSetRenewalStatus} onDeleteUser={onDeleteUser} />}
-          {currentTab === 'events' && <AdminEvents language={language} events={events} eventParticipants={eventParticipants} onCreateEvent={onCreateEvent} onUpdateEvent={onUpdateEvent} onDeleteEvent={onDeleteEvent} onSendBulkEmail={onSendBulkEmail} />}
+          {currentTab === 'events' && <AdminEvents language={language} events={events} eventParticipants={eventParticipants} onCreateEvent={onCreateEvent} onUpdateEvent={onUpdateEvent} onDeleteEvent={onDeleteEvent} onSendBulkEmail={onSendBulkEmail} focusEventId={focusEventId ?? undefined} onFocusEventHandled={() => setFocusEventId(null)} />}
           {currentTab === 'gallery' && <AdminGallery language={language} />}
           {currentTab === 'boards' && <AdminBoards language={language} adminUserId={user.id} adminName={user.name} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onDeleteBoardPost={onDeleteBoardPost} onTogglePinBoardPost={onTogglePinBoardPost} onReorderPinnedBoardPosts={onReorderPinnedBoardPosts} />}
-          {currentTab === 'chat' && <AdminChat language={language} adminUserId={user.id} messageThreads={messageThreads} onUpdateMessageThreads={onUpdateMessageThreads} onSendMessage={onSendMessage} onMarkMemberMessagesAsRead={onMarkMemberMessagesAsRead} onUploadChatAttachment={onUploadChatAttachment} onSendBulkMessages={onSendBulkMessages} onCancelBroadcast={onCancelBroadcast} approvedMembers={approvedMembers} pendingUsers={pendingUsers} chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={onUpdateChatThreadMetadata} selectedChatUserId={selectedChatUserId} onOpenMemberChat={onOpenMemberChat} />}
+          {currentTab === 'chat' && <AdminChat language={language} adminUserId={user.id} messageThreads={messageThreads} onUpdateMessageThreads={onUpdateMessageThreads} onSendMessage={onSendMessage} onMarkMemberMessagesAsRead={onMarkMemberMessagesAsRead} onUploadChatAttachment={onUploadChatAttachment} onSendBulkMessages={onSendBulkMessages} onCancelBroadcast={onCancelBroadcast} approvedMembers={approvedMembers} pendingUsers={pendingUsers} chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={onUpdateChatThreadMetadata} selectedChatUserId={selectedChatUserId} onOpenMemberChat={onOpenMemberChat} onOpenEventDetail={setFocusEventId} />}
         </main>
       </div>
 

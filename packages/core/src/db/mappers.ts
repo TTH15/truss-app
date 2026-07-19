@@ -123,6 +123,8 @@ export function mapDbMessageRowToMessage(row: DbMessage): Message {
     category: row.category ?? undefined,
     attachmentPath: row.attachment_path ?? undefined,
     attachmentType: row.attachment_type ?? undefined,
+    attachmentWaveform: row.attachment_waveform ?? undefined,
+    mention: row.mention ?? undefined,
   };
 }
 

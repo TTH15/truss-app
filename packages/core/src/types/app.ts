@@ -93,6 +93,26 @@ export interface EventParticipant {
 
 export type MessageCategory = 'inquiry' | 'event_consult' | 'membership' | 'trouble';
 
+/**
+ * イベント/思い出写真などを引用チップ風に表示するための構造化メンション。
+ * 元データ（イベント名等）が後で変わっても過去のチャット表示が壊れないよう、
+ * 送信時点のタイトル・画像URLをスナップショットとして保持する。
+ */
+export interface MessageMention {
+  type: 'event' | 'memory' | 'location';
+  id: number;
+  title: string;
+  /** dateLabel/timeLabelが無い場合のフォールバック用単一行 */
+  subtitle?: string;
+  /** ハイフン無しの日付表示（例: 2026年7月9日） */
+  dateLabel?: string;
+  /** 時刻表示（イベントのみ） */
+  timeLabel?: string;
+  imageUrl?: string;
+  /** locationタイプ用: タップで開く外部リンク（Google Maps等） */
+  url?: string;
+}
+
 export interface Message {
   id: number;
   senderId: string;
@@ -110,6 +130,8 @@ export interface Message {
   category?: MessageCategory;
   attachmentPath?: string;
   attachmentType?: string;
+  attachmentWaveform?: number[];
+  mention?: MessageMention;
 }
 
 export interface MessageThread {

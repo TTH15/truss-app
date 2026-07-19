@@ -3,10 +3,12 @@ import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
-import { MessageCircle, Send, Pin, Flag, ArrowLeft, Image as ImageIcon, X } from 'lucide-react';
+import { MessageCircle, Send, Pin, Flag, ArrowLeft, Image as ImageIcon, Images, Calendar, Clock, MapPin, X, FileText } from 'lucide-react';
 import type { Language, MessageThread, User as UserType, Message, ChatThreadMetadata } from '@truss/core';
-import { formatDateLabel, formatMessageTime, formatRelativeListTime, getChatAttachmentSignedUrl, getMessageCategoryLabel, parseMessageDate, toDateKey } from '@truss/core';
+import { formatDateLabel, formatMessageTime, formatRelativeListTime, getChatAttachmentSignedUrl, getMessageCategoryLabel, parseMessageDate, splitTextWithUrls, toDateKey, updateMessageFlagsRow } from '@truss/core';
 import { toast } from 'sonner';
+import { linkifyText } from '../../lib/linkify';
+import { LinkPreviewCard } from './LinkPreviewCard';
 
 interface AdminChatMessagesProps {
   language: Language;
@@ -26,13 +28,14 @@ interface AdminChatMessagesProps {
   onUpdateChatThreadMetadata: Dispatch<SetStateAction<ChatThreadMetadata>>;
   selectedChatUserId?: string | null;
   onOpenMemberChat?: (userId: string) => void;
+  onOpenEventDetail?: (eventId: number) => void;
 }
 
 const translations = {
   ja: { noMessages: 'まだメッセージがありません', typeMessage: 'メッセージを入力...', selectUser: 'ユーザーを選択してください', pinThread: 'スレッドをピン留め', unpinThread: 'ピンを外す', flagThread: 'スレッドにフラグ', unflagThread: 'フラグを外す' },
   en: { noMessages: 'No messages yet', typeMessage: 'Type a message...', selectUser: 'Select a user', pinThread: 'Pin thread', unpinThread: 'Unpin thread', flagThread: 'Flag thread', unflagThread: 'Unflag thread' }
 };
-export function AdminChatMessages({ language, messageThreads, onUpdateMessageThreads, onSendMessage, onMarkMemberMessagesAsRead, onUploadChatAttachment, approvedMembers = [], pendingUsers = [], chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId }: AdminChatMessagesProps) {
+export function AdminChatMessages({ language, messageThreads, onUpdateMessageThreads, onSendMessage, onMarkMemberMessagesAsRead, onUploadChatAttachment, approvedMembers = [], pendingUsers = [], chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenEventDetail }: AdminChatMessagesProps) {
   const t = translations[language];
   const [selectedUserId, setSelectedUserId] = useState<string | null>(selectedChatUserId || null);
   const [newMessage, setNewMessage] = useState('');
@@ -44,27 +47,12 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
   const messagesEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [selectedUserId, messageThreads]);
 
+  // 通知等からの遷移でselectedChatUserIdが指定された場合、選択状態に反映する
+  // （既読処理自体は下のselectedUserId用effectがmessageThreadsの変化にも反応して行う）
   useEffect(() => {
     if (!selectedChatUserId) return;
     setSelectedUserId(selectedChatUserId);
-    onUpdateMessageThreads((prev) => {
-      const messages = prev[selectedChatUserId] || [];
-      if (!messages.some((m) => !m.isAdmin && !m.read)) return prev;
-      return {
-        ...prev,
-        [selectedChatUserId]: messages.map((m) => (m.isAdmin ? m : { ...m, read: true })),
-      };
-    });
-    onUpdateChatThreadMetadata((prev) => {
-      const currentMetadata = prev[selectedChatUserId] || {};
-      if (!(currentMetadata.unreadCount && currentMetadata.unreadCount > 0)) return prev;
-      return {
-        ...prev,
-        [selectedChatUserId]: { ...currentMetadata, unreadCount: 0 },
-      };
-    });
-    void onMarkMemberMessagesAsRead?.(selectedChatUserId);
-  }, [selectedChatUserId, messageThreads, onUpdateMessageThreads, onUpdateChatThreadMetadata, onMarkMemberMessagesAsRead]);
+  }, [selectedChatUserId]);
 
   useEffect(() => {
     const allMessages = Object.values(messageThreads).flat();
@@ -98,32 +86,35 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
       unreadCount: messages.filter((m) => !m.isAdmin && !m.read).length,
       pinned: metadata.pinned || false,
       flagged: metadata.flagged || false,
+      flaggedMessageCount: messages.filter((m) => m.flagged).length,
     };
   });
   const sortedUsers = [...usersWithMessages].sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
   const selectedUser = selectedUserId ? usersWithMessages.find((u) => u.userId === selectedUserId) : null;
   const currentMessages = selectedUserId ? (messageThreads[selectedUserId] || []) : [];
+  const pinnedMessages = currentMessages.filter((m) => m.pinned);
 
   const handleSelectUser = (userId: string) => {
     setSelectedUserId(userId);
-    onUpdateMessageThreads((prev) => {
-      const messages = prev[userId] || [];
-      if (!messages.some((m) => !m.isAdmin && !m.read)) return prev;
-      return {
-        ...prev,
-        [userId]: messages.map((m) => (m.isAdmin ? m : { ...m, read: true })),
-      };
-    });
-    onUpdateChatThreadMetadata((prev) => {
-      const currentMetadata = prev[userId] || {};
-      if (!(currentMetadata.unreadCount && currentMetadata.unreadCount > 0)) return prev;
-      return {
-        ...prev,
-        [userId]: { ...currentMetadata, unreadCount: 0 },
-      };
-    });
-    void onMarkMemberMessagesAsRead?.(userId);
   };
+
+  // 選択中のスレッドを開いたままでも、新着（未読の会員メッセージ）が届くたびに既読にする
+  useEffect(() => {
+    if (!selectedUserId) return;
+    const messages = messageThreads[selectedUserId] || [];
+    if (!messages.some((m) => !m.isAdmin && !m.read)) return;
+    onUpdateMessageThreads((prev) => ({
+      ...prev,
+      [selectedUserId]: (prev[selectedUserId] || []).map((m) => (m.isAdmin ? m : { ...m, read: true })),
+    }));
+    onUpdateChatThreadMetadata((prev) => {
+      const currentMetadata = prev[selectedUserId] || {};
+      if (!(currentMetadata.unreadCount && currentMetadata.unreadCount > 0)) return prev;
+      return { ...prev, [selectedUserId]: { ...currentMetadata, unreadCount: 0 } };
+    });
+    void onMarkMemberMessagesAsRead?.(selectedUserId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserId, messageThreads]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -168,8 +159,24 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
     }
   };
 
-  const togglePin = (messageId: number) => { if (!selectedUserId) return; onUpdateMessageThreads({ ...messageThreads, [selectedUserId]: (messageThreads[selectedUserId] || []).map((m) => m.id === messageId ? { ...m, pinned: !m.pinned } : m) }); };
-  const toggleFlag = (messageId: number) => { if (!selectedUserId) return; onUpdateMessageThreads({ ...messageThreads, [selectedUserId]: (messageThreads[selectedUserId] || []).map((m) => m.id === messageId ? { ...m, flagged: !m.flagged } : m) }); };
+  const togglePin = (messageId: number) => {
+    if (!selectedUserId) return;
+    const current = (messageThreads[selectedUserId] || []).find((m) => m.id === messageId);
+    const nextPinned = !current?.pinned;
+    onUpdateMessageThreads({ ...messageThreads, [selectedUserId]: (messageThreads[selectedUserId] || []).map((m) => m.id === messageId ? { ...m, pinned: nextPinned } : m) });
+    void updateMessageFlagsRow(messageId, { pinned: nextPinned }).then(({ error }) => {
+      if (error) toast.error(language === 'ja' ? 'ピン留めの保存に失敗しました' : 'Failed to save pin');
+    });
+  };
+  const toggleFlag = (messageId: number) => {
+    if (!selectedUserId) return;
+    const current = (messageThreads[selectedUserId] || []).find((m) => m.id === messageId);
+    const nextFlagged = !current?.flagged;
+    onUpdateMessageThreads({ ...messageThreads, [selectedUserId]: (messageThreads[selectedUserId] || []).map((m) => m.id === messageId ? { ...m, flagged: nextFlagged } : m) });
+    void updateMessageFlagsRow(messageId, { flagged: nextFlagged }).then(({ error }) => {
+      if (error) toast.error(language === 'ja' ? 'フラグの保存に失敗しました' : 'Failed to save flag');
+    });
+  };
   const toggleThreadPin = (userId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     onUpdateChatThreadMetadata((prev) => {
@@ -188,31 +195,102 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
     const categoryLabel = !message.isAdmin ? getMessageCategoryLabel(message.category, language) : undefined;
     const attachmentUrl = message.attachmentPath ? signedUrls[message.attachmentPath] : undefined;
     const showRead = message.isAdmin && message.read;
+    const firstLinkUrl = message.text ? splitTextWithUrls(message.text).find((s) => s.type === 'url')?.value : undefined;
+    const isImageAttachment = !!attachmentUrl && (!message.attachmentType || message.attachmentType.startsWith('image/'));
+    const isAudioAttachment = !!attachmentUrl && !!message.attachmentType?.startsWith('audio/');
+    const isFileAttachment = !!attachmentUrl && !isImageAttachment && !isAudioAttachment;
+    const autoFallbackText = message.mention ? `${message.mention.title}について` : isAudioAttachment ? 'ボイスメッセージ' : '（添付ファイル）';
+    const hasCaption = !isFileAttachment && !isAudioAttachment && !!message.text && message.text !== autoFallbackText;
     return (
       <div key={message.id} className={`flex ${message.isAdmin ? 'justify-end' : 'justify-start'} group`}>
-        <div className={`flex items-end gap-1.5 max-w-[85%] ${message.isAdmin ? 'flex-row-reverse' : 'flex-row'}`}>
-          {/* 既読/時刻はLINE同様、吹き出し横に2行・小さめで表示（1行の吹き出しより低くなる高さ） */}
-          <div className={`flex flex-col shrink-0 pb-0.5 ${message.isAdmin ? 'items-end' : 'items-start'}`}>
-            {showRead && <span className="text-[11px] leading-[14px] text-gray-400">{language === 'ja' ? '既読' : 'Read'}</span>}
-            <span className="text-[11px] leading-[14px] text-gray-400">{formatMessageTime(message.time)}</span>
-          </div>
-          <div className="min-w-0">
-            {categoryLabel && (
-              <div className="flex justify-start mb-1"><span className="text-xs bg-[#49B1E4]/15 text-[#49B1E4] px-2 py-0.5 rounded-full">{categoryLabel}</span></div>
-            )}
-            <div className={`rounded-2xl px-4 py-2 relative overflow-visible ${message.isAdmin ? 'bg-[#3D3D4E] text-white' : 'bg-gray-100 text-[#3D3D4E]'} ${message.pinned ? 'ring-2 ring-[#FFD700]' : ''}`}>
-              {message.flagged && <Flag className="w-3 h-3 text-red-500 absolute -top-1 -right-1 fill-red-500" />}
-              {message.pinned && <Pin className="w-3 h-3 text-yellow-500 absolute -top-1 -left-1 fill-yellow-500" />}
-              {attachmentUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={attachmentUrl} alt="添付画像" className="max-w-[220px] rounded-lg mb-1" />
+        <div className="max-w-[85%]">
+          {categoryLabel && (
+            <div className="flex justify-start mb-1"><span className="text-xs bg-[#49B1E4]/15 text-[#49B1E4] px-2 py-0.5 rounded-full">{categoryLabel}</span></div>
+          )}
+          {/* 既読/時刻はLINE同様、吹き出し横に2行・小さめで表示。メンション・吹き出し・リンクプレビューは
+              同じflex-colにまとめ、items-end/startで揃えることで左端(または右端)を必ず一致させる。
+              ホバー行(pin/flag)はopacity-0でも高さを占有するため、items-endの基準に含めず外に出す */}
+          <div className={`flex items-end gap-1.5 ${message.isAdmin ? 'flex-row' : 'flex-row-reverse'}`}>
+            <div className={`flex flex-col shrink-0 pb-0.5 ${message.isAdmin ? 'items-end' : 'items-start'}`}>
+              {showRead && <span className="text-[11px] leading-[14px] text-gray-400">{language === 'ja' ? '既読' : 'Read'}</span>}
+              <span className="text-[11px] leading-[14px] text-gray-400">{formatMessageTime(message.time)}</span>
+            </div>
+            <div className={`flex flex-col min-w-0 gap-1 ${message.isAdmin ? 'items-end' : 'items-start'}`}>
+              {message.mention && (() => {
+                const mention = message.mention;
+                const isClickableEvent = mention.type === 'event' && !!onOpenEventDetail;
+                const isClickableLocation = mention.type === 'location' && !!mention.url;
+                const handleClick = isClickableEvent
+                  ? () => onOpenEventDetail?.(mention.id)
+                  : isClickableLocation
+                    ? () => window.open(mention.url, '_blank', 'noopener,noreferrer')
+                    : undefined;
+                return (
+                  <div
+                    className={`flex items-center gap-2 rounded-xl border border-[#49B1E4] bg-[#49B1E4]/10 p-2 max-w-[260px] ${handleClick ? 'cursor-pointer hover:bg-[#49B1E4]/20 transition-colors' : ''}`}
+                    onClick={handleClick}
+                    role={handleClick ? 'button' : undefined}
+                  >
+                    {mention.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={mention.imageUrl} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                    ) : (
+                      <span className="w-8 h-8 flex items-center justify-center shrink-0">
+                        {mention.type === 'event' ? (
+                          <Calendar className="w-4 h-4 text-[#49B1E4]" />
+                        ) : mention.type === 'location' ? (
+                          <MapPin className="w-4 h-4 text-[#49B1E4]" />
+                        ) : (
+                          <Images className="w-4 h-4 text-[#49B1E4]" />
+                        )}
+                      </span>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm text-[#49B1E4] truncate">{mention.title}</p>
+                      {mention.dateLabel && (
+                        <p className="text-xs text-gray-500 truncate flex items-center gap-1"><Calendar className="w-3 h-3 shrink-0" />{mention.dateLabel}</p>
+                      )}
+                      {mention.timeLabel && (
+                        <p className="text-xs text-gray-500 truncate flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{mention.timeLabel}</p>
+                      )}
+                      {!mention.dateLabel && !mention.timeLabel && mention.subtitle && (
+                        <p className="text-xs text-gray-500 truncate">{mention.subtitle}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+              {(attachmentUrl || hasCaption) && (
+                <div className={`rounded-2xl px-4 py-2 relative overflow-visible min-w-0 ${message.isAdmin ? 'bg-[#3D3D4E] text-white' : 'bg-gray-100 text-[#3D3D4E]'} ${message.pinned ? 'ring-2 ring-[#FFD700]' : ''}`}>
+                  {message.flagged && <Flag className="w-3 h-3 text-red-500 absolute -top-1 -right-1 fill-red-500" />}
+                  {message.pinned && <Pin className="w-3 h-3 text-yellow-500 absolute -top-1 -left-1 fill-yellow-500" />}
+                  {isImageAttachment && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={attachmentUrl} alt="添付画像" className="max-w-[220px] rounded-lg mb-1" />
+                  )}
+                  {isFileAttachment && (
+                    <a
+                      href={attachmentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex items-center gap-2 mb-1 underline ${message.isAdmin ? 'text-white' : 'text-[#49B1E4]'}`}
+                    >
+                      <FileText className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{message.text || 'ファイル'}</span>
+                    </a>
+                  )}
+                  {isAudioAttachment && <audio controls src={attachmentUrl} className="max-w-[220px] mb-1 h-10" />}
+                  {hasCaption && (
+                    <p className="wrap-break-word">{linkifyText(message.text)}</p>
+                  )}
+                </div>
               )}
-              {message.text && message.text !== '（添付ファイル）' && <p className="wrap-break-word">{message.text}</p>}
+              {firstLinkUrl && <LinkPreviewCard url={firstLinkUrl} />}
             </div>
-            <div className={`flex items-center gap-1 mt-1 opacity-0 transition-opacity pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 ${message.isAdmin ? 'justify-end' : 'justify-start'}`}>
-              <button type="button" onClick={() => togglePin(message.id)} className={`p-1 rounded hover:bg-gray-200 transition-colors ${message.pinned ? 'text-yellow-500' : 'text-gray-400'}`}><Pin className="w-3.5 h-3.5" /></button>
-              <button type="button" onClick={() => toggleFlag(message.id)} className={`p-1 rounded hover:bg-gray-200 transition-colors ${message.flagged ? 'text-red-500' : 'text-gray-400'}`}><Flag className="w-3.5 h-3.5" /></button>
-            </div>
+          </div>
+          <div className={`flex items-center gap-1 mt-1 opacity-0 transition-opacity pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 ${message.isAdmin ? 'justify-end' : 'justify-start'}`}>
+            <button type="button" onClick={() => togglePin(message.id)} className={`p-1 rounded hover:bg-gray-200 transition-colors ${message.pinned ? 'text-yellow-500' : 'text-gray-400'}`}><Pin className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => toggleFlag(message.id)} className={`p-1 rounded hover:bg-gray-200 transition-colors ${message.flagged ? 'text-red-500' : 'text-gray-400'}`}><Flag className="w-3.5 h-3.5" /></button>
           </div>
         </div>
       </div>
@@ -233,7 +311,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                         <Avatar className="w-10 h-10"><AvatarFallback className="bg-[#49B1E4] text-white">{user.userAvatar}</AvatarFallback></Avatar>
                         <div className="absolute -right-1 top-0 flex flex-col gap-0.5">{user.pinned && <Pin className="w-3 h-3 text-yellow-500 fill-yellow-500" />}{user.flagged && <Flag className="w-3 h-3 text-red-500 fill-red-500" />}</div>
                       </div>
-                      <div className="flex-1 min-w-0"><p className="font-medium text-gray-900 truncate">{user.userName}</p><p className="text-xs text-gray-500 truncate">{user.lastMessage}</p><div className="flex items-center gap-2 mt-1"><p className="text-xs text-gray-400">{user.lastMessageTime}</p>{user.unreadCount > 0 && <div className="bg-red-500 text-white text-xs rounded-full h-4 min-w-[16px] px-1.5 flex items-center justify-center font-medium">{user.unreadCount}</div>}</div></div>
+                      <div className="flex-1 min-w-0"><p className="font-medium text-gray-900 truncate">{user.userName}</p><p className="text-xs text-gray-500 truncate">{user.lastMessage}</p><div className="flex items-center gap-2 mt-1"><p className="text-xs text-gray-400">{user.lastMessageTime}</p>{user.unreadCount > 0 && <div className="bg-red-500 text-white text-xs rounded-full h-4 min-w-[16px] px-1.5 flex items-center justify-center font-medium">{user.unreadCount}</div>}{user.flaggedMessageCount > 0 && <div className="flex items-center gap-0.5 bg-red-100 text-red-600 text-xs rounded-full h-4 px-1.5 font-medium"><Flag className="w-2.5 h-2.5 fill-red-600" />{user.flaggedMessageCount}</div>}</div></div>
                     </div>
                   </button>
                   <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 transition-opacity pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100">
@@ -255,6 +333,19 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
               <Avatar className="w-10 h-10"><AvatarFallback className="bg-[#49B1E4] text-white">{selectedUser.userAvatar}</AvatarFallback></Avatar>
               <div><h3 className="font-medium text-gray-900">{selectedUser.userName}</h3></div>
             </div>
+            {pinnedMessages.length > 0 && (
+              <div className="border-b border-gray-200 bg-yellow-50 px-4 py-2 max-h-32 overflow-y-auto shrink-0">
+                {pinnedMessages.map((m) => (
+                  <div key={m.id} className="flex items-center gap-2 py-1 text-sm text-gray-700">
+                    <Pin className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500 shrink-0" />
+                    <span className="truncate flex-1">{m.text}</span>
+                    <button type="button" onClick={() => togglePin(m.id)} className="text-gray-400 hover:text-gray-600 shrink-0" title={language === 'ja' ? 'ピンを外す' : 'Unpin'}>
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex-1 overflow-hidden">
               <ScrollArea className="h-full">
                 <div className="space-y-4 p-4">

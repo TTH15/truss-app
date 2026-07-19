@@ -2,11 +2,13 @@ import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from 
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { ArrowLeft, Send, Pin, Flag, Image as ImageIcon, X } from 'lucide-react';
-import type { Language, User, Message as AppMessage, MessageThread, ChatThreadMetadata, MessageCategory } from '@truss/core';
-import { formatDateLabel, formatMessageTime, getChatAttachmentSignedUrl, getMessageCategoryLabel, MESSAGE_CATEGORY_OPTIONS, parseMessageDate, toDateKey } from '@truss/core';
+import { ArrowLeft, Send, Image as ImageIcon, Images, Calendar, Clock, MapPin, X, FileText } from 'lucide-react';
+import type { Language, User, Message as AppMessage, MessageMention, MessageThread, ChatThreadMetadata, MessageCategory } from '@truss/core';
+import { formatDateLabel, formatMessageTime, getChatAttachmentSignedUrl, getMessageCategoryLabel, MESSAGE_CATEGORY_OPTIONS, parseMessageDate, splitTextWithUrls, toDateKey } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { toast } from 'sonner';
+import { linkifyText } from '../../lib/linkify';
+import { LinkPreviewCard } from './LinkPreviewCard';
 
 interface MessagesPageProps {
   language: Language;
@@ -22,7 +24,7 @@ interface MessagesPageProps {
   chatThreadMetadata: ChatThreadMetadata;
   onUpdateChatThreadMetadata: Dispatch<SetStateAction<ChatThreadMetadata>>;
 }
-interface Message { id: number; sender: 'user' | 'other'; text: string; time: string; pinned?: boolean; flagged?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; read?: boolean; category?: MessageCategory; attachmentPath?: string; }
+interface Message { id: number; sender: 'user' | 'other'; text: string; time: string; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; read?: boolean; category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention; }
 interface MessageHistory { [recipientId: string]: Message[]; }
 const translations = { ja: { typeMessage: 'メッセージを入力...' }, en: { typeMessage: 'Type a message...' } };
 
@@ -46,7 +48,7 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
   useEffect(() => {
     if (!(isAdmin && messageThreads[user.id])) return;
     const threadMessages = messageThreads[user.id];
-    const converted: Message[] = threadMessages.map((msg) => ({ id: msg.id, sender: msg.isAdmin ? 'other' : 'user', text: msg.text, time: msg.time, pinned: msg.pinned, flagged: msg.flagged, isBroadcast: msg.isBroadcast, broadcastSubject: msg.broadcastSubject, broadcastSubjectEn: msg.broadcastSubjectEn, read: msg.read, category: msg.category, attachmentPath: msg.attachmentPath }));
+    const converted: Message[] = threadMessages.map((msg) => ({ id: msg.id, sender: msg.isAdmin ? 'other' : 'user', text: msg.text, time: msg.time, isBroadcast: msg.isBroadcast, broadcastSubject: msg.broadcastSubject, broadcastSubjectEn: msg.broadcastSubjectEn, read: msg.read, category: msg.category, attachmentPath: msg.attachmentPath, attachmentType: msg.attachmentType, mention: msg.mention }));
     setMessages(converted);
     setMessageHistory((prev) => ({ ...prev, [recipientId]: converted }));
     if (threadMessages.some((msg) => msg.isAdmin && !msg.read)) onUpdateMessageThreads({ ...messageThreads, [user.id]: threadMessages.map((msg) => ({ ...msg, read: true })) });
@@ -106,35 +108,92 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
       setSending(false);
     }
   };
-  const togglePin = (id: number) => { const updated = messages.map((m) => m.id === id ? { ...m, pinned: !m.pinned } : m); setMessages(updated); setMessageHistory((prev) => ({ ...prev, [recipientId]: updated })); };
-  const toggleFlag = (id: number) => { const updated = messages.map((m) => m.id === id ? { ...m, flagged: !m.flagged } : m); setMessages(updated); setMessageHistory((prev) => ({ ...prev, [recipientId]: updated })); };
   const renderMessage = (message: Message) => {
     const categoryLabel = message.sender === 'user' ? getMessageCategoryLabel(message.category, language) : undefined;
     const attachmentUrl = message.attachmentPath ? signedUrls[message.attachmentPath] : undefined;
+    const firstLinkUrl = message.text ? splitTextWithUrls(message.text).find((s) => s.type === 'url')?.value : undefined;
+    const isImageAttachment = !!attachmentUrl && (!message.attachmentType || message.attachmentType.startsWith('image/'));
+    const isAudioAttachment = !!attachmentUrl && !!message.attachmentType?.startsWith('audio/');
+    const isFileAttachment = !!attachmentUrl && !isImageAttachment && !isAudioAttachment;
+    const autoFallbackText = message.mention ? `${message.mention.title}について` : isAudioAttachment ? 'ボイスメッセージ' : '（添付ファイル）';
+    const hasCaption = !isFileAttachment && !isAudioAttachment && !!message.text && message.text !== autoFallbackText;
     return (
       <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} group`}>
         <div className={`max-w-[75%] ${message.sender === 'user' ? 'order-2' : 'order-1'} relative`}>
           {categoryLabel && (
             <div className="flex justify-end mb-1"><span className="text-xs bg-[#49B1E4]/15 text-[#49B1E4] px-2 py-0.5 rounded-full">{categoryLabel}</span></div>
           )}
-          <div className={`rounded-2xl px-4 py-2 relative ${message.sender === 'user' ? 'bg-[#49B1E4] text-white' : 'bg-white text-[#3D3D4E]'} ${message.pinned ? 'ring-2 ring-[#FFD700]' : ''}`}>
-            {message.flagged && <Flag className="w-3 h-3 text-red-500 absolute -top-1 -right-1 fill-red-500" />}
-            {message.pinned && <Pin className="w-3 h-3 text-yellow-500 absolute -top-1 -left-1 fill-yellow-500" />}
-            {attachmentUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={attachmentUrl} alt="添付画像" className="max-w-[220px] rounded-lg mb-1" />
+          {/* メンション・吹き出し・リンクプレビューは同じflex-colにまとめ、items-end/startで揃えることで
+              互いの端(送信者側なら右端、相手側なら左端)を必ず一致させる */}
+          <div className={`flex flex-col gap-1 ${message.sender === 'user' ? 'items-end' : 'items-start'}`}>
+            {message.mention && (() => {
+              const mention = message.mention;
+              const isClickableLocation = mention.type === 'location' && !!mention.url;
+              return (
+                <div
+                  className={`flex items-center gap-2 rounded-xl border border-[#49B1E4] bg-[#49B1E4]/10 p-2 max-w-[260px] ${isClickableLocation ? 'cursor-pointer hover:bg-[#49B1E4]/20 transition-colors' : ''}`}
+                  onClick={isClickableLocation ? () => window.open(mention.url, '_blank', 'noopener,noreferrer') : undefined}
+                  role={isClickableLocation ? 'button' : undefined}
+                >
+                  {mention.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={mention.imageUrl} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                  ) : (
+                    <span className="w-8 h-8 flex items-center justify-center shrink-0">
+                      {mention.type === 'event' ? (
+                        <Calendar className="w-4 h-4 text-[#49B1E4]" />
+                      ) : mention.type === 'location' ? (
+                        <MapPin className="w-4 h-4 text-[#49B1E4]" />
+                      ) : (
+                        <Images className="w-4 h-4 text-[#49B1E4]" />
+                      )}
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm text-[#49B1E4] truncate">{mention.title}</p>
+                    {mention.dateLabel && (
+                      <p className="text-xs text-gray-500 truncate flex items-center gap-1"><Calendar className="w-3 h-3 shrink-0" />{mention.dateLabel}</p>
+                    )}
+                    {mention.timeLabel && (
+                      <p className="text-xs text-gray-500 truncate flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" />{mention.timeLabel}</p>
+                    )}
+                    {!mention.dateLabel && !mention.timeLabel && mention.subtitle && (
+                      <p className="text-xs text-gray-500 truncate">{mention.subtitle}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+            {(attachmentUrl || hasCaption) && (
+              <div className={`rounded-2xl px-4 py-2 relative ${message.sender === 'user' ? 'bg-[#49B1E4] text-white' : 'bg-white text-[#3D3D4E]'}`}>
+                {isImageAttachment && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={attachmentUrl} alt="添付画像" className="max-w-[220px] rounded-lg mb-1" />
+                )}
+                {isFileAttachment && (
+                  <a
+                    href={attachmentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`flex items-center gap-2 mb-1 underline ${message.sender === 'user' ? 'text-white' : 'text-[#49B1E4]'}`}
+                  >
+                    <FileText className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{message.text || 'ファイル'}</span>
+                  </a>
+                )}
+                {isAudioAttachment && <audio controls src={attachmentUrl} className="max-w-[220px] mb-1 h-10" />}
+                {hasCaption && (
+                  <p className="wrap-break-word whitespace-pre-wrap">{linkifyText(message.text)}</p>
+                )}
+              </div>
             )}
-            {message.text && message.text !== '（添付ファイル）' && <p className="wrap-break-word whitespace-pre-wrap">{message.text}</p>}
+            {firstLinkUrl && <LinkPreviewCard url={firstLinkUrl} />}
           </div>
           <div className={`flex items-center gap-1 mt-1 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
             <p className="text-xs text-[#6B6B7A]">
               {formatMessageTime(message.time)}
               {message.sender === 'user' && message.read ? `　${language === 'ja' ? '既読' : 'Read'}` : ''}
             </p>
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ml-2">
-              <button onClick={() => togglePin(message.id)} className={`p-1 rounded hover:bg-[#E8E4DB] ${message.pinned ? 'text-yellow-500' : 'text-gray-400'}`}><Pin className="w-3.5 h-3.5" /></button>
-              <button onClick={() => toggleFlag(message.id)} className={`p-1 rounded hover:bg-[#E8E4DB] ${message.flagged ? 'text-red-500' : 'text-gray-400'}`}><Flag className="w-3.5 h-3.5" /></button>
-            </div>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { ChatThreadMetadata, Event, EventParticipant, GalleryPhoto, MessageCategory, MessageThread, UploadGalleryPhotoInput } from '@truss/core';
+import type { ChatThreadMetadata, Event, EventParticipant, GalleryPhoto, MessageCategory, MessageMention, MessageThread, UploadGalleryPhotoInput } from '@truss/core';
 import {
   confirmEventAttendance as confirmEventAttendanceRow,
   likeGalleryPhotoRow,
@@ -33,7 +33,14 @@ interface DataContextType {
   staffInboxUserId: string | null;
   sendMessageToStaff: (
     text: string,
-    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string }
+    options?: {
+      category?: MessageCategory;
+      attachmentPath?: string;
+      attachmentType?: string;
+      attachmentWaveform?: number[];
+      flagged?: boolean;
+      mention?: MessageMention;
+    }
   ) => Promise<void>;
   markStaffThreadAsRead: () => Promise<void>;
   uploadChatAttachment: (blob: Blob, meta: { fileExt: string; contentType: string }) => Promise<{ path: string | null; error: unknown }>;
@@ -152,7 +159,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const sendMessageToStaff = async (
     text: string,
-    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string }
+    options?: {
+      category?: MessageCategory;
+      attachmentPath?: string;
+      attachmentType?: string;
+      attachmentWaveform?: number[];
+      flagged?: boolean;
+      mention?: MessageMention;
+    }
   ) => {
     if (!user) return;
     if (!staffInboxUserId) throw new Error('運営受信箱の準備がまだ完了していません。少し待ってから再度お試しください。');
@@ -166,6 +180,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         category: options?.category,
         attachmentPath: options?.attachmentPath,
         attachmentType: options?.attachmentType,
+        attachmentWaveform: options?.attachmentWaveform,
+        flagged: options?.flagged,
+        mention: options?.mention,
       });
       if (error) throw error;
       await fetchMessages();

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { GalleryPhoto } from '@truss/core';
-import { GALLERY_UPLOAD_UNSUPPORTED_MIME_MESSAGE } from '@truss/core';
+import { formatEventDateNoHyphen, GALLERY_UPLOAD_UNSUPPORTED_MIME_MESSAGE } from '@truss/core';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,6 +20,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import { useEmbassyMention } from '@/contexts/EmbassyMentionContext';
 import { pickGalleryImages, type PickedGalleryImage } from '@/lib/gallery-image';
 
 const NUM_COLUMNS = 2;
@@ -27,6 +28,7 @@ const NUM_COLUMNS = 2;
 export function MemoriesScreen() {
   const { user } = useAuth();
   const { events, galleryPhotos, uploadGalleryPhoto, likeGalleryPhoto } = useData();
+  const { openEmbassyWithMention } = useEmbassyMention();
   const colors = Colors.light;
   const insets = useSafeAreaInsets();
 
@@ -58,6 +60,17 @@ export function MemoriesScreen() {
     if (likedPhotoIds.has(photo.id)) return;
     setLikedPhotoIds((prev) => new Set(prev).add(photo.id));
     await likeGalleryPhoto(photo.id);
+  };
+
+  const handleConsultAboutPhoto = (photo: GalleryPhoto) => {
+    const imageUrl = typeof photo.image === 'string' ? photo.image : photo.image.src;
+    openEmbassyWithMention({
+      type: 'memory',
+      id: photo.id,
+      title: photo.eventName,
+      dateLabel: formatEventDateNoHyphen(photo.eventDate),
+      imageUrl,
+    });
   };
 
   const openUpload = () => {
@@ -150,6 +163,13 @@ export function MemoriesScreen() {
                 >
                   <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={16} color="#E0607E" />
                   <ThemedText type="small">{item.likes + (isLiked ? 1 : 0)}</ThemedText>
+                </Pressable>
+                <Pressable
+                  style={[styles.shareButton, { backgroundColor: colors.backgroundElement }]}
+                  onPress={() => handleConsultAboutPhoto(item)}
+                  hitSlop={4}
+                >
+                  <Ionicons name="chatbubbles-outline" size={16} color={colors.tint} />
                 </Pressable>
               </View>
             );
@@ -280,6 +300,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: 4,
     borderRadius: Spacing.four,
+  },
+  shareButton: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 13,
   },
   fab: {
     position: 'absolute',

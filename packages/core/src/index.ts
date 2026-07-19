@@ -51,6 +51,7 @@ export * from "./board-content";
 export * from "./event-map-link";
 export * from "./faculties";
 export * from "./chat-time";
+export * from "./linkify";
 export * from "./event-checkin";
 export * from "./message-categories";
 export * from "./db/mappers";

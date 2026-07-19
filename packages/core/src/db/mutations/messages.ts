@@ -2,7 +2,7 @@
  * チャット/メッセージ関連の書き込み集約
  */
 import { supabase } from "../../supabase";
-import type { MessageCategory } from "../../types/app";
+import type { MessageCategory, MessageMention } from "../../types/app";
 
 function toErrorOrNull(error: { message: string } | null) {
   return error ? new Error(error.message) : null;
@@ -20,6 +20,9 @@ export async function sendMessageRow(input: {
   category?: MessageCategory;
   attachmentPath?: string;
   attachmentType?: string;
+  attachmentWaveform?: number[];
+  flagged?: boolean;
+  mention?: MessageMention;
 }): Promise<{ error: Error | null }> {
   const { error } = await supabase.from("messages").insert({
     sender_id: input.senderId,
@@ -33,6 +36,9 @@ export async function sendMessageRow(input: {
     category: input.category ?? null,
     attachment_path: input.attachmentPath ?? null,
     attachment_type: input.attachmentType ?? null,
+    attachment_waveform: input.attachmentWaveform ?? null,
+    flagged: input.flagged ?? false,
+    mention: input.mention ?? null,
   });
 
   return { error: toErrorOrNull(error) };
@@ -117,6 +123,15 @@ export async function markMessageAsReadRow(
     .from("messages")
     .update({ read: true, read_at: new Date().toISOString() })
     .eq("id", messageId);
+  return { error: toErrorOrNull(error) };
+}
+
+/** 運営が会話内の個別メッセージにピン/フラグを付ける（運営専用の内部整理用途、会員には見せない） */
+export async function updateMessageFlagsRow(
+  messageId: number,
+  updates: Partial<{ pinned: boolean; flagged: boolean }>
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase.from("messages").update(updates).eq("id", messageId);
   return { error: toErrorOrNull(error) };
 }
 

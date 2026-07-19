@@ -20,6 +20,17 @@ export type EventStatus = 'upcoming' | 'past';
 
 export type MessageCategory = 'inquiry' | 'event_consult' | 'membership' | 'trouble';
 
+export interface MessageMention {
+  type: 'event' | 'memory' | 'location';
+  id: number;
+  title: string;
+  subtitle?: string;
+  dateLabel?: string;
+  timeLabel?: string;
+  imageUrl?: string;
+  url?: string;
+}
+
 export type BoardPostTag = 'languageExchange' | 'studyGroup' | 'event';
 
 export type BoardPostDisplayType = 'story' | 'board';
@@ -158,6 +169,8 @@ export interface DbMessage {
   category: MessageCategory | null;
   attachment_path: string | null;
   attachment_type: string | null;
+  attachment_waveform: number[] | null;
+  mention: MessageMention | null;
   created_at: string;
 }
 
@@ -303,13 +316,23 @@ export type DbEventParticipantUpdate = Partial<DbEventParticipantInsert>;
 
 export type DbMessageInsert = Omit<
   DbMessage,
-  'id' | 'created_at' | 'cancelled_at' | 'read_at' | 'category' | 'attachment_path' | 'attachment_type'
+  | 'id'
+  | 'created_at'
+  | 'cancelled_at'
+  | 'read_at'
+  | 'category'
+  | 'attachment_path'
+  | 'attachment_type'
+  | 'attachment_waveform'
+  | 'mention'
 > & {
   cancelled_at?: string | null;
   read_at?: string | null;
   category?: MessageCategory | null;
   attachment_path?: string | null;
   attachment_type?: string | null;
+  attachment_waveform?: number[] | null;
+  mention?: MessageMention | null;
 };
 export type DbAdminBroadcastInsert = Omit<DbAdminBroadcast, 'id' | 'created_at'> & { id?: number };
 

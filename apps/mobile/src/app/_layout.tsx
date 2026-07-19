@@ -7,17 +7,19 @@ import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, useColorScheme } from 'react-native';
+import { ActivityIndicator, Modal, useColorScheme } from 'react-native';
 
 import AppTabs from '@/components/app-tabs';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { DataProvider } from '@/contexts/DataContext';
+import { EmbassyMentionProvider, useEmbassyMention } from '@/contexts/EmbassyMentionContext';
 import { InitialRegistrationScreen } from '@/screens/InitialRegistrationScreen';
 import { LoginScreen } from '@/screens/LoginScreen';
 import { RegistrationStatusScreen } from '@/screens/RegistrationStatusScreen';
 import { SignUpScreen } from '@/screens/SignUpScreen';
+import { TrussEmbassyScreen } from '@/screens/TrussEmbassyScreen';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -54,8 +56,26 @@ function RootNavigator() {
 
   return (
     <DataProvider>
-      <AppTabs />
+      <EmbassyMentionProvider>
+        <AppTabs />
+        <EmbassyChatHost />
+      </EmbassyMentionProvider>
     </DataProvider>
+  );
+}
+
+/**
+ * Embassy ChatのModalは、各タブ画面の中ではなくタブより上のここでホストする。
+ * expo-router Tabsは非アクティブなタブ画面も裏でマウントし続けるが、そのタブ画面の中で
+ * Modalを開いても（そのタブが表示されていない間は）画面に反映されないことがあるため、
+ * どのタブからでも同じ状態で確実に開けるようにルートレイアウトに置いている。
+ */
+function EmbassyChatHost() {
+  const { isEmbassyOpen, closeEmbassy } = useEmbassyMention();
+  return (
+    <Modal visible={isEmbassyOpen} transparent animationType="none" onRequestClose={closeEmbassy}>
+      <TrussEmbassyScreen onClose={closeEmbassy} />
+    </Modal>
   );
 }
 
