@@ -26,6 +26,7 @@ export interface DatePickerProps {
   closeOnSelect?: boolean;
   buttonClassName?: string;
   contentClassName?: string;
+  iconClassName?: string;
   buttonDisabled?: boolean;
 }
 
@@ -40,6 +41,7 @@ export function DatePicker({
   closeOnSelect = true,
   buttonClassName,
   contentClassName,
+  iconClassName,
   buttonDisabled,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
@@ -60,7 +62,7 @@ export function DatePicker({
             buttonClassName,
           )}
         >
-          <CalendarIcon className="mr-2 size-4" />
+          <CalendarIcon className={cn("mr-2 size-4", iconClassName)} />
           {label}
         </Button>
       </PopoverTrigger>

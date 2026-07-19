@@ -17,8 +17,7 @@ import { applyMosaicAtPoint } from '../../lib/mosaicCanvas';
 import { supabase } from '@truss/core';
 import { EVENT_ICON_OPTIONS, getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
-import { Calendar } from '../ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { DatePicker } from '@platform/ui';
 
 // Supabaseの生データはドメイン型に無い snake_case フィールドを含むことがあるため許容しておく
 type AdminEvent = DomainEvent & { event_icon?: string };
@@ -1385,25 +1384,20 @@ export function AdminEvents({
                     <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
                       {t.date}
                     </label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button type="button" variant="outline" className="w-full justify-start bg-[#EEEBE3] border-0 text-left font-normal text-[#3D3D4E]">
-                          <CalendarIcon className="w-4 h-4 mr-2 text-[#6B6B7A]" />
-                          {selectedDateValue ? format(selectedDateValue, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined }) : (language === 'ja' ? '日付を選択' : 'Select date')}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={selectedDateValue}
-                          onSelect={(date) => {
-                            if (!date) return;
-                            setNewEvent({ ...newEvent, date: format(date, 'yyyy-MM-dd') });
-                          }}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DatePicker
+                      value={selectedDateValue}
+                      onChange={(date) => {
+                        if (!date) return;
+                        setNewEvent({ ...newEvent, date: format(date, 'yyyy-MM-dd') });
+                      }}
+                      formatLabel={(d) =>
+                        format(d, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined })
+                      }
+                      placeholder={language === 'ja' ? '日付を選択' : 'Select date'}
+                      buttonClassName="bg-[#EEEBE3] border-0 text-[#3D3D4E]"
+                      iconClassName="text-[#6B6B7A]"
+                      contentClassName="bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80"
+                    />
                   </div>
                   <div>
                     <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
@@ -1902,25 +1896,20 @@ export function AdminEvents({
                     <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
                       {t.date}
                     </label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button type="button" variant="outline" className="w-full justify-start bg-[#EEEBE3] border-0 text-left font-normal text-[#3D3D4E]">
-                          <CalendarIcon className="w-4 h-4 mr-2 text-[#6B6B7A]" />
-                          {selectedDateValue ? format(selectedDateValue, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined }) : (language === 'ja' ? '日付を選択' : 'Select date')}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={selectedDateValue}
-                          onSelect={(date) => {
-                            if (!date) return;
-                            setNewEvent({ ...newEvent, date: format(date, 'yyyy-MM-dd') });
-                          }}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DatePicker
+                      value={selectedDateValue}
+                      onChange={(date) => {
+                        if (!date) return;
+                        setNewEvent({ ...newEvent, date: format(date, 'yyyy-MM-dd') });
+                      }}
+                      formatLabel={(d) =>
+                        format(d, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined })
+                      }
+                      placeholder={language === 'ja' ? '日付を選択' : 'Select date'}
+                      buttonClassName="bg-[#EEEBE3] border-0 text-[#3D3D4E]"
+                      iconClassName="text-[#6B6B7A]"
+                      contentClassName="bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80"
+                    />
                   </div>
                   <div>
                     <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
