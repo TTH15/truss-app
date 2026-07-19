@@ -2,6 +2,11 @@
 /* vendor パッケージはアプリの src/ 外にあり自動検出されないため、明示的に走査対象へ加える */
 @source "../../../../packages/ui/src";
 
+/* dark: はクラス方式(styles/globals.css の宣言と同じ)。この宣言が無いと Tailwind の
+   既定 = OS のダークモード(prefers-color-scheme)で dark: 系が発火し、.dark を使わない
+   本アプリでは dark:bg-input/30 等が入力欄のベージュ背景を意図せず打ち消してしまう */
+@custom-variant dark (&:is(.dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

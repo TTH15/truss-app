@@ -18,6 +18,7 @@ import { supabase } from '@truss/core';
 import { EVENT_ICON_OPTIONS, getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
 import { DatePicker } from '@platform/ui';
+import { ja as rdpJa, enUS as rdpEnUS } from 'react-day-picker/locale';
 
 // Supabaseの生データはドメイン型に無い snake_case フィールドを含むことがあるため許容しておく
 type AdminEvent = DomainEvent & { event_icon?: string };
@@ -1394,6 +1395,7 @@ export function AdminEvents({
                         format(d, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined })
                       }
                       placeholder={language === 'ja' ? '日付を選択' : 'Select date'}
+                      locale={language === 'ja' ? rdpJa : rdpEnUS}
                       buttonClassName="bg-[#EEEBE3] border-0 text-[#3D3D4E]"
                       iconClassName="text-[#6B6B7A]"
                       contentClassName="bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80"
@@ -1906,6 +1908,7 @@ export function AdminEvents({
                         format(d, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined })
                       }
                       placeholder={language === 'ja' ? '日付を選択' : 'Select date'}
+                      locale={language === 'ja' ? rdpJa : rdpEnUS}
                       buttonClassName="bg-[#EEEBE3] border-0 text-[#3D3D4E]"
                       iconClassName="text-[#6B6B7A]"
                       contentClassName="bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80"

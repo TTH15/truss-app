@@ -22,6 +22,8 @@ export interface DatePickerProps {
   disabled?: DayPickerProps["disabled"];
   /** カレンダーの初期表示月(未選択時) */
   defaultMonth?: Date;
+  /** カレンダーのロケール(`react-day-picker/locale` から import して渡す) */
+  locale?: DayPickerProps["locale"];
   /** 選択と同時にポップオーバーを閉じる(既定: true) */
   closeOnSelect?: boolean;
   buttonClassName?: string;
@@ -38,6 +40,7 @@ export function DatePicker({
   placeholder = "日付を選択",
   disabled,
   defaultMonth,
+  locale,
   closeOnSelect = true,
   buttonClassName,
   contentClassName,
@@ -76,6 +79,7 @@ export function DatePicker({
           }}
           disabled={disabled}
           defaultMonth={value ?? defaultMonth}
+          locale={locale}
           autoFocus
         />
       </PopoverContent>
