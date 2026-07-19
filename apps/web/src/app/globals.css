@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* vendor パッケージはアプリの src/ 外にあり自動検出されないため、明示的に走査対象へ加える */
+@source "../../../../packages/ui/src";
 
 :root {
   --background: #ffffff;

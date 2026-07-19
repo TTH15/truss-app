@@ -1,6 +1,2 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+// 実体は @platform/ui へ昇格(ADR-0002)。既存 import 互換のための再エクスポート。
+export { cn } from "@platform/ui/utils";
