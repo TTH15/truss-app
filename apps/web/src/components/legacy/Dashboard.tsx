@@ -772,7 +772,7 @@ export function Dashboard({
                 dataTour="nav-bulletin"
               />
               <NavButton
-                icon={<Mail className="w-5 h-5" />}
+                icon={<MessageCircle className="w-5 h-5" />}
                 label={t.messages}
                 active={currentPage === 'notifications'}
                 badgeCount={unreadMessageCount()}
