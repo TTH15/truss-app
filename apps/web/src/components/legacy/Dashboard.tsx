@@ -142,7 +142,6 @@ export function Dashboard({
 }: DashboardProps) {
   const DASHBOARD_PAGE_STORAGE_KEY = `truss-dashboard-page-${user.id}`;
   const [currentPage, setCurrentPage] = useState<Page>('home');
-  const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
   const [selectedNotification, setSelectedNotification] = useState<SelectedNotification | null>(null);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -300,11 +299,6 @@ export function Dashboard({
     setCurrentPage('messages');
   };
 
-  const handleBackFromMessages = () => {
-    setSelectedMessage(null);
-    setCurrentPage('home');
-  };
-
   const handleNavigateToEvent = (eventId: number) => {
     setHighlightEventId(eventId);
     setCurrentPage('events');
@@ -330,9 +324,13 @@ export function Dashboard({
     onForceOpenEventHandled?.();
   }, [forceOpenEventToken, events, onForceOpenEventHandled]);
 
+  // チャットは全画面固定レイアウト(ヘッダー・チャット本体・下部ナビを縦フレックスで敷き詰め、
+  // ページ自体はスクロールさせない)。他の画面は従来どおりページスクロール + 固定ナビ。
+  const isChatPage = currentPage === 'messages';
+
   return (
-    <div className="min-h-screen bg-[#F5F1E8]">
-      <header className="bg-[#F5F1E8] border-b sticky top-0 z-50">
+    <div className={isChatPage ? 'h-dvh flex flex-col overflow-hidden bg-[#F5F1E8]' : 'min-h-screen bg-[#F5F1E8]'}>
+      <header className={`bg-[#F5F1E8] border-b z-50 ${isChatPage ? 'shrink-0' : 'sticky top-0'}`}>
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-col gap-3">
             <div className="flex justify-between items-center">
@@ -513,10 +511,7 @@ export function Dashboard({
         </div>
       </header>
 
-      {/* チャットは画面ぴったり(ヘッダー64px を引いた高さ)にする。ここで min-h-screen を足すと
-          ドキュメントがヘッダー分だけ縦に伸びてページ全体がスクロール可能になり、
-          初回の scrollIntoView でチャットヘッダーが隠れる位置までずれてしまう */}
-      <main className={currentPage === 'messages' ? 'px-0 py-0 pb-0 h-[calc(100vh-4rem)]' : 'container mx-auto px-4 py-8 pb-32 min-h-screen'}>
+      <main className={isChatPage ? 'flex-1 min-h-0' : 'container mx-auto px-4 py-8 pb-32 min-h-screen'}>
         {user.registrationStep === 'waiting_approval' && currentPage !== 'messages' && (
           <div className="mb-6 space-y-4">
             {user.studentIdReuploadRequested && (
@@ -700,7 +695,6 @@ export function Dashboard({
             recipientName={selectedNotification.senderName}
             recipientAvatar={selectedNotification.senderAvatar}
             isAdmin={selectedNotification.isAdmin}
-            onBack={handleBackFromMessages}
             messageHistory={messageHistory}
             setMessageHistory={setMessageHistory}
             messageThreads={messageThreads}
@@ -711,10 +705,9 @@ export function Dashboard({
         )}
       </main>
 
-      {currentPage !== 'messages' && (
-        <nav className="fixed bottom-0 left-0 right-0 bg-[#F5F1E8] border-t z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
-          <div className="container mx-auto px-4 pb-2">
-            <div className="flex justify-around items-end">
+      <nav className={`bg-[#F5F1E8] border-t z-50 shadow-lg pb-[env(safe-area-inset-bottom)] ${isChatPage ? 'shrink-0' : 'fixed bottom-0 left-0 right-0'}`}>
+        <div className="container mx-auto px-4 pb-2">
+          <div className="flex justify-around items-end">
               <NavButton
                 icon={<Home className="w-5 h-5" />}
                 label={t.home}
@@ -746,16 +739,14 @@ export function Dashboard({
               <NavButton
                 icon={<MessageCircle className="w-5 h-5" />}
                 label={t.messages}
-                // このナビはチャット表示中は隠れるため、常に非アクティブ表示になる
-                active={false}
+                active={isChatPage}
                 badgeCount={unreadMessageCount()}
                 onClick={handleAdminChatClick}
                 dataTour="nav-messages"
               />
-            </div>
           </div>
-        </nav>
-      )}
+        </div>
+      </nav>
 
       <Dialog open={feePaymentDialogOpen} onOpenChange={setFeePaymentDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">

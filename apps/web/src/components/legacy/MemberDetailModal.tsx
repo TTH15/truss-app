@@ -51,7 +51,6 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.nickname}</p><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.nickname || '-'}</p></div>
-            <div><p className="text-[#6B6B7A] text-sm tracking-[-0.1504px] mb-1">{t.id}:</p><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.id}</p></div>
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.email}</p><p className="text-[#101828] text-base tracking-[-0.3125px] break-all">{user.email}</p></div>
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.phone}</p><p className="text-[#101828] text-base tracking-[-0.3125px] break-all">{user.phone || '-'}</p></div>
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.studentNumber}</p><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.studentNumber || '1234567A'}</p></div>

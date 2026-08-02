@@ -83,6 +83,7 @@ const translations = {
     templateDownloaded: '部員名簿をダウンロードしました',
     templateDownloadFailed: 'テンプレートのダウンロードに失敗しました',
     chat: '個別チャット',
+    studentNumberLabel: '学籍番号',
     selectAll: 'すべて選択',
     noMemberSelected: 'メンバーを選択してください',
     bulkUpdated: '一括更新しました',
@@ -133,6 +134,7 @@ const translations = {
     templateDownloaded: 'Member roster downloaded',
     templateDownloadFailed: 'Failed to download template',
     chat: 'Chat',
+    studentNumberLabel: 'Student ID',
     selectAll: 'Select All',
     noMemberSelected: 'Please select members',
     bulkUpdated: 'Bulk update completed',
@@ -585,7 +587,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                       {!member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
                     </div>
                     <p className="truncate text-sm text-[#4A5565]">{member.email}</p>
-                    <p className="text-xs text-[#6A7282]">ID: {member.id}</p>
+                    {member.studentNumber && <p className="text-xs text-[#6A7282]">{t.studentNumberLabel}: {member.studentNumber}</p>}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     <Badge className={`${getCategoryColor(member.category)} flex h-8 shrink-0 items-center border-0 px-2 py-1 text-xs font-medium`}>{getCategoryLabel(member.category)}</Badge>
@@ -613,7 +615,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                         <button type="button" onClick={() => { setSelectedUser(member); setShowDetailModal(true); }} className="shrink-0 rounded p-0.5 text-[#3D3D4E] transition-colors hover:bg-[#F5F1E8]"><MoreVertical className="w-4 h-4" /></button>
                       </div>
                       <p className="truncate text-xs text-[#4A5565]">{member.email}</p>
-                      <p className="text-xs text-[#6A7282]">ID: {member.id}</p>
+                      {member.studentNumber && <p className="text-xs text-[#6A7282]">{t.studentNumberLabel}: {member.studentNumber}</p>}
                     </div>
                   </div>
                   <div className="ml-9 flex flex-col items-start gap-2">

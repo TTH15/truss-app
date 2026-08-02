@@ -47,3 +47,12 @@
 - **PWA案内をモバイル限定に**: デスクトップ Chrome でも `beforeinstallprompt` が発火し「ホーム画面に追加できます」が出ていたため、主ポインタが粗い端末(`(pointer: coarse)`)のみ表示するよう変更。
 - 検証: `tsc --noEmit`・`next build` 通過。新規 lint エラー 0。
 - 残課題: preview でチャット表示位置・戻る導線・PWAバナー非表示(PC)を確認。チャット表示中は下部ナビが隠れる仕様のままなので、他タブへは戻るボタン経由になる。
+
+## 2026-08-03 03:45 チャットの戻るボタン廃止・下部ナビ常時表示・運営画面のUUID非表示
+
+- **チャットの戻るボタンを廃止**: 下部ナビから各画面へ移動できるため不要。`MessagesPage` の `onBack` prop と Dashboard の `handleBackFromMessages`・未使用だった `selectedMessage` state も削除。
+- **下部ナビをチャット中も常時表示**: チャット時は Dashboard ルートを `h-dvh flex flex-col overflow-hidden` にし、ヘッダー(shrink-0) / チャット本体(flex-1 min-h-0) / ナビ(shrink-0・非 fixed)を縦フレックスで敷き詰める構成へ変更。マジックナンバー(100vh-4rem 等)に依存せず高さが決まるようになり、前回の「ずれ」も構造的に発生しなくなる。`h-dvh` によりモバイルのアドレスバー分の食い込みも回避。他画面は従来どおり(ページスクロール + fixed ナビ)。
+- `MessagesPage` のルート高さは `h-[calc(100vh-64px)]` → `h-full`(親の flex-1 に追従)。
+- **運営画面から UUID を非表示**: メンバー一覧(PC/モバイル両カード)の `ID: <uuid>` を学籍番号表示に置き換え(未登録なら非表示)。メンバー詳細モーダルからも ID 行を削除(学生番号は別項目で既に表示済み)。
+- 検証: `tsc --noEmit`・`next build` 通過。新規 lint エラー 0。
+- 残課題: preview でチャット時のナビ表示・入力欄の重なり・運営画面の一覧表示を確認。

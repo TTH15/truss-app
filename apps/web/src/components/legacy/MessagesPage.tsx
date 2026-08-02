@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from 
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { ArrowLeft, Send, Images, Calendar, Clock, MapPin, X, FileText } from 'lucide-react';
+import { Send, Images, Calendar, Clock, MapPin, X, FileText } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faImage, faFileLines, faCalendarDays, faImages, faPlus } from '@fortawesome/free-solid-svg-icons';
 import type { Language, User, Message as AppMessage, MessageMention, MessageThread, ChatThreadMetadata, Event, GalleryPhoto } from '@truss/core';
@@ -18,7 +18,6 @@ interface MessagesPageProps {
   recipientName: string;
   recipientAvatar: string;
   isAdmin?: boolean;
-  onBack: () => void;
   messageHistory: MessageHistory;
   setMessageHistory: (history: MessageHistory | ((prev: MessageHistory) => MessageHistory)) => void;
   messageThreads: MessageThread;
@@ -33,7 +32,7 @@ const translations = {
   en: { typeMessage: 'Type a message...', attachPhoto: 'Photo', attachFile: 'File', attachEvent: 'Event', attachMemory: 'Memories', noUpcomingEvents: 'No upcoming events', noMemories: 'No photos yet', backToMenu: 'Back' },
 };
 
-export function MessagesPage({ language, user, recipientName, recipientAvatar, isAdmin = false, onBack, messageHistory, setMessageHistory, messageThreads, onUpdateMessageThreads }: MessagesPageProps) {
+export function MessagesPage({ language, user, recipientName, recipientAvatar, isAdmin = false, messageHistory, setMessageHistory, messageThreads, onUpdateMessageThreads }: MessagesPageProps) {
   const t = translations[language];
   const { markAllMessagesAsReadForUser, sendMessage, uploadChatAttachment, approvedMembers, staffInboxUserId, events, galleryPhotos } = useData();
   const hasMarkedAsRead = useRef(false);
@@ -238,9 +237,8 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
   };
 
   return (
-    <div className="flex flex-col bg-[#F5F1E8] h-[calc(100vh-64px)]">
+    <div className="flex flex-col bg-[#F5F1E8] h-full">
       <div className="bg-white border-b border-[#E8E4DB] px-4 py-3 flex items-center gap-3 shrink-0">
-        <button onClick={onBack} className="p-1 hover:bg-[#E8E4DB] rounded-full"><ArrowLeft className="w-5 h-5 text-[#3D3D4E]" /></button>
         <Avatar className="w-10 h-10"><AvatarFallback className="bg-[#49B1E4] text-white">{recipientAvatar}</AvatarFallback></Avatar>
         <div className="flex-1"><h2 className="text-[#3D3D4E]">{recipientName}</h2>{isAdmin && <p className="text-xs text-[#6B6B7A]">{language === 'ja' ? '運営' : 'Admin'}</p>}</div>
       </div>
