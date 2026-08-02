@@ -32,6 +32,8 @@ import {
   setRenewalStatusRow,
   resetMembershipForNewYearRow,
   deleteUserRow,
+  updateUserRoleRow,
+  type UserRole,
 } from '@truss/core';
 import {
   createBoardPostRow,
@@ -67,7 +69,7 @@ import {
 import { useAuth } from './AuthContext';
 import type {
   User, Event, EventParticipant, Message, MessageThread,
-  ChatThreadMetadata, Notification, BoardPost, BoardPostReply, GalleryPhoto, MessageCategory
+  ChatThreadMetadata, Notification, BoardPost, BoardPostReply, GalleryPhoto, MessageCategory, MessageMention
 } from '@truss/core';
 
 interface DataContextType {
@@ -96,13 +98,14 @@ interface DataContextType {
   confirmFeePayment: (userId: string, isRenewal?: boolean) => Promise<void>;
   confirmRenewal: (userId: string) => Promise<void>;
   setRenewalStatus: (userId: string, isRenewal: boolean) => Promise<void>;
+  setUserRole: (userId: string, role: UserRole) => Promise<void>;
   resetMembershipForNewYear: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   sendMessage: (
     receiverId: string,
     text: string,
     isAdmin?: boolean,
-    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string }
+    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention }
   ) => Promise<void>;
   sendBulkMessages: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; broadcastId?: number | null }>) => Promise<void>;
   cancelBroadcast: (broadcastId: number) => Promise<void>;
@@ -527,6 +530,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setUserRole = async (userId: string, role: UserRole) => {
+    try {
+      const { error } = await updateUserRoleRow(userId, role);
+      if (error) throw error;
+      await fetchUsers(true);
+    } catch (error) {
+      console.error('Error setting user role:', error);
+    }
+  };
+
   const resetMembershipForNewYear = async () => {
     try {
       const currentYear = new Date().getFullYear();
@@ -554,7 +567,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     receiverId: string,
     text: string,
     isAdmin: boolean = false,
-    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string }
+    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention }
   ) => {
     if (!user) return;
     try {
@@ -567,6 +580,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         category: options?.category,
         attachmentPath: options?.attachmentPath,
         attachmentType: options?.attachmentType,
+        mention: options?.mention,
       });
       if (error) throw error;
       await fetchMessages();
@@ -820,7 +834,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const value: DataContextType = {
     events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading,
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
-    approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, resetMembershipForNewYear, deleteUser,
+    approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, setUserRole, resetMembershipForNewYear, deleteUser,
     sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, markMemberMessagesAsRead, uploadChatAttachment, updateChatMetadata,
     markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost, togglePinBoardPost, reorderPinnedBoardPosts,
     uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, likeGalleryPhoto,

@@ -8,7 +8,7 @@ import { AdminChat } from './AdminChat';
 import { AdminGallery } from './AdminGallery';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
-import type { User as UserType, Language, Event, EventParticipant, MessageThread, ChatThreadMetadata, Notification, BoardPost } from '@truss/core';
+import type { User as UserType, Language, Event, EventParticipant, MessageThread, ChatThreadMetadata, Notification, BoardPost, UserRole } from '@truss/core';
 import type { Dispatch, SetStateAction } from 'react';
 
 interface AdminPageProps {
@@ -29,6 +29,7 @@ interface AdminPageProps {
   onRequestReupload: (userId: string, reasons?: string[]) => void;
   onConfirmFeePayment?: (userId: string, isRenewal?: boolean) => void | Promise<void>;
   onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void | Promise<void>;
+  onSetUserRole?: (userId: string, role: UserRole) => void | Promise<void>;
   onDeleteUser?: (userId: string) => void;
   messageThreads: MessageThread;
   onUpdateMessageThreads: Dispatch<SetStateAction<MessageThread>>;
@@ -81,7 +82,7 @@ const translations = {
   }
 };
 
-export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, membersLoading = false, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, onMarkMemberMessagesAsRead, onUploadChatAttachment, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onDeleteBoardPost, onTogglePinBoardPost, onReorderPinnedBoardPosts, onSendBulkEmail, onSendBulkMessages, onCancelBroadcast }: AdminPageProps) {
+export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, membersLoading = false, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onSetUserRole, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, onMarkMemberMessagesAsRead, onUploadChatAttachment, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onDeleteBoardPost, onTogglePinBoardPost, onReorderPinnedBoardPosts, onSendBulkEmail, onSendBulkMessages, onCancelBroadcast }: AdminPageProps) {
   const t = translations[language];
   const ADMIN_TAB_STORAGE_KEY = `truss-admin-tab-${user.id}`;
   const [currentTab, setCurrentTab] = useState<AdminTab>('members');
@@ -177,7 +178,7 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
         </aside>
 
         <main className="flex-1 container mx-auto px-4 py-8 pb-24 lg:pb-8">
-          {currentTab === 'members' && <AdminMembersManagement language={language} pendingUsers={pendingUsers} approvedMembers={approvedMembers} isLoading={membersLoading} onApproveUser={onApproveUser} onRejectUser={onRejectUser} onRequestReupload={onRequestReupload} onOpenChat={onOpenMemberChat} onSendBulkEmail={onSendBulkEmail} onConfirmFeePayment={onConfirmFeePayment} onSetRenewalStatus={onSetRenewalStatus} onDeleteUser={onDeleteUser} />}
+          {currentTab === 'members' && <AdminMembersManagement language={language} pendingUsers={pendingUsers} approvedMembers={approvedMembers} isLoading={membersLoading} onApproveUser={onApproveUser} onRejectUser={onRejectUser} onRequestReupload={onRequestReupload} onOpenChat={onOpenMemberChat} onSendBulkEmail={onSendBulkEmail} onConfirmFeePayment={onConfirmFeePayment} onSetRenewalStatus={onSetRenewalStatus} onSetUserRole={onSetUserRole} onDeleteUser={onDeleteUser} />}
           {currentTab === 'events' && <AdminEvents language={language} events={events} eventParticipants={eventParticipants} onCreateEvent={onCreateEvent} onUpdateEvent={onUpdateEvent} onDeleteEvent={onDeleteEvent} onSendBulkEmail={onSendBulkEmail} focusEventId={focusEventId ?? undefined} onFocusEventHandled={() => setFocusEventId(null)} />}
           {currentTab === 'gallery' && <AdminGallery language={language} />}
           {currentTab === 'boards' && <AdminBoards language={language} adminUserId={user.id} adminName={user.name} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onDeleteBoardPost={onDeleteBoardPost} onTogglePinBoardPost={onTogglePinBoardPost} onReorderPinnedBoardPosts={onReorderPinnedBoardPosts} />}

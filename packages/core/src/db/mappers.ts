@@ -39,6 +39,7 @@ export function mapDbUserRowToUser(row: DbUser): User {
     category: row.category,
     approved: row.approved,
     isAdmin: row.is_admin,
+    role: row.role ?? "member",
     avatarPath: row.avatar_path ?? undefined,
     studentIdImage: row.student_id_image ?? undefined,
     studentNumber: row.student_number ?? undefined,

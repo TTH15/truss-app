@@ -5,6 +5,7 @@ import { Input } from '../ui/input';
 import { UserAvatarImage } from './UserAvatarImage';
 import { Search, Globe2 } from 'lucide-react';
 import type { Language, User } from '@truss/core';
+import { RoleBadge } from './RoleBadge';
 
 interface MembersPageProps {
   language: Language;
@@ -42,7 +43,7 @@ export function MembersPage({ language, members }: MembersPageProps) {
                   className="h-16 w-16"
                   fallbackClassName="bg-linear-to-br from-blue-600 to-purple-600 text-white text-xl"
                 />
-                <div className="flex-1 min-w-0"><h3 className="text-gray-900 truncate">{member.name}</h3><p className="text-gray-600 text-sm">{member.nickname || '-'} ({member.furigana || '-'})</p><Badge className={`mt-2 text-xs ${getCategoryColor(member.category)}`}>{getCategoryLabel(member.category)}</Badge></div>
+                <div className="flex-1 min-w-0"><div className="flex items-center gap-2 min-w-0"><h3 className="text-gray-900 truncate">{member.name}</h3><RoleBadge role={member.role} language={language} className="shrink-0" /></div><p className="text-gray-600 text-sm">{member.nickname || '-'} ({member.furigana || '-'})</p><Badge className={`mt-2 text-xs ${getCategoryColor(member.category)}`}>{getCategoryLabel(member.category)}</Badge></div>
               </div>
               <div className="mt-4 space-y-2">
                 <div className="flex items-start gap-2 text-sm"><Globe2 className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" /><div><span className="text-gray-600">{t.speaks}:</span><span className="text-gray-900 ml-1">{member.languages.join(', ')}</span></div></div>

@@ -97,6 +97,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     requestReupload,
     confirmFeePayment,
     setRenewalStatus,
+    setUserRole,
     deleteUser,
     sendMessage,
     markMemberMessagesAsRead,
@@ -756,7 +757,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
           eventParticipants={eventParticipants} onCreateEvent={handleCreateEvent} onUpdateEvent={handleUpdateEvent} onDeleteEvent={handleDeleteEvent}
           pendingUsers={pendingUsers} approvedMembers={approvedMembers} onApproveUser={handleApproveUser} onRejectUser={handleRejectUser}
           membersLoading={usersLoading}
-          onRequestReupload={handleRequestReupload} onConfirmFeePayment={confirmFeePayment} onSetRenewalStatus={setRenewalStatus}
+          onRequestReupload={handleRequestReupload} onConfirmFeePayment={confirmFeePayment} onSetRenewalStatus={setRenewalStatus} onSetUserRole={setUserRole}
           onDeleteUser={deleteUser} messageThreads={messageThreads} onUpdateMessageThreads={setMessageThreads} onSendMessage={sendMessage}
           onMarkMemberMessagesAsRead={markMemberMessagesAsRead} onUploadChatAttachment={uploadChatAttachment}
           chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={setChatThreadMetadata} selectedChatUserId={selectedChatUserId}

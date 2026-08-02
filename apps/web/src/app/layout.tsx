@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/truss-favicon.svg",
     shortcut: "/truss-favicon.svg",
-    apple: "/truss-favicon.svg",
+    apple: "/icons/truss-180.png",
     other: {
       rel: "icon",
       url: "/truss-favicon.svg",

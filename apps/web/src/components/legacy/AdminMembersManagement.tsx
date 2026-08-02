@@ -1,5 +1,5 @@
 import { AdminMembers } from './AdminMembers';
-import type { Language, User } from '@truss/core';
+import type { Language, User, UserRole } from '@truss/core';
 
 interface AdminMembersManagementProps {
   language: Language;
@@ -13,10 +13,11 @@ interface AdminMembersManagementProps {
   onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
   onConfirmFeePayment?: (userId: string, isRenewal: boolean) => void | Promise<void>;
   onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void | Promise<void>;
+  onSetUserRole?: (userId: string, role: UserRole) => void | Promise<void>;
   onDeleteUser?: (userId: string) => void;
 }
 
-export function AdminMembersManagement({ language, pendingUsers, approvedMembers, isLoading = false, onApproveUser, onRejectUser, onRequestReupload, onOpenChat, onSendBulkEmail, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser }: AdminMembersManagementProps) {
+export function AdminMembersManagement({ language, pendingUsers, approvedMembers, isLoading = false, onApproveUser, onRejectUser, onRequestReupload, onOpenChat, onSendBulkEmail, onConfirmFeePayment, onSetRenewalStatus, onSetUserRole, onDeleteUser }: AdminMembersManagementProps) {
   return (
     <AdminMembers
       language={language}
@@ -30,6 +31,7 @@ export function AdminMembersManagement({ language, pendingUsers, approvedMembers
       onSendBulkEmail={onSendBulkEmail}
       onConfirmFeePayment={onConfirmFeePayment}
       onSetRenewalStatus={onSetRenewalStatus}
+      onSetUserRole={onSetUserRole}
       onDeleteUser={onDeleteUser}
     />
   );

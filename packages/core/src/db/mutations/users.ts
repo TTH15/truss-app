@@ -7,6 +7,7 @@ import {
   buildInitialRegistrationUserUpdate,
   type InitialRegistrationPayload,
 } from "../initial-registration";
+import type { UserRole } from "../../roles";
 
 function toErrorOrNull(error: { message: string } | null) {
   return error ? new Error(error.message) : null;
@@ -38,6 +39,15 @@ export async function approvePendingUserRow(
     await deleteStudentIdImageByPath(existingPath);
   }
 
+  return { error: toErrorOrNull(error) };
+}
+
+/** 役職の付与（管理画面用。DB トリガーにより管理者以外は変更不可） */
+export async function updateUserRoleRow(
+  userId: string,
+  role: UserRole
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase.from("users").update({ role }).eq("id", userId);
   return { error: toErrorOrNull(error) };
 }
 

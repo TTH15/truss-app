@@ -8,6 +8,7 @@ import { Globe2, MapPin, Mail, Edit, Phone, Users, Save, X, GraduationCap, IdCar
 import { toast } from 'sonner';
 import type { Language, User } from '@truss/core';
 import { UserAvatarImage } from './UserAvatarImage';
+import { RoleBadge } from './RoleBadge';
 import { ProfileAvatarCropDialog } from './ProfileAvatarCropDialog';
 import { uploadUserAvatar } from '@truss/core';
 
@@ -179,7 +180,10 @@ export function ProfilePage({
         <div className="flex items-center gap-4 p-2">
           <UserAvatarImage avatarPath={user.avatarPath} name={user.name} className="w-16 h-16" />
           <div className="flex-1">
-            <p className="text-[#3D3D4E]">{user.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[#3D3D4E]">{user.name}</p>
+              <RoleBadge role={user.role} language={language} />
+            </div>
             {user.nickname && <p className="text-[#6B6B7A] text-sm">{user.nickname}</p>}
             <Badge className={`${getCategoryColor(user.category)} mt-1`}>{getCategoryLabel(user.category)}</Badge>
           </div>

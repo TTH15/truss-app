@@ -1,0 +1,74 @@
+/* 操作ガイドツアー(driver.js)の Truss デザイン上書き */
+
+.driver-popover.truss-tour {
+  background-color: #ffffff;
+  color: #3d3d4e;
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(61, 61, 78, 0.25);
+  padding: 18px;
+  max-width: 320px;
+}
+
+.driver-popover.truss-tour .driver-popover-title {
+  color: #3d3d4e;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.driver-popover.truss-tour .driver-popover-description {
+  color: #4a5565;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.driver-popover.truss-tour .driver-popover-progress-text {
+  color: #6b6b7a;
+  font-size: 0.75rem;
+}
+
+.driver-popover.truss-tour button:not(.driver-popover-close-btn) {
+  background-color: #49b1e4;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  text-shadow: none;
+}
+
+.driver-popover.truss-tour button:not(.driver-popover-close-btn):hover {
+  background-color: #3a9fd3;
+}
+
+.driver-popover.truss-tour .driver-popover-navigation-btns {
+  gap: 10px;
+}
+
+/* スキップは控えめなテキストボタンにして「次へ」との押し間違いを防ぐ */
+.driver-popover.truss-tour button.truss-tour-skip-btn {
+  background-color: transparent;
+  color: #6b6b7a;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+  text-shadow: none;
+}
+
+.driver-popover.truss-tour button.truss-tour-skip-btn:hover {
+  background-color: #f0ede5;
+  color: #3d3d4e;
+}
+
+.driver-popover.truss-tour .driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: #ffffff;
+}
+.driver-popover.truss-tour .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: #ffffff;
+}
+.driver-popover.truss-tour .driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: #ffffff;
+}
+.driver-popover.truss-tour .driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: #ffffff;
+}

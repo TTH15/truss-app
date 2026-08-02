@@ -55,6 +55,7 @@ export * from "./linkify";
 export * from "./event-checkin";
 export * from "./message-categories";
 export * from "./phone";
+export * from "./roles";
 export * from "./db/mappers";
 export * from "./db/initial-registration";
 export * from "./db/queries/board";
