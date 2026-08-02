@@ -21,7 +21,7 @@ import { MemberDetailModal } from './MemberDetailModal';
 import { AdminApprovals } from './AdminApprovals';
 import svgPaths from '../../imports/svg-u7k8r9dq17';
 import svgPaths2 from '../../imports/svg-40vpfbujgn';
-import type { Language, User } from '@truss/core';
+import type { Language, User, UserRole } from '@truss/core';
 
 interface AdminMembersProps {
   language: Language;
@@ -35,6 +35,7 @@ interface AdminMembersProps {
   onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
   onConfirmFeePayment?: (userId: string, isRenewal: boolean) => void | Promise<void>;
   onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void | Promise<void>;
+  onSetUserRole?: (userId: string, role: UserRole) => void | Promise<void>;
   onDeleteUser?: (userId: string) => void;
 }
 
@@ -156,7 +157,7 @@ function FeeUnpaidWalletIcon({ tooltip }: { tooltip: string }) {
   );
 }
 
-export function AdminMembers({ language, approvedMembers, pendingUsers, isLoading = false, onApproveUser, onRejectUser, onRequestReupload, onOpenChat, onSendBulkEmail, onConfirmFeePayment, onSetRenewalStatus, onDeleteUser }: AdminMembersProps) {
+export function AdminMembers({ language, approvedMembers, pendingUsers, isLoading = false, onApproveUser, onRejectUser, onRequestReupload, onOpenChat, onSendBulkEmail, onConfirmFeePayment, onSetRenewalStatus, onSetUserRole, onDeleteUser }: AdminMembersProps) {
   const t = translations[language];
   const toKatakana = (value: string) =>
     value.replace(/[\u3041-\u3096]/g, (m) => String.fromCharCode(m.charCodeAt(0) + 0x60));
@@ -748,6 +749,11 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
             toast.success(language === 'ja' ? `年会費（${feeAmount}）の支払いを確認しました` : `Fee payment (${feeAmount}) confirmed`);
             setShowDetailModal(false);
           }}
+          onSetRole={onSetUserRole ? (role) => {
+            void onSetUserRole(selectedUser.id, role);
+            setSelectedUser({ ...selectedUser, role });
+            toast.success(language === 'ja' ? '役職を変更しました' : 'Role updated');
+          } : undefined}
         />
       )}
     </div>

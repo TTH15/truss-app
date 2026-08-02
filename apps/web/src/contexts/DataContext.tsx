@@ -32,6 +32,8 @@ import {
   setRenewalStatusRow,
   resetMembershipForNewYearRow,
   deleteUserRow,
+  updateUserRoleRow,
+  type UserRole,
 } from '@truss/core';
 import {
   createBoardPostRow,
@@ -96,6 +98,7 @@ interface DataContextType {
   confirmFeePayment: (userId: string, isRenewal?: boolean) => Promise<void>;
   confirmRenewal: (userId: string) => Promise<void>;
   setRenewalStatus: (userId: string, isRenewal: boolean) => Promise<void>;
+  setUserRole: (userId: string, role: UserRole) => Promise<void>;
   resetMembershipForNewYear: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   sendMessage: (
@@ -527,6 +530,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setUserRole = async (userId: string, role: UserRole) => {
+    try {
+      const { error } = await updateUserRoleRow(userId, role);
+      if (error) throw error;
+      await fetchUsers(true);
+    } catch (error) {
+      console.error('Error setting user role:', error);
+    }
+  };
+
   const resetMembershipForNewYear = async () => {
     try {
       const currentYear = new Date().getFullYear();
@@ -820,7 +833,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const value: DataContextType = {
     events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading,
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
-    approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, resetMembershipForNewYear, deleteUser,
+    approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, setUserRole, resetMembershipForNewYear, deleteUser,
     sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, markMemberMessagesAsRead, uploadChatAttachment, updateChatMetadata,
     markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost, togglePinBoardPost, reorderPinnedBoardPosts,
     uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, likeGalleryPhoto,

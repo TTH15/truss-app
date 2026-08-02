@@ -27,6 +27,9 @@ import {
   isProbablyImageFile,
   normalizeStudentIdImageDataUrl,
 } from '../../lib/student-id-image';
+import { hasSeenUserTour, startUserTour } from '../../lib/user-tour';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCircleQuestion } from '@fortawesome/free-solid-svg-icons';
 
 type User = UserType;
 
@@ -153,6 +156,19 @@ export function Dashboard({
   const studentIdReuploadInputRef = useRef<HTMLInputElement | null>(null);
   const t = translations[language];
   const profileDone = isProfileCompleteForParticipation(user);
+
+  // 承認済みユーザーの初回表示時に操作ガイドツアーを1回だけ自動起動
+  useEffect(() => {
+    if (!user.approved || currentPage !== 'home' || hasSeenUserTour()) return;
+    const timer = setTimeout(() => startUserTour(language), 800);
+    return () => clearTimeout(timer);
+  }, [user.approved, currentPage, language]);
+
+  const handleStartTour = () => {
+    setProfileOpen(false);
+    setCurrentPage('home');
+    setTimeout(() => startUserTour(language), 350);
+  };
 
   const handleStudentIdReupload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
@@ -355,6 +371,7 @@ export function Dashboard({
                   size="sm"
                   onClick={() => onLanguageChange(language === 'ja' ? 'en' : 'ja')}
                   className="text-[#3D3D4E] hover:bg-[#E8E4DB]"
+                  data-tour="language"
                 >
                   {language === 'ja' ? 'English' : '日本語'}
                 </Button>
@@ -365,6 +382,7 @@ export function Dashboard({
                       variant="ghost"
                       size="sm"
                       className="relative hover:bg-[#E8E4DB] p-2 w-8 h-8 flex items-center justify-center"
+                      data-tour="notifications"
                     >
                       <Bell className="w-5 h-5 text-[#3D3D4E]" />
                       {notifications.length > 0 && (
@@ -472,6 +490,7 @@ export function Dashboard({
                       variant="ghost"
                       size="sm"
                       className="rounded-full p-0 hover:bg-[#E8E4DB]"
+                      data-tour="profile"
                     >
                       <UserAvatarImage
                         avatarPath={user.avatarPath}
@@ -498,6 +517,14 @@ export function Dashboard({
                         className="w-full bg-[#49B1E4] hover:bg-[#3A9FD3] mb-2"
                       >
                         {language === 'ja' ? 'プロフィールを見る' : 'View Profile'}
+                      </Button>
+                      <Button
+                        onClick={handleStartTour}
+                        variant="outline"
+                        className="w-full mb-2"
+                      >
+                        <FontAwesomeIcon icon={faCircleQuestion} className="w-4 h-4 mr-2" />
+                        {language === 'ja' ? '使い方ガイド' : 'How to Use'}
                       </Button>
                       <Button
                         onClick={onLogout}
@@ -721,24 +748,28 @@ export function Dashboard({
                 label={t.home}
                 active={currentPage === 'home'}
                 onClick={() => setCurrentPage('home')}
+                dataTour="nav-home"
               />
               <NavButton
                 icon={<Calendar className="w-5 h-5" />}
                 label={t.events}
                 active={currentPage === 'events'}
                 onClick={() => setCurrentPage('events')}
+                dataTour="nav-events"
               />
               <NavButton
                 icon={<Image className="w-5 h-5" />}
                 label={t.gallery}
                 active={currentPage === 'gallery'}
                 onClick={() => setCurrentPage('gallery')}
+                dataTour="nav-gallery"
               />
               <NavButton
                 icon={<Users className="w-5 h-5" />}
                 label={t.bulletin}
                 active={currentPage === 'bulletin'}
                 onClick={() => setCurrentPage('bulletin')}
+                dataTour="nav-bulletin"
               />
               <NavButton
                 icon={<Mail className="w-5 h-5" />}
@@ -746,6 +777,7 @@ export function Dashboard({
                 active={currentPage === 'notifications'}
                 badgeCount={unreadMessageCount()}
                 onClick={() => setCurrentPage('notifications')}
+                dataTour="nav-messages"
               />
             </div>
           </div>
@@ -845,17 +877,20 @@ function NavButton({
   label,
   active,
   onClick,
-  badgeCount
+  badgeCount,
+  dataTour
 }: {
   icon: React.ReactNode;
   label: string;
   active: boolean;
   onClick: () => void;
   badgeCount?: number;
+  dataTour?: string;
 }) {
   return (
     <button
       onClick={onClick}
+      data-tour={dataTour}
       className={`relative flex flex-col items-center justify-center py-3 px-4 transition-all duration-300 group ${active
         ? 'text-[#3D3D4E]'
         : 'text-[#6B6B7A] hover:text-[#3D3D4E]'

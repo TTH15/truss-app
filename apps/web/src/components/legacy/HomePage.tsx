@@ -1,5 +1,9 @@
-import { AlertCircle, Check, Clock, FileText, Upload } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { AlertCircle, Check, Clock, FileText, Upload, X } from 'lucide-react';
+import { useRef, useEffect } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPeopleGroup } from '@fortawesome/free-solid-svg-icons';
+import { PwaInstallBanner } from './PwaInstallBanner';
+import { useLocalStorageDismissal } from '../../lib/use-local-storage-dismissal';
 import { Button } from '../ui/button';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import trussImage from '@/assets/8fbefa8d40d592af0e3f6e45ca9c793cfbb1b1c6.png';
@@ -24,6 +28,9 @@ const translations = {
     proceedToPayment: '支払い手続きへ →',
     newMemberPaymentRequired: '入会手続きをお願いします',
     newMemberMessage: '入会金と年会費をお支払いいただくと、すべての機能をご利用いただけます。',
+    organizationsNudgeTitle: '「他の所属団体」を教えてください',
+    organizationsNudgeMessage: '兼部・兼サーの状況把握のため、プロフィールの「他の所属団体」欄の記入にご協力ください（ない場合は「なし」と記入）。',
+    organizationsNudgeAction: 'プロフィールを開く →',
   },
   en: {
     renewalRequired: 'Membership Renewal Required',
@@ -31,11 +38,21 @@ const translations = {
     proceedToPayment: 'Proceed to Payment →',
     newMemberPaymentRequired: 'Registration Required',
     newMemberMessage: 'Please pay the entry fee and annual fee to unlock all features.',
+    organizationsNudgeTitle: 'Tell us your other organizations',
+    organizationsNudgeMessage: 'Please fill in the "Other Organizations" field in your profile so we can understand overlapping club memberships (write "None" if you have none).',
+    organizationsNudgeAction: 'Open Profile →',
   }
 };
 
-export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeePayment }: HomePageProps) {
+const ORGANIZATIONS_NUDGE_DISMISSED_KEY = 'truss-organizations-nudge-dismissed-v1';
+
+export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeePayment, onOpenProfile }: HomePageProps) {
   const t = translations[language];
+  const [organizationsNudgeDismissed, dismissOrganizationsNudge] = useLocalStorageDismissal(
+    ORGANIZATIONS_NUDGE_DISMISSED_KEY
+  );
+  const showOrganizationsNudge =
+    user.approved && !user.organizations?.trim() && !organizationsNudgeDismissed && !!onOpenProfile;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isScrollingRef = useRef(false);
   const autoScrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -93,6 +110,33 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 bg-[#49B1E4] rounded-full flex items-center justify-center shrink-0"><AlertCircle className="w-5 h-5 text-white" /></div>
             <div className="flex-1"><h4 className="font-bold">{user.isRenewal ? t.renewalRequired : t.newMemberPaymentRequired}</h4><p className="text-sm opacity-90 mt-1">{user.isRenewal ? t.renewalMessage : t.newMemberMessage}</p><button onClick={onOpenFeePayment} className="mt-2 text-sm font-medium underline hover:no-underline">{t.proceedToPayment}</button></div>
+          </div>
+        </div>
+      )}
+      <PwaInstallBanner language={language} />
+      {showOrganizationsNudge && (
+        <div className="relative bg-white border border-[#49B1E4]/40 p-4 rounded-xl mb-4 shadow-sm">
+          <button
+            onClick={dismissOrganizationsNudge}
+            className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+          <div className="flex items-start gap-3 pr-6">
+            <div className="w-10 h-10 bg-[#E0F3FB] rounded-full flex items-center justify-center shrink-0">
+              <FontAwesomeIcon icon={faPeopleGroup} className="w-5 h-5 text-[#49B1E4]" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-[#3D3D4E]">{t.organizationsNudgeTitle}</h4>
+              <p className="text-sm text-[#4A5565] mt-1">{t.organizationsNudgeMessage}</p>
+              <button
+                onClick={onOpenProfile}
+                className="mt-2 text-sm font-medium text-[#49B1E4] underline hover:no-underline"
+              >
+                {t.organizationsNudgeAction}
+              </button>
+            </div>
           </div>
         </div>
       )}

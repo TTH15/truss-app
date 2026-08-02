@@ -2,6 +2,8 @@
 // Truss App - Supabase Database Types
 // =============================================
 
+import type { UserRole } from '../roles';
+
 // Enum types matching database
 export type UserCategory = 'japanese' | 'regular-international' | 'exchange';
 
@@ -60,6 +62,8 @@ export interface DbUser {
   category: UserCategory;
   approved: boolean;
   is_admin: boolean;
+  /** 役職。'member' がデフォルト（roles.ts の UserRole を参照） */
+  role: UserRole;
   avatar_path: string | null;
   student_id_image: string | null;
   student_number: string | null;
@@ -303,8 +307,9 @@ export interface DbGalleryPhotoLike {
 // Insert Types (for creating new records)
 // =============================================
 
-export type DbUserInsert = Omit<DbUser, 'id' | 'created_at' | 'updated_at'> & {
+export type DbUserInsert = Omit<DbUser, 'id' | 'created_at' | 'updated_at' | 'role'> & {
   id?: string;
+  role?: UserRole;
 };
 
 export type DbEventInsert = Omit<DbEvent, 'id' | 'created_at' | 'updated_at'> & {

@@ -5,6 +5,7 @@ import { supabase } from "../../supabase";
 import { isProfileCompleteForParticipation } from "../../profile-completion";
 import { mapDbUserRowToUser } from "../mappers";
 import type { User as AppUser, RegistrationStep } from "../../types/app";
+import type { UserRole } from "../../roles";
 
 const USER_SELECT_COLUMNS = [
   "id",
@@ -19,6 +20,7 @@ const USER_SELECT_COLUMNS = [
   "category",
   "approved",
   "is_admin",
+  "role",
   "avatar_path",
   "student_id_image",
   "student_number",
@@ -92,6 +94,7 @@ export async function queryUserByAuthId(authId: string): Promise<AppUser | null>
       category: data.category,
       approved: data.approved,
       isAdmin: data.is_admin,
+      role: (data.role as UserRole) || "member",
       avatarPath: data.avatar_path || undefined,
       studentIdImage: data.student_id_image || undefined,
       studentNumber: data.student_number || undefined,

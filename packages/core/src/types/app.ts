@@ -1,3 +1,5 @@
+import type { UserRole } from "../roles";
+
 export type Language = "ja" | "en";
 
 export type RegistrationStep =
@@ -25,6 +27,8 @@ export interface User {
   category: "japanese" | "regular-international" | "exchange";
   approved: boolean;
   isAdmin?: boolean;
+  /** 役職（member がデフォルト）。現段階は肩書き表示用で権限制御には未使用 */
+  role?: UserRole;
   /** Storage path in bucket `user-avatars`（例: `{uuid}/avatar.jpg`）。表示は署名付きURL */
   avatarPath?: string;
   studentIdImage?: string;
