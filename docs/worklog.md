@@ -17,3 +17,9 @@
 - **PWA 導線**: `app/manifest.ts` 追加、`public/icons/`(192/512/maskable/180 を Truss.svg から生成)、apple-touch-icon 差し替え。`PwaInstallBanner` で Android は beforeinstallprompt、iOS は手順ダイアログ。standalone 起動時・非対応環境では非表示。
 - 検証: `tsc --noEmit` 通過、`next build` 成功(`/manifest.webmanifest` 生成確認)。新規ファイルの lint エラー 0(effect 内 setState は `useLocalStorageDismissal` フックで解消)。
 - 残課題: マイグレーション **031・032 が未適用**(Dashboard SQL Editor で手動実行)。ツアー・PWA バナーの実機確認(特に iOS Safari)。role 権限マトリクスの設計は今後。
+
+## 2026-08-03 01:05 ツアーの「戻る」ボタンを削除
+
+- ユーザーフィードバック(誤タップ懸念・戻る需要が薄い)により、ガイドツアーを「次へ」のみの一方向に変更(`showButtons: ['next', 'close']`)。
+- 「戻る」がグレーにならず「次へ」と同色になっていた CSS 特異性バグも、ボタン削除により解消(該当 CSS は削除)。
+- 検証: `tsc --noEmit` 通過。preview で要再確認。

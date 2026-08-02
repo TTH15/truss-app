@@ -40,15 +40,6 @@
   background-color: #3a9fd3;
 }
 
-.driver-popover.truss-tour .driver-popover-prev-btn {
-  background-color: #e8e4db;
-  color: #3d3d4e;
-}
-
-.driver-popover.truss-tour .driver-popover-prev-btn:hover {
-  background-color: #ddd8cc;
-}
-
 .driver-popover.truss-tour .driver-popover-close-btn {
   color: #6b6b7a;
 }

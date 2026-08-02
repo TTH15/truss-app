@@ -133,8 +133,9 @@ export function startUserTour(language: Language) {
   const tour = driver({
     showProgress: true,
     progressText: '{{current}} / {{total}}',
+    // 誤タップ防止のため「戻る」は出さない(再確認は使い方ガイドから再実行)
+    showButtons: ['next', 'close'],
     nextBtnText: language === 'ja' ? '次へ' : 'Next',
-    prevBtnText: language === 'ja' ? '戻る' : 'Back',
     doneBtnText: language === 'ja' ? '完了' : 'Done',
     popoverClass: 'truss-tour',
     overlayOpacity: 0.55,
