@@ -37,3 +37,13 @@
 - 下部ナビ5番目のアイコンを `Mail`(封筒) → `MessageCircle`(吹き出し)に変更。チャットへ直行する導線になったため見た目を実態に合わせた。ナビの他4アイコンと同じ lucide の線画スタイルで統一。
 - `Mail` は通知ポップオーバーのアイコン対応表で引き続き使用のため import は維持。
 - 検証: `tsc --noEmit`・`next build` 通過。
+
+## 2026-08-03 03:20 チャット画面のずれ修正・通知一覧ページ廃止・PWA案内をモバイル限定に
+
+- **チャット画面のずれ修正**: Dashboard の `<main>` に `min-h-screen` が無条件で付いており、チャット時に「ヘッダー64px + 100vh」でドキュメントが縦に伸び、ページ全体が約60pxスクロール可能になっていた。初回の `scrollIntoView` がそのぶん window ごとスクロールさせ、チャットヘッダー(← 運営管理者)が隠れて下に空白が出る症状の原因。`min-h-screen` をチャット以外にのみ適用するよう変更。
+- **通知一覧ページ(NotificationsPage)を廃止**: メッセージタブは運営チャット専用に。チャットの戻るボタンはホームへ。ベルのポップオーバーから「すべての通知を見る」ボタンを削除(ポップオーバー自体が全件スクロール表示のため)。会費ダイアログの「運営にメッセージを送る」もチャット直行に統一。`Page` 型・復元用 validPages から `notifications` を除去し、`NotificationsPage.tsx` を削除。
+- 併せて、通知クリック時に `linkPage === 'admin-chat'` だと相手情報が未設定のまま遷移し空画面になり得たのを、チャット系は共通の `handleAdminChatClick()` を通すよう修正。
+- NotificationsPage のみが読んでいた `interestedPosts` state が不要になったため削除。`BulletinBoard` の `onInterested` を optional 化。
+- **PWA案内をモバイル限定に**: デスクトップ Chrome でも `beforeinstallprompt` が発火し「ホーム画面に追加できます」が出ていたため、主ポインタが粗い端末(`(pointer: coarse)`)のみ表示するよう変更。
+- 検証: `tsc --noEmit`・`next build` 通過。新規 lint エラー 0。
+- 残課題: preview でチャット表示位置・戻る導線・PWAバナー非表示(PC)を確認。チャット表示中は下部ナビが隠れる仕様のままなので、他タブへは戻るボタン経由になる。

@@ -15,7 +15,7 @@ import { linkifyText } from '../../lib/linkify';
 interface BulletinBoardProps {
   language: Language;
   user: User;
-  onInterested: (post: { author: string; authorAvatar: string; title: string }) => void;
+  onInterested?: (post: { author: string; authorAvatar: string; title: string }) => void;
   boardPosts: BoardPost[];
   onUpdateBoardPosts: (posts: BoardPost[]) => void;
   onCreateBoardPost?: (post: CreateBoardPostInput) => Promise<void>;
@@ -58,7 +58,7 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
   const handleToggleInterest = async (post: BoardPost) => {
     if (!onToggleInterest) return;
     await onToggleInterest(post.id);
-    onInterested({ author: post.author, authorAvatar: post.authorAvatar, title: post.title });
+    onInterested?.({ author: post.author, authorAvatar: post.authorAvatar, title: post.title });
   };
   const handleDeletePost = async (postId: number) => {
     if (typeof window !== 'undefined') {

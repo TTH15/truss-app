@@ -11,7 +11,6 @@ import { MembersPage } from './MembersPage';
 import { BulletinBoard } from './BulletinBoard';
 import { GalleryPage } from './GalleryPage';
 import { ProfilePage } from './ProfilePage';
-import { NotificationsPage } from './NotificationsPage';
 import { MessagesPage } from './MessagesPage';
 import { LimitedAccessBanner } from './LimitedAccessBanner';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
@@ -67,7 +66,7 @@ interface DashboardProps {
   onForceOpenEventHandled?: () => void;
 }
 
-type Page = 'home' | 'events' | 'members' | 'bulletin' | 'gallery' | 'profile' | 'notifications' | 'messages' | 'message-detail';
+type Page = 'home' | 'events' | 'members' | 'bulletin' | 'gallery' | 'profile' | 'messages' | 'message-detail';
 
 interface SelectedNotification {
   senderName: string;
@@ -145,7 +144,6 @@ export function Dashboard({
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
   const [selectedNotification, setSelectedNotification] = useState<SelectedNotification | null>(null);
-  const [interestedPosts, setInterestedPosts] = useState<Array<{ postId: number; author: string; authorAvatar: string; title: string }>>([]);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [highlightEventId, setHighlightEventId] = useState<number | undefined>(undefined);
@@ -272,7 +270,7 @@ export function Dashboard({
     try {
       const saved = localStorage.getItem(DASHBOARD_PAGE_STORAGE_KEY) as Page | null;
       if (!saved) return;
-      const validPages: Page[] = ['home', 'events', 'members', 'bulletin', 'gallery', 'profile', 'notifications', 'messages', 'message-detail'];
+      const validPages: Page[] = ['home', 'events', 'members', 'bulletin', 'gallery', 'profile', 'messages', 'message-detail'];
       if (validPages.includes(saved)) setCurrentPage(saved);
     } catch {
       // ignore storage errors
@@ -292,21 +290,7 @@ export function Dashboard({
     return userMessages.filter((msg) => msg.isAdmin && !msg.read).length;
   };
 
-  const handleInterested = (post: { author: string; authorAvatar: string; title: string }) => {
-    setInterestedPosts((prev) => [...prev, { postId: Date.now(), ...post }]);
-  };
-
-  const handleMessageClick = (notification: any) => {
-    if (notification.linkPage === 'admin-chat' || notification.type === 'message') {
-      setSelectedNotification({
-        senderName: language === 'ja' ? '運営管理者' : 'Admin',
-        senderAvatar: 'A',
-        isAdmin: true,
-      });
-      setCurrentPage('messages');
-    }
-  };
-
+  /** 運営とのチャットを開く(下部ナビ・通知・会費ダイアログから共通で使う) */
   const handleAdminChatClick = () => {
     setSelectedNotification({
       senderName: language === 'ja' ? '運営管理者' : 'Admin',
@@ -318,7 +302,7 @@ export function Dashboard({
 
   const handleBackFromMessages = () => {
     setSelectedMessage(null);
-    setCurrentPage('notifications');
+    setCurrentPage('home');
   };
 
   const handleNavigateToEvent = (eventId: number) => {
@@ -421,17 +405,15 @@ export function Dashboard({
                               <button
                                 onClick={() => {
                                   if (notif.linkPage) {
-                                    if (notif.linkPage === 'messages' || notif.type === 'message') {
-                                      setSelectedNotification({
-                                        senderName: language === 'ja' ? '運営管理者' : 'Admin',
-                                        senderAvatar: 'A',
-                                        isAdmin: true,
-                                      });
-                                      setCurrentPage('messages');
+                                    // チャット系はどの経路でも相手情報を伴って開く(未設定だと空画面になる)
+                                    if (
+                                      notif.linkPage === 'messages' ||
+                                      notif.linkPage === 'admin-chat' ||
+                                      notif.type === 'message'
+                                    ) {
+                                      handleAdminChatClick();
                                     } else {
-                                      setCurrentPage(
-                                        (notif.linkPage === 'admin-chat' ? 'messages' : notif.linkPage) as Page
-                                      );
+                                      setCurrentPage(notif.linkPage as Page);
                                     }
                                     onDismissNotification(notif.id);
                                     setNotificationOpen(false);
@@ -468,18 +450,6 @@ export function Dashboard({
                           );
                         })
                       )}
-                    </div>
-                    <div className="p-3 border-t">
-                      <Button
-                        onClick={() => {
-                          setCurrentPage('notifications');
-                          setNotificationOpen(false);
-                        }}
-                        variant="ghost"
-                        className="w-full text-[#49B1E4] hover:bg-[#F5F1E8]"
-                      >
-                        {language === 'ja' ? 'すべての通知を見る' : 'View All Notifications'}
-                      </Button>
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -543,7 +513,10 @@ export function Dashboard({
         </div>
       </header>
 
-      <main className={`${currentPage === 'messages' ? 'px-0 py-0 pb-0 h-[calc(100vh-4rem)]' : currentPage === 'notifications' ? 'container mx-auto px-4 py-8 pb-32 h-[calc(100vh-4rem-8rem)]' : 'container mx-auto px-4 py-8 pb-32'} min-h-screen`}>
+      {/* チャットは画面ぴったり(ヘッダー64px を引いた高さ)にする。ここで min-h-screen を足すと
+          ドキュメントがヘッダー分だけ縦に伸びてページ全体がスクロール可能になり、
+          初回の scrollIntoView でチャットヘッダーが隠れる位置までずれてしまう */}
+      <main className={currentPage === 'messages' ? 'px-0 py-0 pb-0 h-[calc(100vh-4rem)]' : 'container mx-auto px-4 py-8 pb-32 min-h-screen'}>
         {user.registrationStep === 'waiting_approval' && currentPage !== 'messages' && (
           <div className="mb-6 space-y-4">
             {user.studentIdReuploadRequested && (
@@ -709,7 +682,7 @@ export function Dashboard({
         {currentPage === 'home' && <HomePage language={language} user={user} events={events} onNavigateToEvent={handleNavigateToEvent} onOpenProfile={onOpenProfile} onReopenInitialRegistration={onReopenInitialRegistration} onDismissReuploadNotification={onDismissReuploadNotification} onOpenFeePayment={() => setFeePaymentDialogOpen(true)} />}
         {currentPage === 'events' && <EventsPage language={language} events={events} attendingEvents={attendingEvents} likedEvents={likedEvents} onToggleAttending={onToggleAttending} onToggleLike={onToggleLike} highlightEventId={highlightEventId} openEventId={pendingOpenEventId} onOpenEventHandled={() => setPendingOpenEventId(undefined)} onAddEventParticipant={onAddEventParticipant} user={user} />}
         {currentPage === 'members' && <MembersPage language={language} members={approvedMembers.filter((member) => !member.isAdmin)} />}
-        {currentPage === 'bulletin' && <BulletinBoard language={language} user={user} onInterested={handleInterested} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onAddReply={onAddReply} onToggleInterest={onToggleInterest} onDeleteBoardPost={onDeleteBoardPost} />}
+        {currentPage === 'bulletin' && <BulletinBoard language={language} user={user} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onAddReply={onAddReply} onToggleInterest={onToggleInterest} onDeleteBoardPost={onDeleteBoardPost} />}
         {currentPage === 'gallery' && <GalleryPage language={language} currentUser={user} />}
         {currentPage === 'profile' && (
           <ProfilePage
@@ -720,7 +693,6 @@ export function Dashboard({
             onUpdateProfile={onUpdateProfile}
           />
         )}
-        {currentPage === 'notifications' && <NotificationsPage language={language} user={user} onMessageClick={handleMessageClick} interestedPosts={interestedPosts} notifications={notifications} onDismissNotification={onDismissNotification} unreadAdminMessagesCount={unreadMessageCount()} onAdminChatClick={handleAdminChatClick} />}
         {currentPage === 'messages' && selectedNotification && (
           <MessagesPage
             language={language}
@@ -774,17 +746,10 @@ export function Dashboard({
               <NavButton
                 icon={<MessageCircle className="w-5 h-5" />}
                 label={t.messages}
-                active={currentPage === 'notifications'}
+                // このナビはチャット表示中は隠れるため、常に非アクティブ表示になる
+                active={false}
                 badgeCount={unreadMessageCount()}
-                onClick={() => {
-                  // 通知一覧を挟まず運営チャットへ直行(通知はヘッダーのベルで見られる)
-                  setSelectedNotification({
-                    senderName: language === 'ja' ? '運営管理者' : 'Admin',
-                    senderAvatar: 'A',
-                    isAdmin: true,
-                  });
-                  setCurrentPage('messages');
-                }}
+                onClick={handleAdminChatClick}
                 dataTour="nav-messages"
               />
             </div>
@@ -859,7 +824,7 @@ export function Dashboard({
               className="w-full bg-[#49B1E4] hover:bg-[#3A9BD4] text-white"
               onClick={() => {
                 setFeePaymentDialogOpen(false);
-                setCurrentPage('notifications');
+                handleAdminChatClick();
               }}
             >
               <MessageCircle className="w-4 h-4 mr-2" />

@@ -62,6 +62,16 @@ function isIosSafariCapable(): boolean {
   return isIos;
 }
 
+/**
+ * 「ホーム画面に追加」の案内はスマホ・タブレット限定。
+ * デスクトップ Chrome でも beforeinstallprompt は発火するが、文言が実態に合わないため出さない。
+ * 主ポインタが粗い(指)かどうかで判定する。
+ */
+function isTouchDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(pointer: coarse)').matches;
+}
+
 const emptySubscribe = () => () => {};
 
 export function PwaInstallBanner({ language }: { language: Language }) {
@@ -88,9 +98,10 @@ export function PwaInstallBanner({ language }: { language: Language }) {
     setInstallPrompt(null);
   };
 
-  // インストール済み(standalone 起動)・非対応環境・閉じた後は出さない
+  // インストール済み(standalone 起動)・デスクトップ・非対応環境・閉じた後は出さない
   if (!hydrated || dismissed) return null;
-  if (isStandaloneDisplay() || (!installPrompt && !isIosSafariCapable())) return null;
+  if (!isTouchDevice() || isStandaloneDisplay()) return null;
+  if (!installPrompt && !isIosSafariCapable()) return null;
 
   return (
     <>
