@@ -2,6 +2,7 @@
  * 初期登録フロー用の users 行（Insert / Update）を組み立てる
  */
 import type { DbUserInsert, DbUserUpdate } from "../types/database.types";
+import { normalizePhone } from "../phone";
 
 export type InitialRegistrationPayload = {
   name: string;
@@ -27,7 +28,7 @@ export function buildInitialRegistrationUserUpdate(
     approved: false,
     student_id_image: data.studentIdImage,
     student_number: data.studentNumber,
-    phone: data.phone,
+    phone: normalizePhone(data.phone),
     grade: data.grade,
     major: data.major,
     registration_step: "waiting_approval",

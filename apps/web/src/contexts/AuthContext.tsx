@@ -10,6 +10,7 @@ import type { User as AppUser } from '@truss/core';
 import { isProfileCompleteForParticipation } from '@truss/core';
 import { queryUserByAuthId } from '@truss/core';
 import { updateUserProfileRow } from '@truss/core';
+import { normalizePhone } from '@truss/core';
 
 interface AuthContextType {
   session: Session | null;
@@ -200,6 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateUser = async (updates: Partial<AppUser>) => {
     if (!user) return { error: new Error('No user logged in') };
+    if (updates.phone) updates = { ...updates, phone: normalizePhone(updates.phone) };
     try {
       const dbUpdates: Record<string, unknown> = {};
       if (updates.name !== undefined) dbUpdates.name = updates.name;

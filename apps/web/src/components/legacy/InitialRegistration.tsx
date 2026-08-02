@@ -9,6 +9,7 @@ import { AlreadyRegisteredCard } from './AlreadyRegisteredCard';
 import { StudentIdImage } from './StudentIdImage';
 import { toast } from 'sonner';
 import type { Language, User } from '@truss/core';
+import { isValidPhone } from '@truss/core';
 import {
   STUDENT_ID_ERROR_CODES,
   isProbablyImageFile,
@@ -128,10 +129,7 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
       .replace(/[\s\u3000]/g, '')
       .toUpperCase();
   const validateStudentNumber = (value: string) => !value || /^[A-Z0-9]{7,8}$/.test(value);
-  const validatePhoneNumber = (value: string) => {
-    const normalized = value.replace(/[\s-]/g, '');
-    return /^\d{8,15}$/.test(normalized);
-  };
+  const validatePhoneNumber = (value: string) => isValidPhone(value);
   const scrollToError = (ref: React.RefObject<HTMLDivElement>) => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,7 +254,7 @@ export function InitialRegistration({ language, onLanguageChange, email, onCompl
               <div className="space-y-2" ref={furiganaRef}><Label htmlFor="furigana">{t.furiganaLabel}</Label><Input id="furigana" placeholder={t.furiganaPlaceholder} value={formData.furigana} onChange={(e) => { const v = isComposingRef.current ? e.target.value : e.target.value.replace(/[\u3041-\u3096]/g, (m) => String.fromCharCode(m.charCodeAt(0) + 0x60)); setFormData({ ...formData, furigana: v }); setErrors({ ...errors, furigana: false }); }} onCompositionStart={() => { isComposingRef.current = true; }} onCompositionEnd={(e) => { isComposingRef.current = false; setFormData({ ...formData, furigana: e.currentTarget.value.replace(/[\u3041-\u3096]/g, (m) => String.fromCharCode(m.charCodeAt(0) + 0x60)) }); }} className={`h-12 ${errors.furigana ? 'border-red-500' : ''}`} /></div>
             </div>
             <div className="space-y-2" ref={studentNumberRef}><Label htmlFor="studentNumber">{t.studentNumberLabel}</Label><Input id="studentNumber" placeholder={t.studentNumberPlaceholder} value={formData.studentNumber} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} onChange={(e) => { const value = normalizeStudentNumber(e.target.value); setFormData((prev) => ({ ...prev, studentNumber: value })); setStudentNumberError(''); setErrors((prev) => ({ ...prev, studentNumber: false })); }} onBlur={(e) => { const value = normalizeStudentNumber(e.target.value); if (value !== formData.studentNumber) setFormData((prev) => ({ ...prev, studentNumber: value })); if (value && !validateStudentNumber(value)) setStudentNumberError(t.studentNumberError); }} className={`h-12 ${(studentNumberError || errors.studentNumber) ? 'border-red-500' : ''}`} /></div>
-            <div className="space-y-2" ref={phoneRef}><Label htmlFor="phone">{language === 'ja' ? '電話番号' : 'Phone Number'}</Label><Input id="phone" placeholder={language === 'ja' ? '090-1234-5678' : '090-1234-5678'} value={formData.phone} onChange={(e) => { setFormData({ ...formData, phone: e.target.value }); setErrors({ ...errors, phone: false }); }} onBlur={(e) => { if (e.target.value && !validatePhoneNumber(e.target.value)) setErrors({ ...errors, phone: true }); }} className={`h-12 ${errors.phone ? 'border-red-500' : ''}`} /></div>
+            <div className="space-y-2" ref={phoneRef}><Label htmlFor="phone">{language === 'ja' ? '電話番号' : 'Phone Number'}</Label><Input id="phone" placeholder="09012345678" value={formData.phone} onChange={(e) => { setFormData({ ...formData, phone: e.target.value }); setErrors({ ...errors, phone: false }); }} onBlur={(e) => { if (e.target.value && !validatePhoneNumber(e.target.value)) setErrors({ ...errors, phone: true }); }} className={`h-12 ${errors.phone ? 'border-red-500' : ''}`} /></div>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2" ref={facultyRef}><Label htmlFor="faculty">{t.facultyLabel}</Label><Select value={formData.faculty} onValueChange={(faculty) => { setFormData({ ...formData, faculty, department: '' }); setErrors({ ...errors, faculty: false }); }}><SelectTrigger className={`h-12! ${errors.faculty ? 'border-red-500' : ''}`}><SelectValue placeholder={t.facultyPlaceholder} /></SelectTrigger><SelectContent><SelectGroup><SelectLabel>{t.facultyGroupUndergrad}</SelectLabel>{Object.keys(faculties).filter((f) => (faculties[f] || []).length > 0).map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectGroup><div className="my-1 border-t border-gray-200" /><SelectGroup><SelectLabel>{t.facultyGroupGrad}</SelectLabel>{Object.keys(faculties).filter((f) => (faculties[f] || []).length === 0).map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectGroup></SelectContent></Select></div>
               <div className="space-y-2" ref={departmentRef}><Label htmlFor="department">{t.departmentLabel}</Label><Select value={formData.department} onValueChange={(value) => { setFormData({ ...formData, department: value }); setErrors({ ...errors, department: false }); }} disabled={!formData.faculty || isGraduateSchool}><SelectTrigger className={`h-12! ${errors.department ? 'border-red-500' : ''}`}><SelectValue placeholder={t.departmentPlaceholder} /></SelectTrigger><SelectContent>{departments.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></div>
