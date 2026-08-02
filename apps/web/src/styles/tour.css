@@ -40,8 +40,24 @@
   background-color: #3a9fd3;
 }
 
-.driver-popover.truss-tour .driver-popover-close-btn {
+.driver-popover.truss-tour .driver-popover-navigation-btns {
+  gap: 10px;
+}
+
+/* スキップは控えめなテキストボタンにして「次へ」との押し間違いを防ぐ */
+.driver-popover.truss-tour button.truss-tour-skip-btn {
+  background-color: transparent;
   color: #6b6b7a;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+  text-shadow: none;
+}
+
+.driver-popover.truss-tour button.truss-tour-skip-btn:hover {
+  background-color: #f0ede5;
+  color: #3d3d4e;
 }
 
 .driver-popover.truss-tour .driver-popover-arrow-side-top.driver-popover-arrow {

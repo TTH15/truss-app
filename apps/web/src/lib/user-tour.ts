@@ -133,8 +133,11 @@ export function startUserTour(language: Language) {
   const tour = driver({
     showProgress: true,
     progressText: '{{current}} / {{total}}',
-    // 誤タップ防止のため「戻る」は出さない(再確認は使い方ガイドから再実行)
-    showButtons: ['next', 'close'],
+    // 誤タップ防止のため「戻る」は出さない(再確認は使い方ガイドから再実行)。
+    // 終了は明示的な「スキップ」ボタンのみ(× は意図が分かりにくいため出さない)
+    showButtons: ['next'],
+    // モーダル外タップは終了ではなく「次へ」として扱う
+    overlayClickBehavior: 'nextStep',
     nextBtnText: language === 'ja' ? '次へ' : 'Next',
     doneBtnText: language === 'ja' ? '完了' : 'Done',
     popoverClass: 'truss-tour',
@@ -142,6 +145,16 @@ export function startUserTour(language: Language) {
     stagePadding: 6,
     stageRadius: 12,
     onDestroyed: () => markUserTourSeen(),
+    onPopoverRender: (popover, { state }) => {
+      const isLastStep = state.activeIndex === steps.length - 1;
+      if (isLastStep) return;
+      const skip = document.createElement('button');
+      skip.type = 'button';
+      skip.innerText = language === 'ja' ? 'スキップ' : 'Skip';
+      skip.classList.add('truss-tour-skip-btn');
+      skip.addEventListener('click', () => tour.destroy());
+      popover.footerButtons.prepend(skip);
+    },
     steps,
   });
   tour.drive();

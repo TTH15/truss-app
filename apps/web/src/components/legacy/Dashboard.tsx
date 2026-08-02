@@ -776,7 +776,15 @@ export function Dashboard({
                 label={t.messages}
                 active={currentPage === 'notifications'}
                 badgeCount={unreadMessageCount()}
-                onClick={() => setCurrentPage('notifications')}
+                onClick={() => {
+                  // 通知一覧を挟まず運営チャットへ直行(通知はヘッダーのベルで見られる)
+                  setSelectedNotification({
+                    senderName: language === 'ja' ? '運営管理者' : 'Admin',
+                    senderAvatar: 'A',
+                    isAdmin: true,
+                  });
+                  setCurrentPage('messages');
+                }}
                 dataTour="nav-messages"
               />
             </div>

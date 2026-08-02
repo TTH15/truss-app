@@ -69,7 +69,7 @@ import {
 import { useAuth } from './AuthContext';
 import type {
   User, Event, EventParticipant, Message, MessageThread,
-  ChatThreadMetadata, Notification, BoardPost, BoardPostReply, GalleryPhoto, MessageCategory
+  ChatThreadMetadata, Notification, BoardPost, BoardPostReply, GalleryPhoto, MessageCategory, MessageMention
 } from '@truss/core';
 
 interface DataContextType {
@@ -105,7 +105,7 @@ interface DataContextType {
     receiverId: string,
     text: string,
     isAdmin?: boolean,
-    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string }
+    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention }
   ) => Promise<void>;
   sendBulkMessages: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; broadcastId?: number | null }>) => Promise<void>;
   cancelBroadcast: (broadcastId: number) => Promise<void>;
@@ -567,7 +567,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     receiverId: string,
     text: string,
     isAdmin: boolean = false,
-    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string }
+    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention }
   ) => {
     if (!user) return;
     try {
@@ -580,6 +580,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         category: options?.category,
         attachmentPath: options?.attachmentPath,
         attachmentType: options?.attachmentType,
+        mention: options?.mention,
       });
       if (error) throw error;
       await fetchMessages();
