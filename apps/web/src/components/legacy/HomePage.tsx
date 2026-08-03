@@ -4,9 +4,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPeopleGroup } from '@fortawesome/free-solid-svg-icons';
 import { PwaInstallBanner } from './PwaInstallBanner';
 import { useLocalStorageDismissal } from '../../lib/use-local-storage-dismissal';
+import { MembershipCard } from './MembershipCard';
 import { Button } from '../ui/button';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
-import trussImage from '@/assets/8fbefa8d40d592af0e3f6e45ca9c793cfbb1b1c6.png';
 import type { Language, User, Event } from '@truss/core';
 
 interface HomePageProps {
@@ -144,9 +143,7 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
         </div>
       )}
       <div className="flex-1 min-h-[400px] mb-4">
-        <button className="rounded-2xl overflow-hidden shadow-lg h-full w-full flex items-center justify-center hover:shadow-xl transition-shadow cursor-pointer bg-transparent border-0 p-0">
-          <ImageWithFallback src={trussImage} className="w-full h-full object-contain" />
-        </button>
+        <MembershipCard user={user} language={language} />
       </div>
       {bannerEvents.length > 0 && (
         <>
