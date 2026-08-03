@@ -59,7 +59,6 @@ export function MembershipCard({ user, language }: { user: User; language: Langu
         {/* 表 */}
         <div className="absolute inset-0 [backface-visibility:hidden] rounded-2xl overflow-hidden shadow-lg bg-white">
           <ImageWithFallback src={trussImage} className="w-full h-full object-contain" />
-          <span className="absolute bottom-2 right-3 text-[11px] text-[#6B6B7A]">{t.tapHint}</span>
         </div>
 
         {/* 裏 */}
@@ -80,7 +79,6 @@ export function MembershipCard({ user, language }: { user: User; language: Langu
             <dt className="text-[#6B6B7A]">{t.membershipYear}</dt>
             <dd className="text-[#3D3D4E]">{user.membershipYear ?? t.unset}</dd>
           </dl>
-          <span className="absolute bottom-2 right-3 text-[11px] text-[#6B6B7A]">{t.back}</span>
         </div>
       </button>
     </div>
