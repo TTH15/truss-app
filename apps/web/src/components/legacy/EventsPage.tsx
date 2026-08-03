@@ -483,11 +483,12 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
               <div className="space-y-4 py-2">
                 {selectedEvent && (
                   <div className="flex flex-col items-center gap-2 py-2">
-                    <JourneyStamp event={selectedEvent} language={language} size={144} pressing />
-                    <p className="text-xs text-[#6B6B7A]">
+                    {/* 予約時点ではまだ未獲得。当日出席するとプロフィールに押される */}
+                    <JourneyStamp event={selectedEvent} size={144} muted />
+                    <p className="text-xs text-[#6B6B7A] text-center">
                       {language === 'ja'
-                        ? 'スタンプを獲得しました（プロフィールで確認できます）'
-                        : 'Stamp collected — see it on your profile'}
+                        ? '当日参加するとスタンプが押されます'
+                        : 'Attend on the day to collect this stamp'}
                     </p>
                   </div>
                 )}
