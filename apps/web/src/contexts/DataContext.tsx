@@ -13,7 +13,7 @@ import {
 import { queryMessageThreadsAndMetadata } from '@truss/core';
 import { queryNotificationsForUser } from '@truss/core';
 import { queryBoardPostsWithReplies } from '@truss/core';
-import { queryGalleryPhotos } from '@truss/core';
+import { queryGalleryPhotos, queryLikedGalleryPhotoIds, queryInterestedBoardPostIds, queryLikedEventIds } from '@truss/core';
 import {
   insertEventRow,
   updateEventRow,
@@ -48,7 +48,7 @@ import {
   uploadGalleryPhotoRow,
   deleteGalleryPhotoRow,
   approveGalleryPhotoRow,
-  likeGalleryPhotoRow,
+  toggleGalleryPhotoLikeForUser,
   type UploadGalleryPhotoInput,
 } from '@truss/core';
 import {
@@ -126,7 +126,10 @@ interface DataContextType {
   uploadGalleryPhoto: (photo: UploadGalleryPhotoInput) => Promise<void>;
   deleteGalleryPhoto: (photoId: number) => Promise<void>;
   approveGalleryPhoto: (photoId: number) => Promise<void>;
-  likeGalleryPhoto: (photoId: number) => Promise<void>;
+  toggleGalleryPhotoLike: (photoId: number) => Promise<void>;
+  likedGalleryPhotoIds: Set<number>;
+  interestedPostIds: Set<number>;
+  likedEventIds: Set<number>;
   refreshEvents: () => Promise<void>;
   refreshUsers: () => Promise<void>;
   refreshMessages: () => Promise<void>;
@@ -178,6 +181,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [boardPosts, setBoardPosts] = useState<BoardPost[]>([]);
   const [eventParticipants, setEventParticipants] = useState<{ [eventId: number]: EventParticipant[] }>({});
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
+  const [likedGalleryPhotoIds, setLikedGalleryPhotoIds] = useState<Set<number>>(new Set());
+  const [interestedPostIds, setInterestedPostIds] = useState<Set<number>>(new Set());
+  const [likedEventIds, setLikedEventIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(true);
   const eventsFetchInFlight = useRef<Promise<void> | null>(null);
@@ -314,6 +320,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  /** 自分が「いいね」「興味あり」を付けた対象。ハートや手アイコンの ON/OFF 表示に使う */
+  const fetchMyReactions = useCallback(async (userId: string) => {
+    try {
+      const [photoIds, postIds, eventIds] = await Promise.all([
+        queryLikedGalleryPhotoIds(userId),
+        queryInterestedBoardPostIds(userId),
+        queryLikedEventIds(userId),
+      ]);
+      setLikedGalleryPhotoIds(new Set(photoIds));
+      setInterestedPostIds(new Set(postIds));
+      setLikedEventIds(new Set(eventIds));
+    } catch (error) {
+      console.error('Error fetching reactions:', error);
+    }
+  }, []);
+
   useEffect(() => {
     const initData = async () => {
       const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -339,8 +361,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       fetchNotifications();
       // 管理者ログイン直後に承認待ち写真も取り直す（初回取得が一般権限だった場合を補正）
       fetchGalleryPhotos();
+      fetchMyReactions(user.id);
     }
-  }, [user, fetchMessages, fetchNotifications, fetchGalleryPhotos]);
+  }, [user, fetchMessages, fetchNotifications, fetchGalleryPhotos, fetchMyReactions]);
 
   useEffect(() => {
     const eventsChannel = supabase.channel('events-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => fetchEvents(true)).subscribe();
@@ -447,12 +470,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const toggleEventLike = async (eventId: number) => {
     if (!user) return;
+    const wasLiked = likedEventIds.has(eventId);
+    setLikedEventIds((prev) => {
+      const next = new Set(prev);
+      if (wasLiked) next.delete(eventId);
+      else next.add(eventId);
+      return next;
+    });
+    setEvents((prev) =>
+      prev.map((event) =>
+        event.id === eventId
+          ? { ...event, likes: Math.max(0, event.likes + (wasLiked ? -1 : 1)) }
+          : event
+      )
+    );
     try {
       const { error } = await toggleEventLikeForUser(eventId, user.id);
       if (error) throw error;
-      void fetchEvents(true);
     } catch (error) {
       console.error('Error toggling event like:', error);
+      setLikedEventIds((prev) => {
+        const next = new Set(prev);
+        if (wasLiked) next.add(eventId);
+        else next.delete(eventId);
+        return next;
+      });
+      void fetchEvents(true);
     }
   };
 
@@ -746,14 +789,37 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // 反応系（興味あり / いいね）は先に画面へ反映してから通信する。
+  // 通信完了を待つと1秒近く「押したのに何も起きない」状態になるため。失敗時は元に戻す。
   const toggleInterest = async (postId: number) => {
     if (!user) return;
+    const wasInterested = interestedPostIds.has(postId);
+    setInterestedPostIds((prev) => {
+      const next = new Set(prev);
+      if (wasInterested) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
+    setBoardPosts((prev) =>
+      prev.map((post) =>
+        post.id === postId
+          ? { ...post, interested: Math.max(0, post.interested + (wasInterested ? -1 : 1)) }
+          : post
+      )
+    );
     try {
       const { error } = await togglePostInterestForUser(postId, user.id);
       if (error) throw error;
       await fetchBoardPosts();
     } catch (error) {
       console.error('Error toggling interest:', error);
+      setInterestedPostIds((prev) => {
+        const next = new Set(prev);
+        if (wasInterested) next.add(postId);
+        else next.delete(postId);
+        return next;
+      });
+      await fetchBoardPosts();
     }
   };
 
@@ -820,14 +886,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const likeGalleryPhoto = async (photoId: number) => {
+  const toggleGalleryPhotoLike = async (photoId: number) => {
+    if (!user) return;
+    const wasLiked = likedGalleryPhotoIds.has(photoId);
+    setLikedGalleryPhotoIds((prev) => {
+      const next = new Set(prev);
+      if (wasLiked) next.delete(photoId);
+      else next.add(photoId);
+      return next;
+    });
+    setGalleryPhotos((prev) =>
+      prev.map((photo) =>
+        photo.id === photoId
+          ? { ...photo, likes: Math.max(0, photo.likes + (wasLiked ? -1 : 1)) }
+          : photo
+      )
+    );
     try {
-      const { error } = await likeGalleryPhotoRow(photoId);
+      const { error } = await toggleGalleryPhotoLikeForUser(photoId, user.id);
       if (error) throw error;
-      await fetchGalleryPhotos();
     } catch (error) {
-      console.error('Error liking gallery photo:', error);
-      throw error;
+      console.error('Error toggling gallery photo like:', error);
+      setLikedGalleryPhotoIds((prev) => {
+        const next = new Set(prev);
+        if (wasLiked) next.add(photoId);
+        else next.delete(photoId);
+        return next;
+      });
+      await fetchGalleryPhotos();
     }
   };
 
@@ -837,7 +923,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, setUserRole, resetMembershipForNewYear, deleteUser,
     sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, markMemberMessagesAsRead, uploadChatAttachment, updateChatMetadata,
     markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost, togglePinBoardPost, reorderPinnedBoardPosts,
-    uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, likeGalleryPhoto,
+    uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, toggleGalleryPhotoLike, likedGalleryPhotoIds, interestedPostIds, likedEventIds,
     refreshEvents: () => fetchEvents(true), refreshUsers: () => fetchUsers(true), refreshMessages: fetchMessages, refreshNotifications: fetchNotifications,
     refreshBoardPosts: fetchBoardPosts, refreshGalleryPhotos: fetchGalleryPhotos,
     setMessageThreads, setChatThreadMetadata, setNotifications, setBoardPosts,

@@ -10,6 +10,7 @@ import { BoardPostWithReplies } from './BoardPostWithReplies';
 import { ImageDropUpload } from './ImageDropUpload';
 import type { Language, User, BoardPost, BoardPostReply, CreateBoardPostInput } from '@truss/core';
 import { normalizeBoardContent } from '@truss/core';
+import { useData } from '../../contexts/DataContext';
 import { linkifyText } from '../../lib/linkify';
 
 interface BulletinBoardProps {
@@ -32,6 +33,7 @@ const presetTags = { ja: ['English', '日本語', '中国語', '韓国語'], en:
 
 export function BulletinBoard({ language, user, onInterested, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onAddReply, onToggleInterest, onDeleteBoardPost }: BulletinBoardProps) {
   const t = translations[language];
+  const { interestedPostIds } = useData();
   const visiblePosts = boardPosts.filter((post) => !post.isHidden && !post.isDeleted);
   const canWrite = user.approved === true;
   const [selectedStory, setSelectedStory] = useState<number | null>(null);
@@ -219,7 +221,7 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
       </div>
 
       <div className="overflow-x-auto -mx-4 px-4 pb-2"><div className="flex gap-4">{storyPosts.map((post) => <button key={post.id} onClick={() => { setSelectedStory(post.id); setStoryProgress(0); }} className="flex flex-col items-center gap-2 shrink-0"><div className={`p-1 rounded-full bg-linear-to-tr ${getTagColor()}`}><div className="bg-white p-0.5 rounded-full"><div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-linear-to-br from-blue-600 to-purple-600 text-white flex items-center justify-center">{post.authorAvatar}</div></div></div><span className="text-xs text-gray-700 max-w-[80px] truncate">{post.author}</span></button>)}</div></div>
-      {boardPostsList.length > 0 && <div className="space-y-4">{boardPostsList.map((post) => <BoardPostWithReplies key={post.id} post={post} language={language} user={user} onAddReply={handleAddReply} onToggleInterest={() => handleToggleInterest(post)} onDeletePost={handleDeletePost} canDelete={canDeletePost(post)} translations={t} />)}</div>}
+      {boardPostsList.length > 0 && <div className="space-y-4">{boardPostsList.map((post) => <BoardPostWithReplies key={post.id} post={post} language={language} user={user} onAddReply={handleAddReply} onToggleInterest={() => handleToggleInterest(post)} isInterested={interestedPostIds.has(post.id)} onDeletePost={handleDeletePost} canDelete={canDeletePost(post)} translations={t} />)}</div>}
 
       {currentStory && (
         <div className="fixed inset-0 bg-black z-100 flex items-center justify-center">

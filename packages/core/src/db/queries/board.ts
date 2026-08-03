@@ -34,3 +34,13 @@ export async function queryBoardPostsWithReplies(): Promise<BoardPost[]> {
     mapDbBoardPostRowToBoardPost(p, repliesByPost[p.id] ?? [])
   );
 }
+
+/** ログイン中ユーザーが「興味あり」済みの投稿ID一覧（RLS により自分の行しか返らない） */
+export async function queryInterestedBoardPostIds(userId: string): Promise<number[]> {
+  const { data, error } = await supabase
+    .from("board_post_interests")
+    .select("post_id")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return (data ?? []).map((row) => row.post_id as number);
+}

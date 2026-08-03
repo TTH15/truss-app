@@ -122,21 +122,47 @@ export async function approveGalleryPhotoRow(
   return { error: toErrorOrNull(error) };
 }
 
-export async function likeGalleryPhotoRow(
-  photoId: number
+/**
+ * ギャラリー写真の「いいね」をトグルする。
+ * gallery_photo_likes（1ユーザー1写真1行）を真実とし、gallery_photos.likes は RPC で増減する。
+ * テーブル・RPC・RLS はいずれも初期スキーマから存在していたが、アプリ側が使っておらず
+ * カウンタを無条件に +1 するだけだった（解除しても減らず、連打で無限に増やせた）。
+ * event_likes / board_post_interests と同じ方式に揃える。
+ */
+export async function toggleGalleryPhotoLikeForUser(
+  photoId: number,
+  userId: string
 ): Promise<{ error: Error | null }> {
-  const { data: currentPhoto, error: fetchError } = await supabase
-    .from("gallery_photos")
-    .select("likes")
-    .eq("id", photoId)
-    .single();
-  if (fetchError) return { error: new Error(fetchError.message) };
+  const { data: existing, error: checkError } = await supabase
+    .from("gallery_photo_likes")
+    .select("id")
+    .eq("photo_id", photoId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (checkError) return { error: new Error(checkError.message) };
 
-  const { error } = await supabase
-    .from("gallery_photos")
-    .update({ likes: (currentPhoto?.likes || 0) + 1 })
-    .eq("id", photoId);
+  if (existing) {
+    const { error: deleteError } = await supabase
+      .from("gallery_photo_likes")
+      .delete()
+      .eq("photo_id", photoId)
+      .eq("user_id", userId);
+    if (deleteError) return { error: new Error(deleteError.message) };
 
-  return { error: toErrorOrNull(error) };
+    const { error: rpcError } = await supabase.rpc("decrement_photo_likes", {
+      photo_id: photoId,
+    });
+    return { error: toErrorOrNull(rpcError) };
+  }
+
+  const { error: insertError } = await supabase
+    .from("gallery_photo_likes")
+    .insert({ photo_id: photoId, user_id: userId });
+  if (insertError) return { error: new Error(insertError.message) };
+
+  const { error: rpcError } = await supabase.rpc("increment_photo_likes", {
+    photo_id: photoId,
+  });
+  return { error: toErrorOrNull(rpcError) };
 }
 

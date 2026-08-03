@@ -92,6 +92,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     registerForEvent,
     unregisterFromEvent,
     toggleEventLike,
+    likedEventIds,
     approveUser,
     rejectUser,
     requestReupload,
@@ -141,7 +142,6 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     });
     return result;
   }, [user, eventParticipants]);
-  const [likedEvents, setLikedEvents] = useState<Set<number>>(new Set());
   const [selectedChatUserId, setSelectedChatUserId] = useState<string | null>(null);
   const [adminActiveTab, setAdminActiveTab] = useState<'members' | 'events' | 'boards' | 'chat'>('members');
   // 共有イベントトークンは prop / localStorage の両ソースを束ねた状態。
@@ -649,22 +649,17 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     }
     // attendingEvents は eventParticipants 派生なので、DataContext の refetch + realtime で自動反映
   };
+  // ハートの ON/OFF と件数は DataContext 側で即時反映される（DB 由来なのでリロードしても保持される）
   const toggleLike = async (eventId: number) => {
     if (!user) return;
     await toggleEventLike(eventId);
-    setLikedEvents(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(eventId)) newSet.delete(eventId); else newSet.add(eventId);
-      return newSet;
-    });
   };
   const handleCreateEvent = async (eventData: Omit<Event, 'id' | 'currentParticipants' | 'likes'>) => { await createEvent(eventData); };
   const handleUpdateEvent = async (eventId: number, eventData: Partial<Event>) => { await updateEvent(eventId, eventData); };
   const handleDeleteEvent = async (eventId: number) => {
     try {
+      // attendingEvents / likedEventIds はいずれも DB 由来（event_likes は ON DELETE CASCADE）
       await deleteEvent(eventId);
-      // attendingEvents は eventParticipants 派生なので削除に追従。likedEvents だけ手動で掃除する。
-      setLikedEvents(prev => { const newSet = new Set(prev); newSet.delete(eventId); return newSet; });
     } catch (error) {
       console.error('Delete event failed in LegacyApp:', error);
       toast.error(language === 'ja' ? 'イベント削除に失敗しました' : 'Failed to delete event');
@@ -740,7 +735,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       {currentPage === 'dashboard' && user && (
         <Dashboard
           user={user} onLogout={handleLogout} language={language} onLanguageChange={setLanguage} onUpdateProfile={updateAuthUser} events={events}
-          attendingEvents={attendingEvents} likedEvents={likedEvents} onToggleAttending={toggleAttending} onToggleLike={toggleLike}
+          attendingEvents={attendingEvents} likedEvents={likedEventIds} onToggleAttending={toggleAttending} onToggleLike={toggleLike}
           onAddEventParticipant={addEventParticipant} onOpenProfile={handleOpenProfile} onReopenInitialRegistration={handleReopenInitialRegistration}
           onDismissReuploadNotification={handleDismissReuploadNotification} messageThreads={messageThreads}
           onUpdateMessageThreads={setMessageThreads} onSendMessage={sendMessage} chatThreadMetadata={chatThreadMetadata}

@@ -10,9 +10,9 @@ import { linkifyText } from '../../lib/linkify';
 
 interface Reply { id: number; author: string; authorAvatar: string; content: string; time: string; }
 interface Post { id: number; author: string; authorAvatar: string; title: string; content: string; language: string; peopleNeeded: number; interested: number; tag: 'languageExchange' | 'studyGroup' | 'event'; time: string; image?: string; expiryDate?: string; replies?: Reply[]; authorId?: string; }
-interface BoardPostWithRepliesProps { post: Post; language: Language; user: User; onAddReply: (postId: number, content: string) => void; onToggleInterest?: (postId: number) => void; onDeletePost?: (postId: number) => void; canDelete?: boolean; translations: { until: string; replies: string; replyPlaceholder: string; sendReply: string; viewReplies: string; languageExchange: string; studyGroup: string; event: string; }; }
+interface BoardPostWithRepliesProps { post: Post; language: Language; user: User; onAddReply: (postId: number, content: string) => void; onToggleInterest?: (postId: number) => void; isInterested?: boolean; onDeletePost?: (postId: number) => void; canDelete?: boolean; translations: { until: string; replies: string; replyPlaceholder: string; sendReply: string; viewReplies: string; languageExchange: string; studyGroup: string; event: string; }; }
 
-export function BoardPostWithReplies({ post, language, user, onAddReply, onToggleInterest, onDeletePost, canDelete = false, translations: t }: BoardPostWithRepliesProps) {
+export function BoardPostWithReplies({ post, language, user, onAddReply, onToggleInterest, isInterested = false, onDeletePost, canDelete = false, translations: t }: BoardPostWithRepliesProps) {
   const [showReplies, setShowReplies] = useState(false);
   const [isContentExpanded, setIsContentExpanded] = useState(false);
   const [replyInput, setReplyInput] = useState('');
@@ -76,9 +76,9 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
                 variant="ghost"
                 size="sm"
                 onClick={() => onToggleInterest?.(post.id)}
-                className="h-auto p-0 text-gray-600 hover:text-[#49B1E4] hover:bg-transparent"
+                className={`h-auto p-0 hover:bg-transparent ${isInterested ? 'text-[#49B1E4]' : 'text-gray-600 hover:text-[#49B1E4]'}`}
               >
-                <div className="flex items-center gap-1"><Hand className="w-4 h-4" /><span>{post.interested}</span></div>
+                <div className="flex items-center gap-1"><Hand className={`w-4 h-4 ${isInterested ? 'fill-current' : ''}`} /><span>{post.interested}</span></div>
               </Button>
               {post.expiryDate && <div className="flex items-center gap-1 text-xs text-[#49B1E4]"><Calendar className="w-3 h-3" /><span>{post.expiryDate} {t.until}</span></div>}
             </div>

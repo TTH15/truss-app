@@ -22,3 +22,13 @@ export async function queryEventParticipantsGrouped(): Promise<{
   );
   return participants;
 }
+
+/** ログイン中ユーザーが「いいね」済みのイベントID一覧（RLS により自分の行しか返らない） */
+export async function queryLikedEventIds(userId: string): Promise<number[]> {
+  const { data, error } = await supabase
+    .from("event_likes")
+    .select("event_id")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return (data ?? []).map((row) => row.event_id as number);
+}

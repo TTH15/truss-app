@@ -119,6 +119,92 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
     }
   };
 
+  // --- カレンダーの横スワイプ（ページをめくる演出）---
+  // 指の動きに合わせてカレンダーを平行移動し、しきい値を超えたら
+  // その方向へスライドアウト → 月を切り替え → 反対側からスライドインさせる。
+  const SWIPE_THRESHOLD_PX = 56;
+  const SLIDE_DURATION_MS = 200;
+  const calendarViewportRef = useRef<HTMLDivElement>(null);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const isSlidingRef = useRef(false);
+  const suppressClickRef = useRef(false);
+  const slideTimersRef = useRef<number[]>([]);
+  const [slideOffset, setSlideOffset] = useState(0);
+  const [slideAnimated, setSlideAnimated] = useState(false);
+
+  useEffect(() => {
+    const timers = slideTimersRef.current;
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, []);
+
+  /** direction: 1 = 翌月（左へ送る）, -1 = 前月（右へ送る） */
+  const slideToMonth = (direction: 1 | -1) => {
+    if (isSlidingRef.current) return;
+    isSlidingRef.current = true;
+    const width = calendarViewportRef.current?.offsetWidth ?? 320;
+    setSlideAnimated(true);
+    setSlideOffset(-direction * width);
+    slideTimersRef.current.push(
+      window.setTimeout(() => {
+        if (direction === 1) handleNextMonth();
+        else handlePreviousMonth();
+        // 新しい月を反対側に置いてから、アニメーションで中央へ戻す
+        setSlideAnimated(false);
+        setSlideOffset(direction * width);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setSlideAnimated(true);
+            setSlideOffset(0);
+            slideTimersRef.current.push(
+              window.setTimeout(() => {
+                isSlidingRef.current = false;
+              }, SLIDE_DURATION_MS)
+            );
+          });
+        });
+      }, SLIDE_DURATION_MS)
+    );
+  };
+
+  const handleSwipeStart = (e: React.TouchEvent) => {
+    if (isSlidingRef.current) return;
+    swipeStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    setSlideAnimated(false);
+  };
+
+  const handleSwipeMove = (e: React.TouchEvent) => {
+    const start = swipeStartRef.current;
+    if (!start) return;
+    const dx = e.touches[0].clientX - start.x;
+    const dy = e.touches[0].clientY - start.y;
+    // 縦方向の動きが優勢ならページスクロールとして扱い、スワイプを打ち切る
+    if (Math.abs(dy) > Math.abs(dx)) {
+      swipeStartRef.current = null;
+      setSlideAnimated(true);
+      setSlideOffset(0);
+      return;
+    }
+    setSlideOffset(dx);
+  };
+
+  const handleSwipeEnd = () => {
+    if (!swipeStartRef.current) return;
+    swipeStartRef.current = null;
+    if (Math.abs(slideOffset) >= SWIPE_THRESHOLD_PX) {
+      // スワイプ直後に発火するクリックでイベント詳細が開かないようにする
+      suppressClickRef.current = true;
+      slideTimersRef.current.push(
+        window.setTimeout(() => {
+          suppressClickRef.current = false;
+        }, SLIDE_DURATION_MS * 2)
+      );
+      slideToMonth(slideOffset < 0 ? 1 : -1);
+      return;
+    }
+    setSlideAnimated(true);
+    setSlideOffset(0);
+  };
+
   const handleAttendClick = (event: Event) => {
     const isAttending = attendingEvents.has(event.id);
     if (isAttending) return onToggleAttending(event.id);
@@ -159,6 +245,8 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
   };
 
   const handleCalendarEventClick = (event: Event) => {
+    // 月送りスワイプの終わりに発火するクリックは無視する
+    if (suppressClickRef.current) return;
     setDetailEvent(event);
     setDetailModalOpen(true);
   };
@@ -196,7 +284,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
         <div className="flex items-center justify-between mb-4">
           <button
             type="button"
-            onClick={handlePreviousMonth}
+            onClick={() => slideToMonth(-1)}
             className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors p-1 hover:bg-[#F5F1E8] rounded"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -208,7 +296,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
           </h2>
           <button
             type="button"
-            onClick={handleNextMonth}
+            onClick={() => slideToMonth(1)}
             className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors p-1 hover:bg-[#F5F1E8] rounded"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -217,7 +305,21 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
           </button>
         </div>
 
-        <div className="overflow-hidden">
+        <div
+          ref={calendarViewportRef}
+          className="overflow-hidden"
+          style={{ touchAction: 'pan-y' }}
+          onTouchStart={handleSwipeStart}
+          onTouchMove={handleSwipeMove}
+          onTouchEnd={handleSwipeEnd}
+          onTouchCancel={handleSwipeEnd}
+        >
+          <div
+            style={{
+              transform: `translateX(${slideOffset}px)`,
+              transition: slideAnimated ? `transform ${SLIDE_DURATION_MS}ms ease-out` : 'none',
+            }}
+          >
           <div className="grid grid-cols-7 gap-px bg-[#E5E7EB] border border-[#E5E7EB] overflow-hidden rounded-lg">
             {dayNames.map((day, index) => (
               <div
@@ -270,6 +372,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
                 </div>
               );
             })}
+          </div>
           </div>
         </div>
       </div>
