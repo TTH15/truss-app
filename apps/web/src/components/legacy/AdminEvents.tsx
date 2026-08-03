@@ -1635,21 +1635,7 @@ export function AdminEvents({
             <div className="space-y-4">
               {/* タイトルとメール送信ボタン */}
               <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    checked={allParticipantsSelected}
-                    onCheckedChange={(checked) => {
-                      if (checked === true) {
-                        setSelectedParticipants(new Set(selectedEventParticipantIds));
-                        return;
-                      }
-                      setSelectedParticipants(new Set());
-                    }}
-                    title={language === 'ja' ? '参加者を一括選択' : 'Select all participants'}
-                    className="border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
-                  />
-                  <h4 className="text-[#3D3D4E] text-base font-semibold">{t.participantsList}</h4>
-                </div>
+                <h4 className="text-[#3D3D4E] text-base font-semibold">{t.participantsList}</h4>
                 <Button
                   size="icon"
                   className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white h-9 w-9"
@@ -1679,6 +1665,26 @@ export function AdminEvents({
                 </span>
               </div>
 
+              {/* 左右のチェックボックスは役割が違う（左=メールの宛先選択 / 右=当日の記録）ので、
+                  列の見出しを置いて何のチェックかが分かるようにする */}
+              <div className="flex items-center justify-between gap-4 px-3 text-xs text-[#6B6B7A]">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={allParticipantsSelected}
+                    onCheckedChange={(checked) => {
+                      if (checked === true) {
+                        setSelectedParticipants(new Set(selectedEventParticipantIds));
+                        return;
+                      }
+                      setSelectedParticipants(new Set());
+                    }}
+                    className="border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
+                  />
+                  <span>{language === 'ja' ? 'メールの宛先（全選択）' : 'Email recipients (all)'}</span>
+                </label>
+                <span>{language === 'ja' ? '当日の記録 →' : 'On the day →'}</span>
+              </div>
+
               {/* 参加者リスト */}
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {filteredEventParticipants.map((participant) => (
@@ -1689,6 +1695,7 @@ export function AdminEvents({
                     {/* 左側：メール送信先選択チェックボックス */}
                     <div className="flex items-center">
                       <Checkbox
+                        aria-label={t.selectForEmail}
                         checked={selectedParticipants.has(getParticipantUserId(participant))}
                         onCheckedChange={(checked) => {
                           const participantUserId = getParticipantUserId(participant);

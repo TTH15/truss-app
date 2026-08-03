@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 import type { Language, User } from '@truss/core';
 import { UserAvatarImage } from './UserAvatarImage';
 import { RoleBadge } from './RoleBadge';
-import { JourneyStampBook } from './JourneyStampBook';
 import { ProfileAvatarCropDialog } from './ProfileAvatarCropDialog';
 import { uploadUserAvatar } from '@truss/core';
 
@@ -463,7 +462,8 @@ export function ProfilePage({
         </Card>
       )}
 
-      {!isWaitingApproval && <JourneyStampBook user={user} language={language} />}
+      {/* Journey Stamps は電子スタンプ（ハード）の方針が決まるまで非表示。
+          コンポーネント（JourneyStampBook / JourneyStamp）は残してあるので、この行を戻せば復活する */}
     </div>
   );
 }

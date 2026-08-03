@@ -8,7 +8,6 @@ import { getMissingProfileFields, describeMissingProfileFields } from '@truss/co
 import { googleMapsHrefForEvent } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
 import { ReactionCount } from './ReactionCount';
-import { JourneyStamp } from './JourneyStamp';
 import { toast } from 'sonner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '@truss/core';
@@ -481,17 +480,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
             <>
               <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageCircle className="w-5 h-5 text-[#49B1E4]" />{t.registrationComplete}</DialogTitle><DialogDescription>{t.registrationCompleteMessage}</DialogDescription></DialogHeader>
               <div className="space-y-4 py-2">
-                {selectedEvent && (
-                  <div className="flex flex-col items-center gap-2 py-2">
-                    {/* 予約時点ではまだ未獲得。当日出席するとプロフィールに押される */}
-                    <JourneyStamp event={selectedEvent} size={144} muted />
-                    <p className="text-xs text-[#6B6B7A] text-center">
-                      {language === 'ja'
-                        ? '当日参加するとスタンプが押されます'
-                        : 'Attend on the day to collect this stamp'}
-                    </p>
-                  </div>
-                )}
+                {/* Journey Stamp の予告は、電子スタンプ（ハード）の方針が決まるまで非表示 */}
                 {selectedEvent?.lineGroupLink ? <><div className="bg-[#F5F1E8] p-4 rounded-lg"><p className="text-sm text-[#3D3D4E] text-center">{t.lineGroupDescription}</p></div><Button className="w-full bg-[#06C755] hover:bg-[#05B04E] text-white" onClick={handleOpenLineGroup}><MessageCircle className="w-4 h-4 mr-2" />{t.openLine}</Button></> : <div className="bg-gray-50 p-4 rounded-lg"><p className="text-sm text-[#6B6B7A] text-center">{t.noLineGroup}</p></div>}
                 <Button variant="outline" className="w-full" onClick={handleLineDialogClose}>{t.close}</Button>
               </div>
