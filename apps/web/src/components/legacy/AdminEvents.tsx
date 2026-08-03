@@ -481,11 +481,6 @@ export function AdminEvents({
         .some((value) => String(value).toLowerCase().includes(query))
     );
   }, [selectedEventParticipants, participantFilter]);
-  const attendedCount = useMemo(
-    () => selectedEventParticipants.filter((p) => getParticipantStatusValue(p, 'attended')).length,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedEventParticipants, participantStatusOverrides]
-  );
   const selectedEventParticipantIds = useMemo(
     () => selectedEventParticipants.map((participant) => getParticipantUserId(participant)).filter(Boolean),
     [selectedEventParticipants],
@@ -739,6 +734,12 @@ export function AdminEvents({
     if (override && override[field] !== undefined) return Boolean(override[field]);
     return Boolean(getParticipantStatusRaw(participant, field));
   };
+
+  // getParticipantStatusValue の定義より前に置くと、レンダー時に TDZ で
+  // 「Cannot access before initialization」になり画面全体が落ちるため、必ずこの位置で数える
+  const attendedCount = selectedEventParticipants.filter((participant) =>
+    getParticipantStatusValue(participant, 'attended')
+  ).length;
 
   const handleParticipantStatusChange = async (
     participant: AdminEventParticipant,

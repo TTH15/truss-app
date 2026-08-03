@@ -202,3 +202,10 @@
 - **Journey Stamp を画面から一旦削除**: 電子スタンプ（ハード）の方針が決まるまで非表示にする。プロフィールの `JourneyStampBook` と、参加登録完了ダイアログの未獲得スタンプ予告を外した。**コンポーネント（`JourneyStamp` / `JourneyStampBook`）と CSS（`truss-stamp`）は残してある**ので、呼び出し行を戻せば復活する（該当箇所にコメントを残した）。
 - 出席チェックとスタンプの関係: `JourneyStampBook` は `eventParticipants` の `attended` から導出していたため、運営が「出席」にチェックを入れた時点でスタンプが付く仕組みだった（DBに保存されるのは出席フラグのみで、スタンプ用のデータは持たない）。
 - 検証: `tsc --noEmit`・`next build` 通過。
+
+## 2026-08-04 03:50 運営画面が開けなくなる不具合を修正（TDZ）
+
+- 症状: 運営画面（/admin-...）が真っ黒になり開けない。
+- 原因: 前回追加した出席数の集計 `attendedCount` を、`getParticipantStatusValue`（`const` 関数）の**定義より前**に置いていた。`useMemo` のファクトリはレンダー時に同期実行されるため、TDZ により `Cannot access 'getParticipantStatusValue' before initialization` が発生し、`AdminEvents` のレンダーごと失敗していた。
+- 対策: 集計をヘルパー定義の直後へ移動（`useMemo` も不要なため通常の式に）。同じ過ちを繰り返さないよう理由をコメントで明記。
+- 検証: `tsc --noEmit`・`next build` 通過。TypeScript は TDZ を検出しないため、型チェックだけでは防げなかった。
