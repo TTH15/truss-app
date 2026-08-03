@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import type { Language, User } from '@truss/core';
 import { UserAvatarImage } from './UserAvatarImage';
 import { RoleBadge } from './RoleBadge';
+import { JourneyStampBook } from './JourneyStampBook';
 import { ProfileAvatarCropDialog } from './ProfileAvatarCropDialog';
 import { uploadUserAvatar } from '@truss/core';
 
@@ -469,6 +470,8 @@ export function ProfilePage({
           </CardContent>
         </Card>
       )}
+
+      {!isWaitingApproval && <JourneyStampBook user={user} language={language} />}
     </div>
   );
 }
