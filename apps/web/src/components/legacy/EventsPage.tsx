@@ -36,7 +36,13 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [lineGroupDialogOpen, setLineGroupDialogOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [detailEvent, setDetailEvent] = useState<Event | null>(null);
+  // 開いた時点のコピーを表示し続けると、いいねや参加者数を更新しても
+  // モーダル内の数字が変わらないため、常に最新の events から引き直す
+  const [detailEventSnapshot, setDetailEvent] = useState<Event | null>(null);
+  const detailEvent = useMemo(() => {
+    if (!detailEventSnapshot) return null;
+    return events.find((e) => e.id === detailEventSnapshot.id) ?? detailEventSnapshot;
+  }, [detailEventSnapshot, events]);
   const eventRefs = useRef<{ [key: number]: HTMLElement | null }>({});
   const [photoRefusal, setPhotoRefusal] = useState(false);
   const [registrationStep, setRegistrationStep] = useState<'confirm' | 'complete'>('confirm');
