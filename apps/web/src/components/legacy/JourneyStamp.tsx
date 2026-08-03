@@ -28,11 +28,12 @@ const DATE_ARC = 'M 17,50 A 33,33 0 0 0 83,50';
 
 export function JourneyStamp({
   event,
-  size = 128,
+  size,
   pressing = false,
   muted = false,
 }: {
   event: Event;
+  /** px 指定。省略すると親の幅いっぱいに伸縮する（一覧では省略して画面幅に追従させる） */
   size?: number;
   /** 押印アニメーションを再生する */
   pressing?: boolean;
@@ -54,9 +55,8 @@ export function JourneyStamp({
   return (
     <svg
       viewBox="0 0 100 100"
-      width={size}
-      height={size}
-      className={`shrink-0 ${pressing ? 'animate-truss-stamp' : ''}`}
+      {...(size ? { width: size, height: size } : {})}
+      className={`${size ? 'shrink-0' : 'w-full h-auto'} ${pressing ? 'animate-truss-stamp' : ''}`}
       role="img"
       aria-label={`${name} ${formatStampDate(event.date)}`}
     >
@@ -94,12 +94,12 @@ export function JourneyStamp({
   );
 }
 
-/** まだ押されていない枠（Passport の空きスロット） */
-export function EmptyStampSlot({ size = 128 }: { size?: number }) {
+/** まだ押されていない枠（Passport の空きスロット）。既定では親の幅に追従する */
+export function EmptyStampSlot({ size }: { size?: number }) {
   return (
     <div
-      className="shrink-0 rounded-full border-2 border-dashed border-[#D6D1C4]"
-      style={{ width: size, height: size }}
+      className={`rounded-full border-2 border-dashed border-[#D6D1C4] ${size ? 'shrink-0' : 'w-full aspect-square'}`}
+      style={size ? { width: size, height: size } : undefined}
     />
   );
 }

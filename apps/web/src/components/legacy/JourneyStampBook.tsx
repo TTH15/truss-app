@@ -40,12 +40,14 @@ export function JourneyStampBook({ user, language }: { user: User; language: Lan
               : 'Attend an event on the day to collect your first stamp.'}
           </p>
         ) : null}
-        <div className="flex flex-wrap gap-4">
+        {/* 固定サイズを横に並べると、画面が広いときに左へ寄って余白が偏る。
+            列数を画面幅で切り替え、スタンプ自体もセル幅に追従させる */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4">
           {myEvents.map((event) => (
-            <JourneyStamp key={event.id} event={event} size={104} />
+            <JourneyStamp key={event.id} event={event} />
           ))}
           {Array.from({ length: emptySlots }, (_, i) => (
-            <EmptyStampSlot key={`empty-${i}`} size={104} />
+            <EmptyStampSlot key={`empty-${i}`} />
           ))}
         </div>
       </CardContent>

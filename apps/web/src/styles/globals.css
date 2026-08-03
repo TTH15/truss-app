@@ -21,8 +21,10 @@
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
   --border: rgba(61, 61, 78, 0.15);
-  --input: transparent;
-  --input-background: #EEEBE3;
+  /* 入力欄の枠線。transparent だと、クリーム色の背景（ダイアログ等）で
+     入力欄が背景に溶けて「どこに入力するのか分からない」状態になる */
+  --input: rgba(61, 61, 78, 0.22);
+  --input-background: #FBFAF7;
   --switch-background: #D1CCC3;
   --font-weight-medium: 500;
   --font-weight-normal: 400;

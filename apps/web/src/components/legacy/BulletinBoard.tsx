@@ -209,7 +209,23 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
                 previewUrl={previewUrl}
                 onFileSelected={(file) => { setSelectedFile(file); setPreviewUrl(URL.createObjectURL(file)); }}
               />
-              <div className="space-y-2"><Label htmlFor="display-type">{t.displayType}</Label><RadioGroup id="display-type" value={newPost.displayType} onValueChange={(value) => setNewPost({ ...newPost, displayType: value as 'story' | 'board' })}><div className="flex items-center space-x-2"><RadioGroupItem value="story" /><Label>{t.storyDisplay}</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="board" /><Label>{t.boardDisplay}</Label></div></RadioGroup></div>
+              {/* ラベルに htmlFor が無いと、文字を押しても選択が切り替わらない（小さな丸しか当たり判定が無い） */}
+              <div className="space-y-2">
+                <Label>{t.displayType}</Label>
+                <RadioGroup
+                  value={newPost.displayType}
+                  onValueChange={(value) => setNewPost({ ...newPost, displayType: value as 'story' | 'board' })}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="story" id="display-type-story" />
+                    <Label htmlFor="display-type-story" className="cursor-pointer font-normal">{t.storyDisplay}</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="board" id="display-type-board" />
+                    <Label htmlFor="display-type-board" className="cursor-pointer font-normal">{t.boardDisplay}</Label>
+                  </div>
+                </RadioGroup>
+              </div>
               {newPost.displayType === 'board' && <div className="space-y-2"><Label htmlFor="expiry-date">{t.expiryDate}</Label><Input id="expiry-date" type="date" value={newPost.expiryDate} onChange={(e) => setNewPost({ ...newPost, expiryDate: e.target.value })} min={new Date().toISOString().split('T')[0]} /></div>}
               <div className="flex gap-2">
                 <Button
