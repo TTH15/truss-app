@@ -194,6 +194,7 @@ export function AdminEvents({
   const [confirmType, setConfirmType] = useState<'create' | 'update'>('create');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
   const [participantStatusOverrides, setParticipantStatusOverrides] = useState<Record<string, { attended?: boolean; paid?: boolean }>>({});
+  const [participantFilter, setParticipantFilter] = useState('');
   const [initialEventSnapshot, setInitialEventSnapshot] = useState('');
   const draftRestoredRef = useRef(false);
 
@@ -470,6 +471,21 @@ export function AdminEvents({
     });
   }, [selectedEvent, eventParticipants]);
   const selectedEventParticipantsCount = selectedEventParticipants.length;
+  // 当日の受付は名前で引く。以前は検索欄が置いてあるだけで値が繋がっておらず、入力しても絞り込めなかった
+  const filteredEventParticipants = useMemo(() => {
+    const query = participantFilter.trim().toLowerCase();
+    if (!query) return selectedEventParticipants;
+    return selectedEventParticipants.filter((participant) =>
+      [participant.userName, participant.userNickname]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [selectedEventParticipants, participantFilter]);
+  const attendedCount = useMemo(
+    () => selectedEventParticipants.filter((p) => getParticipantStatusValue(p, 'attended')).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedEventParticipants, participantStatusOverrides]
+  );
   const selectedEventParticipantIds = useMemo(
     () => selectedEventParticipants.map((participant) => getParticipantUserId(participant)).filter(Boolean),
     [selectedEventParticipants],
@@ -1651,14 +1667,21 @@ export function AdminEvents({
               </div>
 
               {/* フィルター */}
-              <Input
-                placeholder={t.nameFilter}
-                className="bg-[#EEEBE3] border-0"
-              />
+              <div className="flex items-center gap-3">
+                <Input
+                  placeholder={t.nameFilter}
+                  value={participantFilter}
+                  onChange={(e) => setParticipantFilter(e.target.value)}
+                  className="flex-1"
+                />
+                <span className="text-sm text-[#6B6B7A] shrink-0">
+                  {language === 'ja' ? '出席' : 'Attended'} {attendedCount}/{selectedEventParticipantsCount}
+                </span>
+              </div>
 
               {/* 参加者リスト */}
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {selectedEventParticipants.map((participant) => (
+                {filteredEventParticipants.map((participant) => (
                   <div
                     key={getParticipantUserId(participant)}
                     className="flex items-center gap-3 p-3 bg-[#F9FAFB] rounded-[8px]"
@@ -1724,9 +1747,11 @@ export function AdminEvents({
                     </div>
                   </div>
                 ))}
-                {selectedEventParticipants.length === 0 && (
+                {filteredEventParticipants.length === 0 && (
                   <p className="text-[#6B6B7A] text-sm text-center py-4">
-                    {language === 'ja' ? 'まだ参加者がいません' : 'No participants yet'}
+                    {selectedEventParticipantsCount === 0
+                      ? (language === 'ja' ? 'まだ参加者がいません' : 'No participants yet')
+                      : (language === 'ja' ? '該当する参加者がいません' : 'No matching participants')}
                   </p>
                 )}
               </div>
