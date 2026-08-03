@@ -59,7 +59,10 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
   const isDraggingRef = useRef(false);
   const startXRef = useRef(0);
   const scrollLeftRef = useRef(0);
-  const duplicatedEvents = [...events, ...events, ...events, ...events, ...events];
+  // ここは「これから開催されるイベント」を伝える場所。
+  // 画像未設定のものは空のバナーになるだけなので出さない。過去のイベントも対象外。
+  const bannerEvents = events.filter((event) => event.status === 'upcoming' && event.image?.trim());
+  const duplicatedEvents = [...bannerEvents, ...bannerEvents, ...bannerEvents, ...bannerEvents, ...bannerEvents];
 
   const startAutoScroll = () => {
     if (autoScrollIntervalRef.current) clearInterval(autoScrollIntervalRef.current);
@@ -74,11 +77,11 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
   };
 
   useEffect(() => {
-    if (!scrollContainerRef.current || events.length === 0) return;
+    if (!scrollContainerRef.current || bannerEvents.length === 0) return;
     const container = scrollContainerRef.current;
     const singleSetWidth = container.scrollWidth / 5;
     container.scrollTo({ left: singleSetWidth * 2, behavior: 'auto' });
-  }, [events.length]);
+  }, [bannerEvents.length]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -99,7 +102,7 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
     const container = scrollContainerRef.current;
     if (container) container.addEventListener('scroll', handleScroll);
     return () => container?.removeEventListener('scroll', handleScroll);
-  }, [events.length]);
+  }, [bannerEvents.length]);
 
   useEffect(() => { startAutoScroll(); return () => stopAutoScroll(); }, []);
 
@@ -145,6 +148,8 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
           <ImageWithFallback src={trussImage} className="w-full h-full object-contain" />
         </button>
       </div>
+      {bannerEvents.length > 0 && (
+        <>
       <div className="h-px bg-[#E8E4DB] my-4" />
       <section className="shrink-0">
         <div className="mb-3"><h3 className="text-[#3D3D4E] text-sm">{language === 'ja' ? 'イベント情報' : 'Event Information'}</h3></div>
@@ -176,6 +181,8 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
           })}
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 }

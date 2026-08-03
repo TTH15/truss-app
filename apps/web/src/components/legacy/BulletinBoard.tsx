@@ -208,6 +208,7 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
                 hint={t.uploadImageHint}
                 previewUrl={previewUrl}
                 onFileSelected={(file) => { setSelectedFile(file); setPreviewUrl(URL.createObjectURL(file)); }}
+                onClear={() => { setSelectedFile(null); setPreviewUrl(''); }}
               />
               {/* ラベルに htmlFor が無いと、文字を押しても選択が切り替わらない（小さな丸しか当たり判定が無い） */}
               <div className="space-y-2">

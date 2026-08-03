@@ -201,6 +201,7 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
                 hint={t.uploadImageHint}
                 previewUrl={previewUrl}
                 onFileSelected={(file) => { setSelectedFile(file); setPreviewUrl(URL.createObjectURL(file)); }}
+                onClear={() => { setSelectedFile(null); setPreviewUrl(''); }}
               />
             </div>
             <DialogFooter>
