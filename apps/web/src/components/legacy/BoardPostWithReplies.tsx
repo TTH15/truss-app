@@ -3,7 +3,9 @@ import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Input } from '../ui/input';
-import { Hand, Globe2, Calendar, MessageCircle, Send, ChevronDown, Trash2 } from 'lucide-react';
+import { Globe2, Calendar, MessageCircle, Send, ChevronDown, Trash2 } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHand } from '@fortawesome/free-solid-svg-icons';
 import type { Language, User } from '@truss/core';
 import { normalizeBoardContent } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
@@ -76,9 +78,11 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
                 variant="ghost"
                 size="sm"
                 onClick={() => onToggleInterest?.(post.id)}
-                className={`h-auto p-0 hover:bg-transparent ${isInterested ? 'text-[#49B1E4]' : 'text-gray-600 hover:text-[#49B1E4]'}`}
+                className={`h-auto py-1 px-2 rounded-full active:scale-95 transition-transform ${isInterested ? 'text-[#49B1E4] bg-[#49B1E4]/10 hover:bg-[#49B1E4]/15' : 'text-gray-600 hover:text-[#49B1E4] hover:bg-transparent'}`}
               >
-                <div className="flex items-center gap-1"><Hand className={`w-4 h-4 ${isInterested ? 'fill-current' : ''}`} /><span>{post.interested}</span></div>
+                {/* lucide の Hand は線画なので fill すると指の間まで塗り潰されて塊に見える。
+                    塗りのグリフである Font Awesome を使い、色だけで ON/OFF を表す */}
+                <div className="flex items-center gap-1.5"><FontAwesomeIcon icon={faHand} className="w-4 h-4" /><span>{post.interested}</span></div>
               </Button>
               {post.expiryDate && <div className="flex items-center gap-1 text-xs text-[#49B1E4]"><Calendar className="w-3 h-3" /><span>{post.expiryDate} {t.until}</span></div>}
             </div>

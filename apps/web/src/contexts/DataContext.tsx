@@ -147,6 +147,27 @@ const EVENTS_CACHE_KEY = 'truss-cache-events-v2';
 const USERS_CACHE_KEY = 'truss-cache-users-v1';
 const CACHE_TTL_MS = 60 * 1000;
 
+/** 取得結果に未確定の反応差分を重ねる（サーバ側のカウンタが追いつくまでのつなぎ） */
+const withPendingDeltas = <T extends { id: number }>(
+  rows: T[],
+  deltas: Map<number, number>,
+  field: keyof T
+): T[] => {
+  if (deltas.size === 0) return rows;
+  return rows.map((row) => {
+    const delta = deltas.get(row.id);
+    if (!delta) return row;
+    return { ...row, [field]: Math.max(0, (row[field] as number) + delta) };
+  });
+};
+
+/** 未確定差分の加算。0 になったらキーごと捨てる（連打しても辻褄が合うように加算で管理する） */
+const addPendingDelta = (deltas: Map<number, number>, id: number, delta: number) => {
+  const next = (deltas.get(id) ?? 0) + delta;
+  if (next === 0) deltas.delete(id);
+  else deltas.set(id, next);
+};
+
 const readCache = <T,>(key: string): T | null => {
   if (typeof window === 'undefined') return null;
   try {
@@ -184,6 +205,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [likedGalleryPhotoIds, setLikedGalleryPhotoIds] = useState<Set<number>>(new Set());
   const [interestedPostIds, setInterestedPostIds] = useState<Set<number>>(new Set());
   const [likedEventIds, setLikedEventIds] = useState<Set<number>>(new Set());
+
+  // 反応(いいね/興味あり)の未確定分。
+  // カウンタ列(events.likes 等)の更新はサーバ側で数百ms遅れて確定するため、その間に
+  // realtime 等が引き起こす全件再取得が「まだ古い数字」で画面を上書きしてしまう。
+  // サーバ側が確定するまで差分を保持し、取得結果に重ねてから state に入れる。
+  const pendingCountDeltas = useRef({
+    events: new Map<number, number>(),
+    posts: new Map<number, number>(),
+    photos: new Map<number, number>(),
+  });
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(true);
   const eventsFetchInFlight = useRef<Promise<void> | null>(null);
@@ -193,7 +224,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!force) {
       const cached = readCache<Event[]>(EVENTS_CACHE_KEY);
       if (cached) {
-        setEvents(cached);
+        setEvents(withPendingDeltas(cached, pendingCountDeltas.current.events, 'likes'));
         return;
       }
     }
@@ -202,7 +233,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
       try {
         const next = await queryEvents();
-        setEvents(next);
+        setEvents(withPendingDeltas(next, pendingCountDeltas.current.events, 'likes'));
         writeCache(EVENTS_CACHE_KEY, next);
       } catch (error) {
         console.error('Error fetching events:', error);
@@ -298,7 +329,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchBoardPosts = useCallback(async () => {
     try {
-      setBoardPosts(await queryBoardPostsWithReplies());
+      setBoardPosts(
+        withPendingDeltas(await queryBoardPostsWithReplies(), pendingCountDeltas.current.posts, 'interested')
+      );
     } catch (error) {
       console.error('Error fetching board posts:', error);
     }
@@ -306,7 +339,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchGalleryPhotos = useCallback(async () => {
     try {
-      setGalleryPhotos(await queryGalleryPhotos());
+      setGalleryPhotos(
+        withPendingDeltas(await queryGalleryPhotos(), pendingCountDeltas.current.photos, 'likes')
+      );
     } catch (error) {
       console.error('Error fetching gallery photos:', error);
     }
@@ -471,6 +506,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const toggleEventLike = async (eventId: number) => {
     if (!user) return;
     const wasLiked = likedEventIds.has(eventId);
+    const delta = wasLiked ? -1 : 1;
+    addPendingDelta(pendingCountDeltas.current.events, eventId, delta);
     setLikedEventIds((prev) => {
       const next = new Set(prev);
       if (wasLiked) next.delete(eventId);
@@ -479,9 +516,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
     setEvents((prev) =>
       prev.map((event) =>
-        event.id === eventId
-          ? { ...event, likes: Math.max(0, event.likes + (wasLiked ? -1 : 1)) }
-          : event
+        event.id === eventId ? { ...event, likes: Math.max(0, event.likes + delta) } : event
       )
     );
     try {
@@ -495,7 +530,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         else next.delete(eventId);
         return next;
       });
-      void fetchEvents(true);
+      setEvents((prev) =>
+        prev.map((event) =>
+          event.id === eventId ? { ...event, likes: Math.max(0, event.likes - delta) } : event
+        )
+      );
+    } finally {
+      addPendingDelta(pendingCountDeltas.current.events, eventId, -delta);
     }
   };
 
@@ -794,6 +835,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const toggleInterest = async (postId: number) => {
     if (!user) return;
     const wasInterested = interestedPostIds.has(postId);
+    const delta = wasInterested ? -1 : 1;
+    addPendingDelta(pendingCountDeltas.current.posts, postId, delta);
     setInterestedPostIds((prev) => {
       const next = new Set(prev);
       if (wasInterested) next.delete(postId);
@@ -803,14 +846,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setBoardPosts((prev) =>
       prev.map((post) =>
         post.id === postId
-          ? { ...post, interested: Math.max(0, post.interested + (wasInterested ? -1 : 1)) }
+          ? { ...post, interested: Math.max(0, post.interested + delta) }
           : post
       )
     );
     try {
       const { error } = await togglePostInterestForUser(postId, user.id);
       if (error) throw error;
-      await fetchBoardPosts();
     } catch (error) {
       console.error('Error toggling interest:', error);
       setInterestedPostIds((prev) => {
@@ -819,7 +861,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
         else next.delete(postId);
         return next;
       });
-      await fetchBoardPosts();
+      setBoardPosts((prev) =>
+        prev.map((post) =>
+          post.id === postId
+            ? { ...post, interested: Math.max(0, post.interested - delta) }
+            : post
+        )
+      );
+    } finally {
+      // ここまで来ればサーバ側のカウンタは確定済み。以降はサーバ値をそのまま使う
+      addPendingDelta(pendingCountDeltas.current.posts, postId, -delta);
     }
   };
 
@@ -889,6 +940,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const toggleGalleryPhotoLike = async (photoId: number) => {
     if (!user) return;
     const wasLiked = likedGalleryPhotoIds.has(photoId);
+    const delta = wasLiked ? -1 : 1;
+    addPendingDelta(pendingCountDeltas.current.photos, photoId, delta);
     setLikedGalleryPhotoIds((prev) => {
       const next = new Set(prev);
       if (wasLiked) next.delete(photoId);
@@ -897,9 +950,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
     setGalleryPhotos((prev) =>
       prev.map((photo) =>
-        photo.id === photoId
-          ? { ...photo, likes: Math.max(0, photo.likes + (wasLiked ? -1 : 1)) }
-          : photo
+        photo.id === photoId ? { ...photo, likes: Math.max(0, photo.likes + delta) } : photo
       )
     );
     try {
@@ -913,7 +964,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         else next.delete(photoId);
         return next;
       });
-      await fetchGalleryPhotos();
+      setGalleryPhotos((prev) =>
+        prev.map((photo) =>
+          photo.id === photoId ? { ...photo, likes: Math.max(0, photo.likes - delta) } : photo
+        )
+      );
+    } finally {
+      addPendingDelta(pendingCountDeltas.current.photos, photoId, -delta);
     }
   };
 
