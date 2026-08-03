@@ -92,6 +92,9 @@ export function TrussEmbassyScreen({ onClose }: TrussEmbassyScreenProps) {
   // 添付パネルの中身。grid以外はパネルを閉じずに中身だけ差し替える（LINE風のインライン遷移）
   const [attachPanelMode, setAttachPanelMode] = useState<'grid' | 'voice' | 'event' | 'memory'>('grid');
   const scrollRef = useRef<ScrollView>(null);
+  // 画面を開いた直後の最下部への移動はアニメーションさせない
+  // （animated:true だと毎回、上から最新まで高速スクロールする様子が見えてしまう）
+  const hasScrolledToEndRef = useRef(false);
   const textInputRef = useRef<TextInput>(null);
   const voiceRecorder = useAudioRecorder({ ...RecordingPresets.LOW_QUALITY, isMeteringEnabled: true });
   const voiceRecorderState = useAudioRecorderState(voiceRecorder, 100);
@@ -583,7 +586,10 @@ export function TrussEmbassyScreen({ onClose }: TrussEmbassyScreenProps) {
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.messagesContent}
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+          onContentSizeChange={() => {
+            scrollRef.current?.scrollToEnd({ animated: hasScrolledToEndRef.current });
+            hasScrolledToEndRef.current = true;
+          }}
         >
           {messages.length === 0 ? (
             <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>

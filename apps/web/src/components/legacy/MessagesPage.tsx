@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, type Dispatch, type SetStateAction } from 'react';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -51,6 +51,7 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setMessages(messageHistory[recipientId] || [getInitialMessage()]); }, [recipientId, isAdmin, language]);
   useEffect(() => {
     if (!(isAdmin && messageThreads[user.id])) return;
@@ -60,7 +61,17 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
     setMessageHistory((prev) => ({ ...prev, [recipientId]: converted }));
     if (threadMessages.some((msg) => msg.isAdmin && !msg.read)) onUpdateMessageThreads({ ...messageThreads, [user.id]: threadMessages.map((msg) => ({ ...msg, read: true })) });
   }, [messageThreads, user.id, isAdmin, recipientId, setMessageHistory, onUpdateMessageThreads]);
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  // 最新メッセージへの追従。画面を開いた直後は最下部から遠いので、描画前(useLayoutEffect)に
+  // アニメーションなしで飛ばす（smooth だと一番上から最新までスクロールする様子が毎回見えてしまう）。
+  // 開いたまま新着が届いたときだけ滑らかに追従させる。
+  useLayoutEffect(() => {
+    const container = messagesContainerRef.current;
+    const anchor = messagesEndRef.current;
+    if (!container || !anchor) return;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const isNearBottom = distanceFromBottom < 240;
+    anchor.scrollIntoView({ behavior: isNearBottom ? 'smooth' : 'auto', block: 'end' });
+  }, [messages]);
   useEffect(() => {
     const missing = messages.filter((m) => m.attachmentPath && !signedUrls[m.attachmentPath]).map((m) => m.attachmentPath as string);
     if (missing.length === 0) return;
@@ -242,7 +253,7 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
         <Avatar className="w-10 h-10"><AvatarFallback className="bg-[#49B1E4] text-white">{recipientAvatar}</AvatarFallback></Avatar>
         <div className="flex-1"><h2 className="text-[#3D3D4E]">{recipientName}</h2>{isAdmin && <p className="text-xs text-[#6B6B7A]">{language === 'ja' ? '運営' : 'Admin'}</p>}</div>
       </div>
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
         {messages.map((message, index) => {
           const currentDate = parseMessageDate(message.time);
           const prevDate = index > 0 ? parseMessageDate(messages[index - 1].time) : null;
