@@ -37,9 +37,9 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
   const { markAllMessagesAsReadForUser, sendMessage, uploadChatAttachment, approvedMembers, staffInboxUserId, events, galleryPhotos } = useData();
   const hasMarkedAsRead = useRef(false);
   useEffect(() => { if (isAdmin && user.id && !hasMarkedAsRead.current) { hasMarkedAsRead.current = true; markAllMessagesAsReadForUser(user.id); } }, [isAdmin, user.id, markAllMessagesAsReadForUser]);
-  const getInitialMessage = () => ({ id: 1, sender: 'other' as const, text: language === 'ja' ? 'こんにちは！リアクションありがとうございます。' : 'Hello! Thanks for your reaction.', time: '14:30' });
+  // 実データ到着前にダミーの受信メッセージを見せない(過去に届いた本物と紛らわしいため)
   const recipientId = recipientName;
-  const [messages, setMessages] = useState<Message[]>(messageHistory[recipientId] || [getInitialMessage()]);
+  const [messages, setMessages] = useState<Message[]>(messageHistory[recipientId] ?? []);
   const [newMessage, setNewMessage] = useState('');
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { setMessages(messageHistory[recipientId] || [getInitialMessage()]); }, [recipientId, isAdmin, language]);
+  useEffect(() => { setMessages(messageHistory[recipientId] ?? []); }, [recipientId, isAdmin, language]);
   useEffect(() => {
     if (!(isAdmin && messageThreads[user.id])) return;
     const threadMessages = messageThreads[user.id];

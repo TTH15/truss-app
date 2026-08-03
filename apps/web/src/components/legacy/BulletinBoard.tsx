@@ -12,6 +12,9 @@ import type { Language, User, BoardPost, BoardPostReply, CreateBoardPostInput } 
 import { normalizeBoardContent } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { toast } from 'sonner';
+import { EmptyState } from './EmptyState';
+import { BoardSkeleton } from './LoadingSkeletons';
+import { faCommentDots } from '@fortawesome/free-solid-svg-icons';
 import { linkifyText } from '../../lib/linkify';
 
 interface BulletinBoardProps {
@@ -34,7 +37,7 @@ const presetTags = { ja: ['English', '日本語', '中国語', '韓国語'], en:
 
 export function BulletinBoard({ language, user, onInterested, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onAddReply, onToggleInterest, onDeleteBoardPost }: BulletinBoardProps) {
   const t = translations[language];
-  const { interestedPostIds } = useData();
+  const { interestedPostIds, boardPostsLoading } = useData();
   const [submitting, setSubmitting] = useState(false);
   const visiblePosts = boardPosts.filter((post) => !post.isHidden && !post.isDeleted);
   const canWrite = user.approved === true;
@@ -232,6 +235,18 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
       </div>
 
       <div className="overflow-x-auto -mx-4 px-4 pb-2"><div className="flex gap-4">{storyPosts.map((post) => <button key={post.id} onClick={() => { setSelectedStory(post.id); setStoryProgress(0); }} className="flex flex-col items-center gap-2 shrink-0"><div className={`p-1 rounded-full bg-linear-to-tr ${getTagColor()}`}><div className="bg-white p-0.5 rounded-full"><div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-linear-to-br from-blue-600 to-purple-600 text-white flex items-center justify-center">{post.authorAvatar}</div></div></div><span className="text-xs text-gray-700 max-w-[80px] truncate">{post.author}</span></button>)}</div></div>
+      {boardPostsLoading && visiblePosts.length === 0 && <BoardSkeleton />}
+      {!boardPostsLoading && visiblePosts.length === 0 && (
+        <EmptyState
+          icon={faCommentDots}
+          title={language === 'ja' ? 'まだ投稿がありません' : 'No posts yet'}
+          description={
+            language === 'ja'
+              ? '言語交換や勉強会の相手を探したいときは、最初の投稿をしてみましょう。'
+              : 'Looking for a language exchange or study partner? Write the first post.'
+          }
+        />
+      )}
       {boardPostsList.length > 0 && <div className="space-y-4">{boardPostsList.map((post) => <BoardPostWithReplies key={post.id} post={post} language={language} user={user} onAddReply={handleAddReply} onToggleInterest={() => handleToggleInterest(post)} isInterested={interestedPostIds.has(post.id)} onDeletePost={handleDeletePost} canDelete={canDeletePost(post)} translations={t} />)}</div>}
 
       {currentStory && (

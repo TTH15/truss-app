@@ -86,6 +86,8 @@ interface DataContextType {
   galleryPhotos: GalleryPhoto[];
   loading: boolean;
   usersLoading: boolean;
+  boardPostsLoading: boolean;
+  galleryPhotosLoading: boolean;
   createEvent: (event: Omit<Event, 'id' | 'currentParticipants' | 'likes'>) => Promise<void>;
   updateEvent: (eventId: number, updates: Partial<Event>) => Promise<void>;
   deleteEvent: (eventId: number) => Promise<void>;
@@ -217,6 +219,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(true);
+  // 初回取得が終わるまで true。取得中の白紙とスケルトンを出し分けるために画面ごとに持つ
+  const [boardPostsLoading, setBoardPostsLoading] = useState(true);
+  const [galleryPhotosLoading, setGalleryPhotosLoading] = useState(true);
   const eventsFetchInFlight = useRef<Promise<void> | null>(null);
   const usersFetchInFlight = useRef<Promise<void> | null>(null);
 
@@ -334,6 +339,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       );
     } catch (error) {
       console.error('Error fetching board posts:', error);
+    } finally {
+      setBoardPostsLoading(false);
     }
   }, []);
 
@@ -344,6 +351,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       );
     } catch (error) {
       console.error('Error fetching gallery photos:', error);
+    } finally {
+      setGalleryPhotosLoading(false);
     }
   }, []);
 
@@ -981,7 +990,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const value: DataContextType = {
-    events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading,
+    events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading, boardPostsLoading, galleryPhotosLoading,
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
     approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, setUserRole, resetMembershipForNewYear, deleteUser,
     sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, markMemberMessagesAsRead, uploadChatAttachment, updateChatMetadata,

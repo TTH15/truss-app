@@ -6,6 +6,10 @@ import { UserAvatarImage } from './UserAvatarImage';
 import { Search, Globe2 } from 'lucide-react';
 import type { Language, User } from '@truss/core';
 import { RoleBadge } from './RoleBadge';
+import { EmptyState } from './EmptyState';
+import { MemberListSkeleton } from './LoadingSkeletons';
+import { faUsers } from '@fortawesome/free-solid-svg-icons';
+import { useData } from '../../contexts/DataContext';
 
 interface MembersPageProps {
   language: Language;
@@ -19,6 +23,7 @@ const translations = {
 
 export function MembersPage({ language, members }: MembersPageProps) {
   const t = translations[language];
+  const { usersLoading } = useData();
   const [searchQuery, setSearchQuery] = useState('');
   const getCategoryLabel = (category: string) => category === 'japanese' ? t.japanese : category === 'regular-international' ? t.regularInternational : category === 'exchange' ? t.exchange : '';
   const getCategoryColor = (category: string) => category === 'japanese' ? 'bg-blue-100 text-blue-800' : category === 'regular-international' ? 'bg-purple-100 text-purple-800' : category === 'exchange' ? 'bg-pink-100 text-pink-800' : 'bg-gray-100 text-gray-800';
@@ -32,6 +37,22 @@ export function MembersPage({ language, members }: MembersPageProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between"><h1 className="text-gray-900">{t.title}</h1><Badge variant="secondary" className="text-sm">{filteredMembers.length} {language === 'ja' ? '人' : 'members'}</Badge></div>
       <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><Input placeholder={t.search} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" /></div>
+      {usersLoading && members.length === 0 && <MemberListSkeleton />}
+      {!usersLoading && filteredMembers.length === 0 && (
+        <EmptyState
+          icon={faUsers}
+          title={
+            searchQuery
+              ? (language === 'ja' ? '見つかりませんでした' : 'No members found')
+              : (language === 'ja' ? 'まだメンバーがいません' : 'No members yet')
+          }
+          description={
+            searchQuery
+              ? (language === 'ja' ? '名前・ニックネーム・フリガナで検索できます。' : 'You can search by name, nickname or furigana.')
+              : undefined
+          }
+        />
+      )}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredMembers.map((member) => (
           <Card key={member.id} className="hover:shadow-lg transition-shadow">

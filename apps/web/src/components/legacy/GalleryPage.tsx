@@ -9,6 +9,9 @@ import Masonry from 'react-responsive-masonry';
 import type { Language, User } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { ReactionCount } from './ReactionCount';
+import { EmptyState } from './EmptyState';
+import { GallerySkeleton } from './LoadingSkeletons';
+import { faImages } from '@fortawesome/free-solid-svg-icons';
 import {
   GALLERY_PHOTO_ACCEPT,
   GALLERY_UPLOAD_UNSUPPORTED_MIME_MESSAGE,
@@ -23,7 +26,7 @@ const translations = {
 
 export function GalleryPage({ language, currentUser }: GalleryPageProps) {
   const t = translations[language];
-  const { galleryPhotos, events: supabaseEvents, uploadGalleryPhoto, toggleGalleryPhotoLike, likedGalleryPhotoIds } = useData();
+  const { galleryPhotos, events: supabaseEvents, uploadGalleryPhoto, toggleGalleryPhotoLike, likedGalleryPhotoIds, galleryPhotosLoading } = useData();
   const [poppingPhotoId, setPoppingPhotoId] = useState<number | null>(null);
   const [isAddPhotoOpen, setIsAddPhotoOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState('');
@@ -95,8 +98,27 @@ export function GalleryPage({ language, currentUser }: GalleryPageProps) {
   };
 
   const columns = typeof window !== 'undefined' ? (window.innerWidth < 768 ? 2 : window.innerWidth < 1024 ? 3 : 4) : 4;
+  if (galleryPhotosLoading && photos.length === 0) {
+    return (
+      <div className="space-y-4 relative">
+        <GallerySkeleton />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 relative">
+      {photos.length === 0 && (
+        <EmptyState
+          icon={faImages}
+          title={language === 'ja' ? 'まだ写真がありません' : 'No photos yet'}
+          description={
+            language === 'ja'
+              ? 'イベントで撮った写真を投稿して、みんなと思い出を共有しましょう。'
+              : 'Share photos from an event and keep the memories together.'
+          }
+        />
+      )}
       <Masonry columnsCount={columns} gutter="16px">
         {photos.map((photo) => {
           const isLiked = likedGalleryPhotoIds.has(photo.id);
