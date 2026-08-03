@@ -14,6 +14,7 @@ import { BulkEmailModal } from './BulkEmailModal';
 import { translateText } from '../../utils/translate';
 import { uploadEventImage } from '@truss/core';
 import { applyMosaicAtPoint } from '../../lib/mosaicCanvas';
+import { useData } from '../../contexts/DataContext';
 import { supabase } from '@truss/core';
 import { EVENT_ICON_OPTIONS, getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
@@ -195,6 +196,15 @@ export function AdminEvents({
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
   const [participantStatusOverrides, setParticipantStatusOverrides] = useState<Record<string, { attended?: boolean; paid?: boolean }>>({});
   const [participantFilter, setParticipantFilter] = useState('');
+  // event_participants は登録時点の氏名しか持たないため、フリガナは会員情報から引く
+  const { approvedMembers } = useData();
+  const furiganaByUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    approvedMembers.forEach((member) => {
+      if (member.furigana?.trim()) map.set(member.id, member.furigana.trim());
+    });
+    return map;
+  }, [approvedMembers]);
   const [initialEventSnapshot, setInitialEventSnapshot] = useState('');
   const draftRestoredRef = useRef(false);
 
@@ -476,11 +486,11 @@ export function AdminEvents({
     const query = participantFilter.trim().toLowerCase();
     if (!query) return selectedEventParticipants;
     return selectedEventParticipants.filter((participant) =>
-      [participant.userName, participant.userNickname]
+      [participant.userName, participant.userNickname, furiganaByUserId.get(getParticipantUserId(participant))]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query))
     );
-  }, [selectedEventParticipants, participantFilter]);
+  }, [selectedEventParticipants, participantFilter, furiganaByUserId]);
   const selectedEventParticipantIds = useMemo(
     () => selectedEventParticipants.map((participant) => getParticipantUserId(participant)).filter(Boolean),
     [selectedEventParticipants],
@@ -1716,8 +1726,17 @@ export function AdminEvents({
 
                     {/* 中央：参加者情報 */}
                     <div className="flex-1">
-                      <p className="text-[#101828] text-sm font-medium">{participant.userName}</p>
-                      <p className="text-[#4A5565] text-xs">{participant.userNickname}</p>
+                      <p className="text-[#101828] text-sm font-medium">
+                        {participant.userName}
+                        {furiganaByUserId.get(getParticipantUserId(participant)) && (
+                          <span className="text-[#6B6B7A] text-xs font-normal ml-2">
+                            {furiganaByUserId.get(getParticipantUserId(participant))}
+                          </span>
+                        )}
+                      </p>
+                      {participant.userNickname && participant.userNickname !== participant.userName && (
+                        <p className="text-[#4A5565] text-xs">{participant.userNickname}</p>
+                      )}
                       <p className="text-[#6B6B7A] text-xs">
                         {language === 'ja' ? '登録日時:' : 'Registered:'} {new Date(participant.registeredAt).toLocaleString(language === 'ja' ? 'ja-JP' : 'en-US')}
                       </p>

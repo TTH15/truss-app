@@ -209,3 +209,10 @@
 - 原因: 前回追加した出席数の集計 `attendedCount` を、`getParticipantStatusValue`（`const` 関数）の**定義より前**に置いていた。`useMemo` のファクトリはレンダー時に同期実行されるため、TDZ により `Cannot access 'getParticipantStatusValue' before initialization` が発生し、`AdminEvents` のレンダーごと失敗していた。
 - 対策: 集計をヘルパー定義の直後へ移動（`useMemo` も不要なため通常の式に）。同じ過ちを繰り返さないよう理由をコメントで明記。
 - 検証: `tsc --noEmit`・`next build` 通過。TypeScript は TDZ を検出しないため、型チェックだけでは防げなかった。
+
+## 2026-08-04 04:10 参加者一覧にフリガナを表示
+
+- `event_participants` は登録時点の氏名・ニックネームしか保持しないため、フリガナは会員情報（`approvedMembers`）から `userId` で引く形にした（`AdminEvents` から `useData()` を利用）。
+- 氏名の右に小さくフリガナを併記。検索も氏名・ニックネームに加えてフリガナで引けるようにした（当日の受付でカナから探せる）。
+- 併せて、ニックネームが氏名と同一の場合は重複表示しないようにした（実データでは同じ値が入っていることが多く、2行が同じ文字列で埋まっていた）。
+- 検証: `tsc --noEmit`・`next build` 通過。新規 lint エラー 0。
