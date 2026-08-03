@@ -9,7 +9,7 @@ import { faHand } from '@fortawesome/free-solid-svg-icons';
 import { ReactionCount } from './ReactionCount';
 import { toast } from 'sonner';
 import type { Language, User } from '@truss/core';
-import { normalizeBoardContent } from '@truss/core';
+import { normalizeBoardContent, formatEventDateNoHyphen } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
 
 interface Reply { id: number; author: string; authorAvatar: string; content: string; time: string; }
@@ -38,6 +38,21 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
       return `${year}年${month}月${day}日 ${hours}時${minutes}分`;
     }
     return `${year}/${month}/${day} ${hours}:${minutes}`;
+  };
+  // 返信は本文の添え物なので、投稿本体より短く。同じ年なら年を省く
+  const formatReplyTime = (raw: string) => {
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) return raw;
+    const time = `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+    const sameYear = date.getFullYear() === new Date().getFullYear();
+    if (language === 'ja') {
+      return sameYear
+        ? `${date.getMonth() + 1}/${date.getDate()} ${time}`
+        : `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${time}`;
+    }
+    return sameYear
+      ? `${date.getMonth() + 1}/${date.getDate()} ${time}`
+      : `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${time}`;
   };
   const handleSendReply = async () => {
     if (!canWrite || sendingReply) return;
@@ -107,7 +122,7 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
                   <ReactionCount value={post.interested} />
                 </div>
               </Button>
-              {post.expiryDate && <div className="flex items-center gap-1 text-xs text-[#49B1E4]"><Calendar className="w-3 h-3" /><span>{post.expiryDate} {t.until}</span></div>}
+              {post.expiryDate && <div className="flex items-center gap-1 text-xs text-[#49B1E4]"><Calendar className="w-3 h-3" /><span>{formatEventDateNoHyphen(post.expiryDate)} {t.until}</span></div>}
             </div>
             {canDelete && (
               <Button
@@ -150,7 +165,7 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
                 {post.replies.map((reply) => (
                   <div key={reply.id} className="flex gap-2 pl-4">
                     <Avatar className="w-7 h-7 shrink-0"><AvatarFallback className="bg-linear-to-br from-purple-500 to-pink-500 text-white text-xs">{reply.authorAvatar}</AvatarFallback></Avatar>
-                    <div className="flex-1 bg-gray-50 rounded-lg p-3"><div className="flex items-center justify-between mb-1"><p className="text-sm text-[#3D3D4E]">{reply.author}</p><p className="text-xs text-gray-500">{reply.time}</p></div><p className="text-sm text-gray-700 whitespace-pre-line break-words [overflow-wrap:anywhere]">{linkifyText(normalizeBoardContent(reply.content))}</p></div>
+                    <div className="flex-1 bg-gray-50 rounded-lg p-3"><div className="flex items-center justify-between mb-1"><p className="text-sm text-[#3D3D4E] shrink-0">{reply.author}</p><p className="text-xs text-gray-500 shrink-0">{formatReplyTime(reply.time)}</p></div><p className="text-sm text-gray-700 whitespace-pre-line break-words [overflow-wrap:anywhere]">{linkifyText(normalizeBoardContent(reply.content))}</p></div>
                   </div>
                 ))}
               </div>

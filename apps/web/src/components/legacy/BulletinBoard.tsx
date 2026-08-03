@@ -35,11 +35,25 @@ const translations = {
 };
 const presetTags = { ja: ['English', '日本語', '中国語', '韓国語'], en: ['English', 'Japanese', 'Chinese', 'Korean'] };
 
+/** 掲載期限を過ぎた掲示板の投稿（期限日いっぱいは表示する） */
+const isExpiredBoardPost = (post: BoardPost) => {
+  if (!post.expiryDate) return false;
+  const today = new Date().toISOString().split('T')[0];
+  return post.expiryDate < today;
+};
+
 export function BulletinBoard({ language, user, onInterested, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onAddReply, onToggleInterest, onDeleteBoardPost }: BulletinBoardProps) {
   const t = translations[language];
   const { interestedPostIds, boardPostsLoading } = useData();
   const [submitting, setSubmitting] = useState(false);
   const visiblePosts = boardPosts.filter((post) => !post.isHidden && !post.isDeleted);
+  // ストーリーは「1日のみ表示」。投稿から24時間で自動的に見えなくなる（以前は残り続けていた）
+  const storyPosts = visiblePosts.filter((p) => {
+    if (p.displayType !== 'story') return false;
+    const posted = new Date(p.time).getTime();
+    if (Number.isNaN(posted)) return true;
+    return Date.now() - posted < 24 * 60 * 60 * 1000;
+  });
   const canWrite = user.approved === true;
   const [selectedStory, setSelectedStory] = useState<number | null>(null);
   const [storyProgress, setStoryProgress] = useState(0);
@@ -60,7 +74,21 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
   const removeTag = (tag: string) => setNewPost((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }));
   const addCustomTag = () => { if (customTagInput.trim()) { addTag(customTagInput); setCustomTagInput(''); } };
   useEffect(() => { if (selectedStory === null) return; const interval = setInterval(() => setStoryProgress((prev) => (prev >= 100 ? 0 : prev + 1)), 50); return () => clearInterval(interval); }, [selectedStory]);
-  useEffect(() => { if (storyProgress < 100 || selectedStory === null) return; const i = visiblePosts.findIndex((p) => p.id === selectedStory); if (i < visiblePosts.length - 1) setSelectedStory(visiblePosts[i + 1].id); else setSelectedStory(null); setStoryProgress(0); }, [storyProgress, selectedStory, visiblePosts]);
+  // 送り先は「ストーリー」だけ。以前は掲示板の投稿も含む visiblePosts を辿っており、
+  // ストーリーを開くと関係のない投稿まで順に流れていた
+  useEffect(() => {
+    if (storyProgress < 100 || selectedStory === null) return;
+    const i = storyPosts.findIndex((p) => p.id === selectedStory);
+    if (i >= 0 && i < storyPosts.length - 1) setSelectedStory(storyPosts[i + 1].id);
+    else setSelectedStory(null);
+    setStoryProgress(0);
+  }, [storyProgress, selectedStory, storyPosts]);
+  const goToStory = (offset: 1 | -1) => {
+    const i = storyPosts.findIndex((p) => p.id === selectedStory);
+    const next = storyPosts[i + offset];
+    setStoryProgress(0);
+    setSelectedStory(next ? next.id : null);
+  };
   const handleAddReply = async (postId: number, content: string) => { const reply = { author: user.name, authorAvatar: user.name.substring(0, 2).toUpperCase(), content, time: language === 'ja' ? 'たった今' : 'just now' }; if (onAddReply) await onAddReply(postId, reply); else onUpdateBoardPosts(boardPosts.map((p) => p.id === postId ? { ...p, replies: [...(p.replies || []), { id: (p.replies?.length || 0) + 1, ...reply }] } : p)); };
   const handleToggleInterest = async (post: BoardPost) => {
     if (!onToggleInterest) return;
@@ -96,9 +124,14 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
       if (announcementDiff !== 0) return announcementDiff;
       return getPostTimeValue(b) - getPostTimeValue(a);
     });
-  const currentStory = visiblePosts.find((p) => p.id === selectedStory);
-  const storyPosts = visiblePosts.filter((p) => p.displayType === 'story');
-  const boardPostsList = sortPostsForDisplay(visiblePosts.filter((p) => p.displayType === 'board' || (p.displayType === 'story' && p.replies && p.replies.length > 0)));
+  const currentStory = storyPosts.find((p) => p.id === selectedStory);
+  const boardPostsList = sortPostsForDisplay(
+    visiblePosts.filter(
+      (p) =>
+        (p.displayType === 'board' && !isExpiredBoardPost(p)) ||
+        (p.displayType === 'story' && p.replies && p.replies.length > 0)
+    )
+  );
 
   return (
     <div className="space-y-6">
@@ -251,8 +284,34 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
 
       {currentStory && (
         <div className="fixed inset-0 bg-black z-100 flex items-center justify-center">
-          <div className="absolute top-0 left-0 right-0 flex gap-1 p-4 z-10">{visiblePosts.map((post) => <div key={post.id} className="flex-1 h-0.5 bg-white/30 rounded-full overflow-hidden"><div className="h-full bg-white transition-all duration-100" style={{ width: post.id === selectedStory ? `${storyProgress}%` : post.id < selectedStory! ? '100%' : '0%' }} /></div>)}</div>
-          <button onClick={() => setSelectedStory(null)} className="absolute top-8 right-4 text-white z-20"><X className="w-6 h-6" /></button>
+          {/* バーはストーリーの数だけ。既読/未読は id ではなく並び順で判定する */}
+          <div className="absolute top-0 left-0 right-0 flex gap-1 p-4 z-30">
+            {storyPosts.map((post, index) => {
+              const currentIndex = storyPosts.findIndex((p) => p.id === selectedStory);
+              return (
+                <div key={post.id} className="flex-1 h-0.5 bg-white/30 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-white transition-all duration-100"
+                    style={{ width: index === currentIndex ? `${storyProgress}%` : index < currentIndex ? '100%' : '0%' }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <button onClick={() => setSelectedStory(null)} className="absolute top-8 right-4 text-white z-30"><X className="w-6 h-6" /></button>
+          {/* 自動送りだけだと待つしかないので、左右のタップでも送れるようにする */}
+          <button
+            type="button"
+            aria-label={language === 'ja' ? '前へ' : 'Previous'}
+            onClick={() => goToStory(-1)}
+            className="absolute left-0 top-0 bottom-0 w-1/3 z-20"
+          />
+          <button
+            type="button"
+            aria-label={language === 'ja' ? '次へ' : 'Next'}
+            onClick={() => goToStory(1)}
+            className="absolute right-0 top-0 bottom-0 w-1/3 z-20"
+          />
           <div className="w-full h-full max-w-lg mx-auto relative">
             {currentStory.image && <img src={currentStory.image} alt={currentStory.title} className="w-full h-full object-cover" />}
             <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 text-white z-30">

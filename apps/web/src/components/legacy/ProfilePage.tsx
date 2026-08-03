@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
-import { Globe2, MapPin, Mail, Edit, Phone, Users, Save, X, GraduationCap, IdCard } from 'lucide-react';
+import { Globe2, MapPin, Mail, Edit, Phone, Users, Save, GraduationCap, IdCard } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Language, User } from '@truss/core';
 import { UserAvatarImage } from './UserAvatarImage';
@@ -19,7 +19,6 @@ interface ProfilePageProps {
   isCompact?: boolean;
   /** 互換のため残す（現状未使用） */
   isProfileComplete?: boolean;
-  onClose?: () => void;
   /** プロフィール項目の保存（アバターは別途アップロード後に `avatarPath` を渡す） */
   onUpdateProfile?: (updates: Partial<User>) => Promise<{ error: Error | null }>;
 }
@@ -95,7 +94,6 @@ export function ProfilePage({
   language,
   user,
   isCompact = false,
-  onClose,
   onUpdateProfile,
 }: ProfilePageProps) {
   const t = translations[language];
@@ -202,32 +200,26 @@ export function ProfilePage({
         onComplete={handleAvatarCropped}
       />
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-[#3D3D4E]">{t.title}</h1>
-        <div className="flex items-center gap-2">
-          {!isEditing ? (
-            <Button className="bg-[#49B1E4] hover:bg-[#3A9FD3]" onClick={() => setIsEditing(true)}>
-              <Edit className="w-4 h-4 mr-2" />
-              {t.editProfile}
+      {/* 画面を閉じる導線は下部ナビが担うので、ここには置かない。
+          編集中は「キャンセル / 保存する」の2つだけにして、×との三択にならないようにする */}
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-[#3D3D4E] shrink-0">{t.title}</h1>
+        {!isEditing ? (
+          <Button className="bg-[#49B1E4] hover:bg-[#3A9FD3]" onClick={() => setIsEditing(true)}>
+            <Edit className="w-4 h-4 mr-2" />
+            {t.editProfile}
+          </Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleCancel} disabled={saving}>
+              {t.cancel}
             </Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleCancel} disabled={saving}>
-                <X className="w-4 h-4 mr-2" />
-                {t.cancel}
-              </Button>
-              <Button className="bg-[#49B1E4] hover:bg-[#3A9FD3]" onClick={() => void handleSave()} disabled={saving}>
-                <Save className="w-4 h-4 mr-2" />
-                {t.saveProfile}
-              </Button>
-            </div>
-          )}
-          {onClose && (
-            <Button variant="ghost" size="icon" onClick={onClose} className="text-[#3D3D4E] hover:bg-[#E8E4DB]">
-              <X className="w-5 h-5" />
+            <Button className="bg-[#49B1E4] hover:bg-[#3A9FD3]" onClick={() => void handleSave()} disabled={saving}>
+              <Save className="w-4 h-4 mr-2" />
+              {saving ? (language === 'ja' ? '保存中...' : 'Saving...') : t.saveProfile}
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {isWaitingApproval && (

@@ -684,7 +684,6 @@ export function Dashboard({
             language={language}
             user={user}
             isProfileComplete={profileDone}
-            onClose={() => setCurrentPage('home')}
             onUpdateProfile={onUpdateProfile}
           />
         )}
