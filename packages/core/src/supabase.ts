@@ -200,14 +200,54 @@ export async function uploadUserAvatar(userId: string, file: File) {
 
   if (error) return { path: null as string | null, error };
 
+  // パスは固定(upsert)なので、差し替え後は署名付きURLを取り直して古い画像を表示し続けないようにする
+  clearAvatarSignedUrlCache(fileName);
   return { path: fileName, error: null };
 }
 
+/**
+ * 署名付きURLのプロセス内キャッシュ。
+ * アバターは一覧の各行が個別に発行を要求するため、素のままだとメンバー数だけ
+ * createSignedUrl が並列に飛ぶ(239人なら239本、画面を往復するたびに再発行)。
+ * path 単位で発行中の Promise ごと共有し、有効期限より手前で捨てる。
+ */
+const signedUrlCache = new Map<string, { url: string | null; expiresAt: number }>();
+const signedUrlInFlight = new Map<string, Promise<{ url: string | null; error: unknown }>>();
+
 export async function getAvatarSignedUrl(path: string, expiresIn = 3600) {
-  const { data, error } = await supabase.storage
-    .from(BUCKETS.USER_AVATARS)
-    .createSignedUrl(path, expiresIn);
-  return { url: data?.signedUrl ?? null, error };
+  const cached = signedUrlCache.get(path);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { url: cached.url, error: null };
+  }
+  const inFlight = signedUrlInFlight.get(path);
+  if (inFlight) return inFlight;
+
+  const request = (async () => {
+    const { data, error } = await supabase.storage
+      .from(BUCKETS.USER_AVATARS)
+      .createSignedUrl(path, expiresIn);
+    const url = data?.signedUrl ?? null;
+    if (url) {
+      // 有効期限の8割で切って、期限切れURLを掴み続けないようにする
+      signedUrlCache.set(path, { url, expiresAt: Date.now() + expiresIn * 800 });
+    }
+    signedUrlInFlight.delete(path);
+    return { url, error };
+  })();
+
+  signedUrlInFlight.set(path, request);
+  return request;
+}
+
+/** アバター差し替え後に古い署名付きURLを掴み続けないようにする */
+export function clearAvatarSignedUrlCache(path?: string) {
+  if (path) {
+    signedUrlCache.delete(path);
+    signedUrlInFlight.delete(path);
+    return;
+  }
+  signedUrlCache.clear();
+  signedUrlInFlight.clear();
 }
 
 /** チャット添付は非公開バケットのため、fileName（path）をDBに保存し表示時に署名付きURLを発行する */

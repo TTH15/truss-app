@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import { LandingPage } from '../components/legacy/LandingPage';
 import { AuthSelection } from '../components/legacy/AuthSelection';
@@ -6,7 +7,11 @@ import { EmailVerification } from '../components/legacy/EmailVerification';
 import { InitialRegistration, InitialRegistrationData } from '@/components/legacy/InitialRegistration';
 import { ProfileRegistration } from '../components/legacy/ProfileRegistration';
 import { Dashboard } from '../components/legacy/Dashboard';
-import { AdminPage } from '../components/legacy/AdminPage';
+// 運営画面は一般会員には不要なので、開いたときだけ読み込む
+const AdminPage = dynamic(
+  () => import('../components/legacy/AdminPage').then((m) => m.AdminPage),
+  { ssr: false }
+);
 import { AdminLogin } from '../components/legacy/AdminLogin';
 import { WaitingApproval } from '../components/legacy/WaitingApproval';
 import { LoginScreen } from '../components/legacy/LoginScreen';

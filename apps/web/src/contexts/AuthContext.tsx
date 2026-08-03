@@ -29,19 +29,31 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const USER_CACHE_KEY = 'truss-app-user-cache';
 const ADMIN_SESSION_KEY = 'truss-admin-session';
 
-const getCachedUser = (): AppUser | null => {
+/**
+ * プロフィールのローカルキャッシュ。
+ * 必ず認証ユーザー(auth.users.id)と紐付けて保存する。紐付けが無いと、同じ端末で
+ * 前に使ったアカウントのプロフィール(例: 運営アカウント=isAdmin)を別のアカウントが
+ * そのまま拾ってしまい、一般会員の画面から運営画面へ遷移し得る。
+ */
+type CachedUserEntry = { authId: string; user: AppUser };
+
+const getCachedEntry = (): CachedUserEntry | null => {
   if (typeof window === 'undefined') return null;
   try {
     const cached = localStorage.getItem(USER_CACHE_KEY);
-    if (cached) return JSON.parse(cached);
+    if (!cached) return null;
+    const parsed = JSON.parse(cached) as Partial<CachedUserEntry>;
+    // 旧形式(AppUser をそのまま保存)は認証ユーザーと結び付いていないため採用しない
+    if (!parsed || typeof parsed.authId !== 'string' || !parsed.user) return null;
+    return parsed as CachedUserEntry;
   } catch (_e) {}
   return null;
 };
 
-const setCachedUser = (user: AppUser | null) => {
+const setCachedUser = (user: AppUser | null, authId?: string | null) => {
   if (typeof window === 'undefined') return;
   try {
-    if (user) localStorage.setItem(USER_CACHE_KEY, JSON.stringify(user));
+    if (user && authId) localStorage.setItem(USER_CACHE_KEY, JSON.stringify({ authId, user }));
     else localStorage.removeItem(USER_CACHE_KEY);
   } catch (_e) {}
 };
@@ -49,7 +61,7 @@ const setCachedUser = (user: AppUser | null) => {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
-  const [user, setUser] = useState<AppUser | null>(() => getCachedUser());
+  const [user, setUser] = useState<AppUser | null>(() => getCachedEntry()?.user ?? null);
   const [loading, setLoading] = useState(true);
   const userRef = useRef<AppUser | null>(user);
   const authUserIdRef = useRef<string | null>(null);
@@ -65,9 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
     const initAuth = async () => {
-      const cachedUser = getCachedUser();
+      const cachedEntry = getCachedEntry();
       const adminSessionRaw = localStorage.getItem(ADMIN_SESSION_KEY);
-      if (cachedUser) setLoading(false);
+      if (cachedEntry) setLoading(false);
       try {
         let { data: { session } } = await supabase.auth.getSession();
 
@@ -93,11 +105,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setSupabaseUser(session?.user || null);
         if (session?.user) {
+          // 別アカウントのキャッシュを表示したまま進まない
+          if (cachedEntry && cachedEntry.authId !== session.user.id) {
+            setUser(null);
+            setCachedUser(null);
+          }
           const appUser = await queryUserByAuthId(session.user.id);
           if (mounted && appUser) {
             setUser(appUser);
-            setCachedUser(appUser);
-          } else if (mounted && !userRef.current) {
+            setCachedUser(appUser, session.user.id);
+          } else if (mounted && cachedEntry?.authId !== session.user.id) {
+            // 取得できず、手元にあるのが別アカウントのキャッシュなら何も表示しない
             setUser(null);
             setCachedUser(null);
           }
@@ -135,8 +153,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const appUser = await queryUserByAuthId(session.user.id);
           if (appUser && mounted) {
             setUser(appUser);
-            setCachedUser(appUser);
-          } else if (mounted && !userRef.current) {
+            setCachedUser(appUser, session.user.id);
+          } else if (mounted && getCachedEntry()?.authId !== session.user.id) {
             setUser(null);
             setCachedUser(null);
           }
@@ -234,7 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) return { error };
       const updatedUser = { ...merged, profileCompleted: computedComplete };
       setUser(updatedUser);
-      setCachedUser(updatedUser);
+      setCachedUser(updatedUser, authUserIdRef.current);
       return { error: null };
     } catch (error) {
       return { error: error as Error };
@@ -245,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseUser) return;
     const appUser = await queryUserByAuthId(supabaseUser.id);
     setUser(appUser);
-    if (appUser) setCachedUser(appUser);
+    if (appUser) setCachedUser(appUser, supabaseUser.id);
     else setCachedUser(null);
   };
 

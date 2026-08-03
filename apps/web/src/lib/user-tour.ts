@@ -4,8 +4,6 @@
  * driver.js で Dashboard の主要 UI(下部ナビ・ヘッダー)を順に説明する。
  * 対象要素は data-tour 属性で指定し、表示中の画面に存在するステップだけを実行する。
  */
-import { driver } from 'driver.js';
-import 'driver.js/dist/driver.css';
 import '../styles/tour.css';
 import type { Language } from '@truss/core';
 
@@ -117,7 +115,12 @@ const STEPS: TourStep[] = [
   },
 ];
 
-export function startUserTour(language: Language) {
+export async function startUserTour(language: Language) {
+  // ツアーは初回か「使い方ガイド」を押したときだけなので、その時に読み込む
+  const [{ driver }] = await Promise.all([
+    import('driver.js'),
+    import('driver.js/dist/driver.css'),
+  ]);
   const steps = STEPS.filter(
     (s) => !s.target || document.querySelector(`[data-tour="${s.target}"]`)
   ).map((s) => ({

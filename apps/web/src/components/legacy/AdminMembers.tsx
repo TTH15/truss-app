@@ -12,7 +12,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faWallet } from '@fortawesome/free-solid-svg-icons';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
 import { queryFeeSettings } from '@truss/core';
 import { upsertFeeSettingsRow } from '@truss/core';
 import { BulkEmailModal } from './BulkEmailModal';
@@ -298,9 +297,11 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     URL.revokeObjectURL(url);
     toast.success(t.csvDownloaded);
   };
-  const handleBulkDownloadXlsx = () => {
+  const handleBulkDownloadXlsx = async () => {
     const rows = getSelectedMemberList();
     if (rows.length === 0) return toast.error(t.noMemberSelected);
+    // xlsx は 7MB 超あるので、ダウンロード操作の時だけ読み込む
+    const XLSX = await import('xlsx');
     const worksheet = XLSX.utils.json_to_sheet(
       rows.map((m) => {
         const row: Record<string, string> =

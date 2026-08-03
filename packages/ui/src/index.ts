@@ -3,3 +3,4 @@ export { Button, buttonVariants } from "./button";
 export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from "./popover";
 export { Calendar } from "./calendar";
 export { DatePicker, type DatePickerProps } from "./date-picker";
+export { TimePicker, type TimePickerProps } from "./time-picker";

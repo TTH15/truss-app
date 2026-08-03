@@ -9,6 +9,7 @@
 | `popover` | shadcn Popover(Radix ラッパー) |
 | `calendar` | react-day-picker v9 ベースのカレンダー |
 | `date-picker` | Button + Popover + Calendar を束ねた単一日付ピッカー |
+| `time-picker` | Button + Popover の時刻ピッカー（時・分の2カラム、"HH:MM" 文字列、クリア対応） |
 
 ## 消費側が満たすべき契約
 
