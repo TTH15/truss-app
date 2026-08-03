@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import Masonry from 'react-responsive-masonry';
 import type { Language, User } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
+import { ReactionCount } from './ReactionCount';
 import {
   GALLERY_PHOTO_ACCEPT,
   GALLERY_UPLOAD_UNSUPPORTED_MIME_MESSAGE,
@@ -23,6 +24,7 @@ const translations = {
 export function GalleryPage({ language, currentUser }: GalleryPageProps) {
   const t = translations[language];
   const { galleryPhotos, events: supabaseEvents, uploadGalleryPhoto, toggleGalleryPhotoLike, likedGalleryPhotoIds } = useData();
+  const [poppingPhotoId, setPoppingPhotoId] = useState<number | null>(null);
   const [isAddPhotoOpen, setIsAddPhotoOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -49,6 +51,8 @@ export function GalleryPage({ language, currentUser }: GalleryPageProps) {
 
   const toggleLike = async (photoId: number) => {
     if (!approvedPhotos.some((p) => p.id === photoId)) return;
+    // いいねを付けた時だけハートを弾ませる(外す時は静かに戻す)
+    if (!likedGalleryPhotoIds.has(photoId)) setPoppingPhotoId(photoId);
     await toggleGalleryPhotoLike(photoId);
   };
 
@@ -101,7 +105,7 @@ export function GalleryPage({ language, currentUser }: GalleryPageProps) {
               <div className="relative w-full" style={{ height: `${photo.height}px` }}>
                 <img src={typeof photo.image === 'string' ? photo.image : photo.image.src} alt={photo.eventName} loading="lazy" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"><div className="absolute bottom-0 left-0 right-0 p-3 text-white"><p className="text-sm truncate">{photo.eventName}</p><div className="flex items-center gap-1 text-xs mt-1"><Calendar className="w-3 h-3" />{photo.eventDate}</div></div></div>
-                <button onClick={(e) => { e.stopPropagation(); toggleLike(photo.id); }} className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/90 backdrop-blur-sm text-pink-600 hover:text-pink-700 rounded-full px-2 py-1 shadow-lg active:scale-90 transition-transform"><Heart className={`w-4 h-4 transition-transform ${isLiked ? 'fill-current scale-110' : ''}`} /><span className="text-sm">{photo.likes}</span></button>
+                <button onClick={(e) => { e.stopPropagation(); toggleLike(photo.id); }} className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/90 backdrop-blur-sm text-pink-600 hover:text-pink-700 rounded-full px-2 py-1 shadow-lg active:scale-90 transition-transform"><Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''} ${poppingPhotoId === photo.id ? 'animate-truss-pop' : ''}`} onAnimationEnd={() => setPoppingPhotoId(null)} /><ReactionCount value={photo.likes} className="text-sm" /></button>
               </div>
             </div>
           );

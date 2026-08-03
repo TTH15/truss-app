@@ -647,12 +647,23 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
 
   const toggleAttending = async (eventId: number) => {
     if (!user) return;
-    if (attendingEvents.has(eventId)) {
-      await unregisterFromEvent(eventId);
-    } else {
-      await registerForEvent(eventId);
+    const wasAttending = attendingEvents.has(eventId);
+    try {
+      if (wasAttending) {
+        await unregisterFromEvent(eventId);
+        toast.success(language === 'ja' ? '参加を取り消しました' : 'Registration cancelled');
+      } else {
+        await registerForEvent(eventId);
+      }
+      // attendingEvents は eventParticipants 派生なので、DataContext の refetch + realtime で自動反映
+    } catch {
+      toast.error(
+        wasAttending
+          ? (language === 'ja' ? '参加の取り消しに失敗しました' : 'Failed to cancel registration')
+          : (language === 'ja' ? '参加登録に失敗しました' : 'Failed to register')
+      );
+      throw new Error('toggleAttending failed');
     }
-    // attendingEvents は eventParticipants 派生なので、DataContext の refetch + realtime で自動反映
   };
   // ハートの ON/OFF と件数は DataContext 側で即時反映される（DB 由来なのでリロードしても保持される）
   const toggleLike = async (eventId: number) => {

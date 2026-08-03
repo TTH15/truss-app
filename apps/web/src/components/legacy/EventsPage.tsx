@@ -7,6 +7,8 @@ import type { Language, Event, User } from '@truss/core';
 import { getMissingProfileFields, describeMissingProfileFields } from '@truss/core';
 import { googleMapsHrefForEvent } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
+import { ReactionCount } from './ReactionCount';
+import { toast } from 'sonner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '@truss/core';
 
@@ -20,7 +22,7 @@ interface EventsPageProps {
   highlightEventId?: number;
   openEventId?: number;
   onOpenEventHandled?: () => void;
-  onAddEventParticipant: (eventId: number, photoRefusal: boolean) => void;
+  onAddEventParticipant: (eventId: number, photoRefusal: boolean) => Promise<void> | void;
   user: User;
 }
 
@@ -129,6 +131,8 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
   const isSlidingRef = useRef(false);
   const suppressClickRef = useRef(false);
   const slideTimersRef = useRef<number[]>([]);
+  const [heartPopping, setHeartPopping] = useState(false);
+  const [registering, setRegistering] = useState(false);
   const [slideOffset, setSlideOffset] = useState(0);
   const [slideAnimated, setSlideAnimated] = useState(false);
 
@@ -227,11 +231,20 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
     setLineGroupDialogOpen(true);
   };
 
-  const handleRegister = () => {
-    if (!selectedEvent) return;
-    onAddEventParticipant(selectedEvent.id, photoRefusal);
-    onToggleAttending(selectedEvent.id);
-    setRegistrationStep('complete');
+  const handleRegister = async () => {
+    if (!selectedEvent || registering) return;
+    setRegistering(true);
+    try {
+      // onAddEventParticipant だけで登録は完了する。
+      // 以前はここで onToggleAttending も呼んでおり、参加者として二重に登録されていた
+      // (attendingEvents はまだ更新前なので、トグルが「参加する」側として走ってしまう)
+      await onAddEventParticipant(selectedEvent.id, photoRefusal);
+      setRegistrationStep('complete');
+    } catch {
+      toast.error(language === 'ja' ? '参加登録に失敗しました' : 'Failed to register');
+    } finally {
+      setRegistering(false);
+    }
   };
   const handleLineDialogClose = () => {
     setLineGroupDialogOpen(false);
@@ -401,9 +414,19 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
                 <div className="flex items-start gap-3 text-[#3D3D4E]"><MapPin className="w-5 h-5 text-[#49B1E4] shrink-0 mt-0.5" /><div><span>{language === 'ja' ? detailEvent.location : (detailEvent.locationEn || detailEvent.location)}</span>{detailMapsHref && <a href={detailMapsHref} target="_blank" rel="noopener noreferrer" className="block text-sm text-[#49B1E4] hover:underline mt-1"><ExternalLink className="w-3 h-3 inline mr-1" />{language === 'ja' ? 'Google Mapで開く' : 'Open in Google Maps'}</a>}</div></div>
               </div>
               <div className="flex items-center gap-6">
-                <button type="button" onClick={() => onToggleLike(detailEvent.id)} className="flex items-center gap-2 text-pink-600 hover:text-pink-700 transition-colors">
-                  <Heart className={`w-6 h-6 ${likedEvents.has(detailEvent.id) ? 'fill-current' : ''}`} />
-                  <span className="text-lg font-semibold">{detailEvent.likes}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!likedEvents.has(detailEvent.id)) setHeartPopping(true);
+                    onToggleLike(detailEvent.id);
+                  }}
+                  className="flex items-center gap-2 text-pink-600 hover:text-pink-700 transition-colors active:scale-90"
+                >
+                  <Heart
+                    className={`w-6 h-6 ${likedEvents.has(detailEvent.id) ? 'fill-current' : ''} ${heartPopping ? 'animate-truss-pop' : ''}`}
+                    onAnimationEnd={() => setHeartPopping(false)}
+                  />
+                  <ReactionCount value={detailEvent.likes} className="text-lg font-semibold" />
                 </button>
                 <div className="flex items-center gap-2 text-blue-600">
                   <Users className="w-6 h-6" />
@@ -443,7 +466,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
               <div className="space-y-4 py-2">
                 {selectedEvent && <div className="bg-[#F5F1E8] p-4 rounded-lg"><h3 className="font-medium text-[#3D3D4E] mb-1">{language === 'ja' ? selectedEvent.title : (selectedEvent.titleEn || selectedEvent.title)}</h3><p className="text-sm text-[#6B6B7A]">{selectedEvent.date} {selectedEvent.time}</p><p className="text-sm text-[#3D3D4E] mt-1">¥{Number(selectedEvent.participationFee ?? 0).toLocaleString()} ({t.participationFee})</p></div>}
                 <div className="flex items-start space-x-3 bg-yellow-50 p-3 rounded-lg border border-yellow-200"><Checkbox id="photoRefusal" checked={photoRefusal} onCheckedChange={(checked) => setPhotoRefusal(checked === true)} className="mt-0.5" /><label htmlFor="photoRefusal" className="text-sm text-[#3D3D4E] leading-relaxed cursor-pointer">{t.photoRefusal}</label></div>
-                <Button className="w-full bg-[#49B1E4] hover:bg-[#3A9BD4] text-white" onClick={handleRegister}>{t.registerButton}</Button>
+                <Button className="w-full bg-[#49B1E4] hover:bg-[#3A9BD4] text-white" onClick={handleRegister} disabled={registering}>{registering ? (language === 'ja' ? '登録中...' : 'Registering...') : t.registerButton}</Button>
                 <Button variant="ghost" className="w-full text-[#6B6B7A]" onClick={handleLineDialogClose}>{t.close}</Button>
               </div>
             </>

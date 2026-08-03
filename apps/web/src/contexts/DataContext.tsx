@@ -489,6 +489,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       void Promise.all([fetchEvents(true), fetchEventParticipants()]);
     } catch (error) {
       console.error('Error registering for event:', error);
+      // 失敗を握り潰すと、参加できていないのに完了画面が出てしまう
+      throw error;
     }
   };
 
@@ -500,6 +502,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       void Promise.all([fetchEvents(true), fetchEventParticipants()]);
     } catch (error) {
       console.error('Error unregistering from event:', error);
+      throw error;
     }
   };
 
@@ -816,6 +819,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await fetchBoardPosts();
     } catch (error) {
       console.error('Error creating board post:', error);
+      // 呼び出し側で「投稿に失敗しました」を出せるように伝播させる
+      throw error;
     }
   };
 
@@ -827,6 +832,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await fetchBoardPosts();
     } catch (error) {
       console.error('Error adding reply:', error);
+      throw error;
     }
   };
 

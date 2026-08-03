@@ -6,15 +6,19 @@ import { Input } from '../ui/input';
 import { Globe2, Calendar, MessageCircle, Send, ChevronDown, Trash2 } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHand } from '@fortawesome/free-solid-svg-icons';
+import { ReactionCount } from './ReactionCount';
+import { toast } from 'sonner';
 import type { Language, User } from '@truss/core';
 import { normalizeBoardContent } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
 
 interface Reply { id: number; author: string; authorAvatar: string; content: string; time: string; }
 interface Post { id: number; author: string; authorAvatar: string; title: string; content: string; language: string; peopleNeeded: number; interested: number; tag: 'languageExchange' | 'studyGroup' | 'event'; time: string; image?: string; expiryDate?: string; replies?: Reply[]; authorId?: string; }
-interface BoardPostWithRepliesProps { post: Post; language: Language; user: User; onAddReply: (postId: number, content: string) => void; onToggleInterest?: (postId: number) => void; isInterested?: boolean; onDeletePost?: (postId: number) => void; canDelete?: boolean; translations: { until: string; replies: string; replyPlaceholder: string; sendReply: string; viewReplies: string; languageExchange: string; studyGroup: string; event: string; }; }
+interface BoardPostWithRepliesProps { post: Post; language: Language; user: User; onAddReply: (postId: number, content: string) => Promise<void> | void; onToggleInterest?: (postId: number) => void; isInterested?: boolean; onDeletePost?: (postId: number) => void; canDelete?: boolean; translations: { until: string; replies: string; replyPlaceholder: string; sendReply: string; viewReplies: string; languageExchange: string; studyGroup: string; event: string; }; }
 
 export function BoardPostWithReplies({ post, language, user, onAddReply, onToggleInterest, isInterested = false, onDeletePost, canDelete = false, translations: t }: BoardPostWithRepliesProps) {
+  const [handRaising, setHandRaising] = useState(false);
+  const [sendingReply, setSendingReply] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
   const [isContentExpanded, setIsContentExpanded] = useState(false);
   const [replyInput, setReplyInput] = useState('');
@@ -35,11 +39,20 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
     }
     return `${year}/${month}/${day} ${hours}:${minutes}`;
   };
-  const handleSendReply = () => {
-    if (!canWrite) return;
+  const handleSendReply = async () => {
+    if (!canWrite || sendingReply) return;
     if (!replyInput.trim()) return;
-    onAddReply(post.id, replyInput);
-    setReplyInput('');
+    const text = replyInput;
+    setSendingReply(true);
+    // 送信できていないのに入力欄が空になるのを避けるため、成功してからクリアする
+    try {
+      await onAddReply(post.id, text);
+      setReplyInput('');
+    } catch {
+      toast.error(language === 'ja' ? '返信の送信に失敗しました' : 'Failed to send reply');
+    } finally {
+      setSendingReply(false);
+    }
   };
   const replyCount = post.replies?.length || 0;
   return (
@@ -77,12 +90,22 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => onToggleInterest?.(post.id)}
+                onClick={() => {
+                  if (!isInterested) setHandRaising(true);
+                  onToggleInterest?.(post.id);
+                }}
                 className={`h-auto py-1 px-2 rounded-full active:scale-95 transition-transform ${isInterested ? 'text-[#49B1E4] bg-[#49B1E4]/10 hover:bg-[#49B1E4]/15' : 'text-gray-600 hover:text-[#49B1E4] hover:bg-transparent'}`}
               >
                 {/* lucide の Hand は線画なので fill すると指の間まで塗り潰されて塊に見える。
                     塗りのグリフである Font Awesome を使い、色だけで ON/OFF を表す */}
-                <div className="flex items-center gap-1.5"><FontAwesomeIcon icon={faHand} className="w-4 h-4" /><span>{post.interested}</span></div>
+                <div className="flex items-center gap-1.5">
+                  <FontAwesomeIcon
+                    icon={faHand}
+                    className={`w-4 h-4 ${handRaising ? 'animate-truss-raise-hand' : ''}`}
+                    onAnimationEnd={() => setHandRaising(false)}
+                  />
+                  <ReactionCount value={post.interested} />
+                </div>
               </Button>
               {post.expiryDate && <div className="flex items-center gap-1 text-xs text-[#49B1E4]"><Calendar className="w-3 h-3" /><span>{post.expiryDate} {t.until}</span></div>}
             </div>
@@ -114,7 +137,7 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
                 />
                 <Button
                   onClick={handleSendReply}
-                  disabled={!canWrite || !replyInput.trim()}
+                  disabled={!canWrite || !replyInput.trim() || sendingReply}
                   size="sm"
                   className="bg-[#49B1E4] hover:bg-[#3A9FD3]"
                 >

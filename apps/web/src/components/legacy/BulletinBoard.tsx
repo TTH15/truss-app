@@ -11,6 +11,7 @@ import { ImageDropUpload } from './ImageDropUpload';
 import type { Language, User, BoardPost, BoardPostReply, CreateBoardPostInput } from '@truss/core';
 import { normalizeBoardContent } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
+import { toast } from 'sonner';
 import { linkifyText } from '../../lib/linkify';
 
 interface BulletinBoardProps {
@@ -34,6 +35,7 @@ const presetTags = { ja: ['English', '日本語', '中国語', '韓国語'], en:
 export function BulletinBoard({ language, user, onInterested, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onAddReply, onToggleInterest, onDeleteBoardPost }: BulletinBoardProps) {
   const t = translations[language];
   const { interestedPostIds } = useData();
+  const [submitting, setSubmitting] = useState(false);
   const visiblePosts = boardPosts.filter((post) => !post.isHidden && !post.isDeleted);
   const canWrite = user.approved === true;
   const [selectedStory, setSelectedStory] = useState<number | null>(null);
@@ -175,8 +177,11 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
               {newPost.displayType === 'board' && <div className="space-y-2"><Label htmlFor="expiry-date">{t.expiryDate}</Label><Input id="expiry-date" type="date" value={newPost.expiryDate} onChange={(e) => setNewPost({ ...newPost, expiryDate: e.target.value })} min={new Date().toISOString().split('T')[0]} /></div>}
               <div className="flex gap-2">
                 <Button
+                  disabled={submitting}
                   onClick={async () => {
-                    if (!canWrite) return;
+                    if (!canWrite || submitting) return;
+                    setSubmitting(true);
+                    try {
                     const post: CreateBoardPostInput = {
                       authorId: user.id,
                       author: user.name,
@@ -208,10 +213,16 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
                     setSelectedFile(null);
                     setPreviewUrl('');
                     setIsDialogOpen(false);
+                    toast.success(language === 'ja' ? '投稿しました' : 'Posted');
+                    } catch {
+                      toast.error(language === 'ja' ? '投稿に失敗しました' : 'Failed to post');
+                    } finally {
+                      setSubmitting(false);
+                    }
                   }}
                   className="flex-1 bg-[#49B1E4] hover:bg-[#3A9FD3]"
                 >
-                  {t.submit}
+                  {submitting ? (language === 'ja' ? '投稿中...' : 'Posting...') : t.submit}
                 </Button>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">{t.cancel}</Button>
               </div>

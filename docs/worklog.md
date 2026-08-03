@@ -101,3 +101,13 @@
 - **押下フィードバック**: `@platform/ui` の Button に `active:scale-[0.97]` を追加。**原本（`~/Developer/packages/ui`）を編集して sync**（全プロジェクト共通の品質改善と判断）。従来 `active:` の指定はアプリ全体で1箇所しかなく、タッチ端末では押した反応がほぼ無かった。
 - 検証: `tsc --noEmit`・`next build` 通過、lint エラー 0。
 - 残課題: preview で運営ログイン→一般ログインの切替、アバター表示、XLSX出力、ツアー起動を確認。第2弾（演出）と第3弾（core 抽出）は未着手。
+
+## 2026-08-03 16:20 第2弾（演出と操作フィードバック）
+
+- **反応の演出を CSS で実装**: 第1弾で `motion` を依存から外したため、ライブラリを足さずに `globals.css` の keyframes で完結させた。ハートは押した瞬間に弾む(`truss-pop`)、掲示板の手は挙手のメタファに合わせて跳ねる(`truss-raise-hand`)、件数は新しい数字が下から入れ替わる(`truss-count-roll`)。いずれも「付けた時だけ」動き、外す時は静かに戻す。`prefers-reduced-motion` に対応。
+- 件数表示を `ReactionCount` コンポーネントに共通化し、ギャラリー・イベント詳細・掲示板の3箇所で使用。
+- **イベント参加が二重登録されていた問題を修正**: `handleRegister` が `onAddEventParticipant`(=登録)と `onToggleAttending`(=未参加なので登録側に走る)を続けて呼んでいた。前者のみに整理。
+- **失敗が無言だった箇所を可視化**: `registerForEvent`/`unregisterFromEvent`/`createBoardPost`/`addReply` が握り潰していたエラーを呼び出し側へ伝播させ、トーストを表示。特にイベント参加は結果を待たずに完了画面へ進んでいたため、失敗しても「参加登録完了」と表示されていた。
+- **送信中の状態を追加**: イベント参加登録(「登録中...」)、掲示板の投稿(「投稿中...」)、返信送信。いずれも連打を防止。返信は成功してから入力欄をクリアするよう変更(以前は送れていなくても消えていた)。
+- 検証: `tsc --noEmit`・`next build` 通過。新規 lint エラー 0(既存1件のみ)。
+- 残課題: スケルトン表示(`DataContext.loading` を各画面へ)、空状態の改善、Journey Stamp 演出は未着手。preview で演出と各失敗パスを確認。
