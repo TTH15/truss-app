@@ -46,12 +46,14 @@ export function MembershipCard({ user, language }: { user: User; language: Langu
         : t.exchange;
 
   return (
-    <div className="[perspective:1200px] w-full h-full">
+    // 高さは縦横比で決める。親からの h-full 連鎖に頼ると高さが解決できず、
+    // 中身が absolute のため何も表示されない箱になってしまう
+    <div className="[perspective:1200px] w-full aspect-[1.55/1] max-w-2xl mx-auto">
       <button
         type="button"
         onClick={() => setFlipped((prev) => !prev)}
         aria-label={flipped ? t.back : t.tapHint}
-        className="relative w-full h-full [transform-style:preserve-3d] transition-transform duration-500 rounded-2xl"
+        className="relative block w-full h-full [transform-style:preserve-3d] transition-transform duration-500 rounded-2xl"
         style={{ transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
       >
         {/* 表 */}

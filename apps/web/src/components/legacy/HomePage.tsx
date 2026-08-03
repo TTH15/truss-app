@@ -142,7 +142,7 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
           </div>
         </div>
       )}
-      <div className="flex-1 min-h-[400px] mb-4">
+      <div className="mb-4">
         <MembershipCard user={user} language={language} />
       </div>
       {bannerEvents.length > 0 && (

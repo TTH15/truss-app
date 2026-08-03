@@ -179,3 +179,10 @@
 - 当初の想定（裏面QRでイベント出欠確認）は採用せず。出欠の導線はモバイルの `EventTicket` + `CheckinScannerScreen` に既に存在し、Web にも置くと出席記録の経路が二重になるため。Web 側の出席確定は運営の参加者一覧から行う。
 - 検証: `tsc --noEmit`・`next build` 通過。
 - 未決: チェックイン用コードの表現（QR / Truss 独自コード）は検討中。現行のペイロードは `packages/core/src/event-checkin.ts` の `truss-checkin:v1:{eventId}:{userId}`。
+
+## 2026-08-04 02:30 会員証カードが表示されない不具合の修正・ツアーに LINE 案内を追加
+
+- **カードが真っ白だった**: `MembershipCard` の高さを親からの `h-full` 連鎖（`flex-1 min-h-[400px]` → `h-full` → `h-full`）で取ろうとしていたが高さが解決されず、中身が `absolute` のため何も描画されない箱になっていた。縦横比（`aspect-[1.55/1]`）で高さを決める方式に変更し、`<button>` に `block` を付与（既定の inline-block だと寸法が効かない）。
+- **ガイドツアーの最後に LINE オープンチャットの案内を追加**: 説明の下に LINE カラーのリンクボタンを置く。`TourStep` に `link` を追加し、driver.js の description が文字列のみのため `onPopoverRender` で差し込む。
+- 検証: `tsc --noEmit`・`next build` 通過。
+- 未決: チェックイン用コードの表現（QR / 独自コード / コード自体を使わない案）は検討中。

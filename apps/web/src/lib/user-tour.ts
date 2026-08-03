@@ -31,6 +31,8 @@ type TourStep = {
   title: Record<Language, string>;
   description: Record<Language, string>;
   side?: 'top' | 'bottom' | 'left' | 'right';
+  /** 説明の下に置く外部リンク（driver.js の description は文字列のみなので後から差し込む） */
+  link?: { url: string; label: Record<Language, string> };
 };
 
 const STEPS: TourStep[] = [
@@ -113,6 +115,17 @@ const STEPS: TourStep[] = [
       en: 'View and edit your profile or log out here. You can replay this guide anytime from "How to use".',
     },
   },
+  {
+    title: { ja: 'LINE オープンチャット', en: 'LINE Open Chat' },
+    description: {
+      ja: 'イベントの案内やお知らせは LINE のオープンチャットでも配信しています。よければ参加してください。',
+      en: 'We also share event news and announcements in our LINE open chat. Join us if you like.',
+    },
+    link: {
+      url: 'https://line.me/ti/g2/2HleWq8FutNdOnB7LobvVKzd34gPKRrRCbBhOA?utm_source=invitation&utm_medium=link_copy&utm_campaign=default',
+      label: { ja: 'オープンチャットを開く', en: 'Open the chat' },
+    },
+  },
 ];
 
 export async function startUserTour(language: Language) {
@@ -121,9 +134,10 @@ export async function startUserTour(language: Language) {
     import('driver.js'),
     import('driver.js/dist/driver.css'),
   ]);
-  const steps = STEPS.filter(
+  const visibleSteps = STEPS.filter(
     (s) => !s.target || document.querySelector(`[data-tour="${s.target}"]`)
-  ).map((s) => ({
+  );
+  const steps = visibleSteps.map((s) => ({
     ...(s.target ? { element: `[data-tour="${s.target}"]` } : {}),
     popover: {
       title: s.title[language],
@@ -149,7 +163,18 @@ export async function startUserTour(language: Language) {
     stageRadius: 12,
     onDestroyed: () => markUserTourSeen(),
     onPopoverRender: (popover, { state }) => {
-      const isLastStep = state.activeIndex === steps.length - 1;
+      const index = state.activeIndex ?? 0;
+      const link = visibleSteps[index]?.link;
+      if (link) {
+        const anchor = document.createElement('a');
+        anchor.href = link.url;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        anchor.innerText = link.label[language];
+        anchor.classList.add('truss-tour-link');
+        popover.description.after(anchor);
+      }
+      const isLastStep = index === steps.length - 1;
       if (isLastStep) return;
       const skip = document.createElement('button');
       skip.type = 'button';

@@ -44,6 +44,24 @@
   gap: 10px;
 }
 
+/* 最終ステップの LINE オープンチャットへの導線 */
+.driver-popover.truss-tour .truss-tour-link {
+  display: block;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background-color: #06c755;
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+.driver-popover.truss-tour .truss-tour-link:hover {
+  background-color: #05b04e;
+}
+
 /* スキップは控えめなテキストボタンにして「次へ」との押し間違いを防ぐ */
 .driver-popover.truss-tour button.truss-tour-skip-btn {
   background-color: transparent;
