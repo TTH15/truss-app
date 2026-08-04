@@ -313,3 +313,12 @@
 - 送信経路（`AdminChatMessages.handleSendMessage` → `DataContext.sendMessage` → `sendMessageRow`）を確認したが、コード上の誤りは見つからず。DB 側（RLS または制約）で拒否されている可能性が高い。
 - `messages` の INSERT ポリシーは `sender_id = get_user_id() AND (is_admin = TRUE AND is_admin_safe())`。`get_user_id()` / `is_admin_safe()` はいずれも `users.auth_id = auth.uid()` で引くため、**運営の `users` 行の `auth_id` が現在のセッションの auth ユーザーと一致していないと拒否される**。`/api/admin/login` は `auth_id` で upsert しているので通常は一致するはずだが、過去に別経路で作られた行があると食い違い得る。
 - 原因を特定できるよう、失敗時のトーストに DB からのエラーメッセージをそのまま出すようにした（15秒表示）。次回発生時にその文言を確認する。
+
+## 2026-08-05 運営チャットの表示修正（アバター・はみ出し・日付書式）
+
+- 原因判明: メッセージ送信の失敗は **migration 030（`messages.attachment_waveform` 列）が本番未適用**だったため。`sendMessageRow` は常にこの列を含めて INSERT するので、運営・会員を問わず全ての送信が失敗していた。エラー表示を出すようにしたことで特定できた。
+- **アバターが常にイニシャルだった**: スレッド一覧・ヘッダーとも `AvatarFallback` に頭文字を出すだけで、設定済みのプロフィール画像を読んでいなかった。`UserAvatarImage`（署名付きURLを解決してキャッシュする）に差し替え。
+- **本文が右端まで届いていた**: 行の右上にピン/フラグのボタンが重なるため、本文側に余白を追加。
+- **和文の日付が 0 埋めされていた**（「04月15日」）: 和文では 0 埋めしない慣習なので「4月15日」に変更。数字を桁揃えする欧文表記（MM/DD）はそのまま。
+  - 書式は `@platform/utils` の `chat-time.ts`（vendor コピー）にあるため、**原本（`~/Developer/packages/utils`）を編集して sync**。全プロジェクト共通の表記の誤りと判断（`formatRelativeListTime` と `formatDateLabel` の2箇所）。
+- 検証: `tsc --noEmit`・`next build` 通過。

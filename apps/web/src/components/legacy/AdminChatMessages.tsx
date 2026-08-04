@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from 'react';
-import { Avatar, AvatarFallback } from '../ui/avatar';
+import { UserAvatarImage } from './UserAvatarImage';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
@@ -81,6 +81,8 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
       userId,
       userName: user?.name || 'Unknown User',
       userAvatar: user?.nickname ? user.nickname.charAt(0).toUpperCase() : 'U',
+      // 設定済みのプロフィール画像を出す（従来は常にイニシャルだった）
+      avatarPath: user?.avatarPath,
       lastMessage: lastMessage?.text || '',
       lastMessageTime: rawTime ? formatRelativeListTime(rawTime, language) : '',
       unreadCount: messages.filter((m) => !m.isAdmin && !m.read).length,
@@ -314,10 +316,16 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                   <button type="button" onClick={() => handleSelectUser(user.userId)} className="w-full p-4 pr-12 text-left relative">
                     <div className="flex items-start gap-3">
                       <div className="shrink-0 relative">
-                        <Avatar className="w-10 h-10"><AvatarFallback className="bg-[#49B1E4] text-white">{user.userAvatar}</AvatarFallback></Avatar>
+                        <UserAvatarImage
+                          avatarPath={user.avatarPath}
+                          name={user.userName}
+                          className="w-10 h-10"
+                          fallbackClassName="bg-[#49B1E4] text-white"
+                        />
                         <div className="absolute -right-1 top-0 flex flex-col gap-0.5">{user.pinned && <Pin className="w-3 h-3 text-yellow-500 fill-yellow-500" />}{user.flagged && <Flag className="w-3 h-3 text-red-500 fill-red-500" />}</div>
                       </div>
-                      <div className="flex-1 min-w-0"><p className="font-medium text-gray-900 truncate">{user.userName}</p><p className="text-xs text-gray-500 truncate">{user.lastMessage}</p><div className="flex items-center gap-2 mt-1"><p className="text-xs text-gray-400">{user.lastMessageTime}</p>{user.unreadCount > 0 && <div className="bg-red-500 text-white text-xs rounded-full h-4 min-w-[16px] px-1.5 flex items-center justify-center font-medium">{user.unreadCount}</div>}{user.flaggedMessageCount > 0 && <div className="flex items-center gap-0.5 bg-red-100 text-red-600 text-xs rounded-full h-4 px-1.5 font-medium"><Flag className="w-2.5 h-2.5 fill-red-600" />{user.flaggedMessageCount}</div>}</div></div>
+                      {/* 右側にピン/フラグのボタンが重なるので、本文はそのぶん内側で終わらせる */}
+                      <div className="flex-1 min-w-0 pr-2"><p className="font-medium text-gray-900 truncate">{user.userName}</p><p className="text-xs text-gray-500 truncate">{user.lastMessage}</p><div className="flex items-center gap-2 mt-1"><p className="text-xs text-gray-400">{user.lastMessageTime}</p>{user.unreadCount > 0 && <div className="bg-red-500 text-white text-xs rounded-full h-4 min-w-[16px] px-1.5 flex items-center justify-center font-medium">{user.unreadCount}</div>}{user.flaggedMessageCount > 0 && <div className="flex items-center gap-0.5 bg-red-100 text-red-600 text-xs rounded-full h-4 px-1.5 font-medium"><Flag className="w-2.5 h-2.5 fill-red-600" />{user.flaggedMessageCount}</div>}</div></div>
                     </div>
                   </button>
                   <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 transition-opacity pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100">
@@ -336,7 +344,12 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
           <>
             <div className="p-4 border-b border-gray-200 flex items-center gap-3 shrink-0">
               <button onClick={() => setSelectedUserId(null)} className="md:hidden p-1 hover:bg-gray-100 rounded-full transition-colors"><ArrowLeft className="w-5 h-5 text-[#3D3D4E]" /></button>
-              <Avatar className="w-10 h-10"><AvatarFallback className="bg-[#49B1E4] text-white">{selectedUser.userAvatar}</AvatarFallback></Avatar>
+              <UserAvatarImage
+                avatarPath={selectedUser.avatarPath}
+                name={selectedUser.userName}
+                className="w-10 h-10"
+                fallbackClassName="bg-[#49B1E4] text-white"
+              />
               <div><h3 className="font-medium text-gray-900">{selectedUser.userName}</h3></div>
             </div>
             {pinnedMessages.length > 0 && (

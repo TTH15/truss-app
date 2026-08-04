@@ -43,7 +43,7 @@ export function formatDateLabel(date: Date, language: Language): string {
   const now = new Date();
   if (date.getFullYear() < now.getFullYear()) {
     return language === "ja"
-      ? `${date.getFullYear()}年${pad2(date.getMonth() + 1)}月${pad2(date.getDate())}日 ${weekday}`
+      ? `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${weekday}`
       : `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())} ${weekday}`;
   }
   return `${pad2(date.getMonth() + 1)}/${pad2(date.getDate())} ${weekday}`;
@@ -69,14 +69,16 @@ export function formatRelativeListTime(raw: string, language: Language): string 
     return weekdays[date.getDay()];
   }
   const now = new Date();
+  // 和文の日付は 0 埋めしない（「04月15日」ではなく「4月15日」）。
+  // 数字を桁揃えする欧文表記(MM/DD)とは慣習が違う。
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
   if (date.getFullYear() < now.getFullYear()) {
     return language === "ja"
-      ? `${date.getFullYear()}年${pad2(date.getMonth() + 1)}月${pad2(date.getDate())}日`
-      : `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
+      ? `${date.getFullYear()}年${month}月${day}日`
+      : `${date.getFullYear()}/${pad2(month)}/${pad2(day)}`;
   }
-  return language === "ja"
-    ? `${pad2(date.getMonth() + 1)}月${pad2(date.getDate())}日`
-    : `${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
+  return language === "ja" ? `${month}月${day}日` : `${pad2(month)}/${pad2(day)}`;
 }
 
 /** "2026-07-09"のようなハイフン区切りの日付を"2026年7月9日"表記に変換する */
