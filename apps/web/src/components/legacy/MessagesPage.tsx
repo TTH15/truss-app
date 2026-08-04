@@ -167,9 +167,20 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
     const isFileAttachment = !!attachmentUrl && !isImageAttachment && !isAudioAttachment;
     const autoFallbackText = message.mention ? `${message.mention.title}について` : isAudioAttachment ? 'ボイスメッセージ' : '（添付ファイル）';
     const hasCaption = !isFileAttachment && !isAudioAttachment && !!message.text && message.text !== autoFallbackText;
+    // 既読と時刻は吹き出しの下ではなく横に、下端を揃えて置く（LINE 等と同じ並び）
+    const meta = (
+      <div className="shrink-0 flex flex-col items-end pb-0.5 text-[10px] leading-tight text-[#6B6B7A]">
+        {message.sender === 'user' && message.read && <span>{language === 'ja' ? '既読' : 'Read'}</span>}
+        <span>{formatMessageTime(message.time)}</span>
+      </div>
+    );
     return (
-      <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} group`}>
-        <div className={`max-w-[75%] ${message.sender === 'user' ? 'order-2' : 'order-1'} relative`}>
+      <div
+        key={message.id}
+        className={`flex items-end gap-1.5 ${message.sender === 'user' ? 'justify-end' : 'justify-start'} group`}
+      >
+        {message.sender === 'user' && meta}
+        <div className="max-w-[75%] relative">
           {/* メンション・吹き出し・リンクプレビューは同じflex-colにまとめ、items-end/startで揃えることで
               互いの端(送信者側なら右端、相手側なら左端)を必ず一致させる */}
           <div className={`flex flex-col gap-1 ${message.sender === 'user' ? 'items-end' : 'items-start'}`}>
@@ -236,13 +247,8 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
             )}
             {firstLinkUrl && <LinkPreviewCard url={firstLinkUrl} />}
           </div>
-          <div className={`flex items-center gap-1 mt-1 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <p className="text-xs text-[#6B6B7A]">
-              {formatMessageTime(message.time)}
-              {message.sender === 'user' && message.read ? `　${language === 'ja' ? '既読' : 'Read'}` : ''}
-            </p>
-          </div>
         </div>
+        {message.sender !== 'user' && meta}
       </div>
     );
   };
@@ -253,7 +259,7 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
         <Avatar className="w-10 h-10"><AvatarFallback className="bg-[#49B1E4] text-white">{recipientAvatar}</AvatarFallback></Avatar>
         <div className="flex-1"><h2 className="text-[#3D3D4E]">{recipientName}</h2>{isAdmin && <p className="text-xs text-[#6B6B7A]">{language === 'ja' ? '運営' : 'Admin'}</p>}</div>
       </div>
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
         {messages.map((message, index) => {
           const currentDate = parseMessageDate(message.time);
           const prevDate = index > 0 ? parseMessageDate(messages[index - 1].time) : null;
