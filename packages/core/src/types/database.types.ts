@@ -294,6 +294,19 @@ export interface DbGalleryPhoto {
   created_at: string;
 }
 
+/** Web Push の購読（migration 034）。endpoint が端末ごとの一意キー */
+export interface DbPushSubscription {
+  // Supabase JS v2 GenericTable の互換性確保のため（Record<string, unknown> 前提）
+  [key: string]: unknown;
+  endpoint: string;
+  user_id: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DbGalleryPhotoLike {
   // Supabase JS v2 GenericTable の互換性確保のため（Record<string, unknown> 前提）
   [key: string]: unknown;
@@ -467,6 +480,12 @@ export interface Database {
         Row: DbGalleryPhotoLike;
         Insert: Omit<DbGalleryPhotoLike, 'id' | 'created_at'>;
         Update: never;
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: DbPushSubscription;
+        Insert: Omit<DbPushSubscription, 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<DbPushSubscription, 'endpoint' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };
     };

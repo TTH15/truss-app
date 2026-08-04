@@ -74,3 +74,4 @@ export * from "./db/mutations/gallery";
 export * from "./db/mutations/messages";
 export * from "./db/mutations/notifications";
 export * from "./db/mutations/users";
+export * from "./db/mutations/push-subscriptions";

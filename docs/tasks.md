@@ -249,3 +249,35 @@ Web の改善作業中に、モバイル開発で確実に踏むことになる�
 - メッセージが毎回全件取得（ページングが事実上存在しない）
 - `DataContext` / `AuthContext` の value が未メモ化で、1つの state 変更が全画面を再レンダーさせる
 - 画像が原寸配信（`next/image` 未使用、Supabase の画像変換も未使用）
+
+## 横断タスク: PWA 化と Web Push（2026-08-04 着手）
+
+### 実装済み
+
+- [x] Web App Manifest（`apps/web/src/app/manifest.ts`）+ アイコン（192/512/maskable/180）
+- [x] ホーム画面追加の案内バナー（Android はネイティブプロンプト、iOS は手順ダイアログ。`PwaInstallBanner`）
+- [x] **Service Worker**（`apps/web/public/sw.js`）— インストール条件を満たす fetch ハンドラ、Web Push の `push` / `notificationclick`
+  - キャッシュはネットワーク優先。Next.js はビルドごとに JS 名が変わるため、HTML を積極的にキャッシュするとデプロイ後に壊れた画面を掴ませる。オフライン時の最後の砦としてのみ使う
+- [x] Service Worker の登録（`app/providers.tsx` から `registerServiceWorker()`）
+- [x] 購読の作成・解除（`apps/web/src/lib/web-push.ts`）
+- [x] `push_subscriptions` テーブル（migration 034、endpoint を PK、RLS で本人のみ）
+- [x] 購読の保存・削除（`packages/core/src/db/mutations/push-subscriptions.ts`）
+- [x] プロフィールに「プッシュ通知」のオン/オフ（`PushNotificationSetting`）
+
+### 残作業（送信側）
+
+- [ ] **VAPID 鍵ペアを生成**し、公開鍵を `NEXT_PUBLIC_VAPID_PUBLIC_KEY`、秘密鍵を `VAPID_PRIVATE_KEY` として Vercel に設定
+  - `npx web-push generate-vapid-keys` で生成できる
+  - 公開鍵が未設定の間、購読ボタンは「準備中」を返して何も起きない（安全側に倒してある）
+- [ ] **送信用のサーバー処理**（Vercel Function / Supabase Edge Function）
+  - service role で `push_subscriptions` を読み、`web-push` パッケージで各 endpoint に配信
+  - 410 Gone / 404 が返った endpoint は購読切れなので行を削除する（放置すると失敗が積み上がる）
+- [ ] 既存の `notifications` テーブルへの書き込みと同時に Web Push を送る導線（運営の一斉送信・個別メッセージ）
+- [ ] マイグレーション 034 を本番へ適用
+
+### 注意点
+
+- **iOS は 16.4 以降 かつ ホーム画面に追加した状態でのみ Web Push が動く**。Safari のタブで開いているだけでは購読自体ができない。`PushNotificationSetting` は iOS でホーム画面未追加の場合、その旨を案内して購読を試みない
+- 通知の許可要求は**ユーザー操作の中から**呼ぶこと。ページ読み込み時に自動で出すとブラウザに無視され、拒否されると次から出せなくなる
+- 購読は**端末ごと**。同じアカウントでも端末が違えば別の行になるため、設定 UI は「この端末の設定」として見せている
+- モバイルアプリ（Expo Push）は別系統。トークンを扱う場合は `push_subscriptions` とは別テーブルにする

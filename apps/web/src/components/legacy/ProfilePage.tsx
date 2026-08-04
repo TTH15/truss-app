@@ -10,6 +10,7 @@ import type { Language, User } from '@truss/core';
 import { UserAvatarImage } from './UserAvatarImage';
 import { RoleBadge } from './RoleBadge';
 import { ProfileAvatarCropDialog } from './ProfileAvatarCropDialog';
+import { PushNotificationSetting } from './PushNotificationSetting';
 import { uploadUserAvatar } from '@truss/core';
 
 interface ProfilePageProps {
@@ -464,6 +465,8 @@ export function ProfilePage({
 
       {/* Journey Stamps は電子スタンプ（ハード）の方針が決まるまで非表示。
           コンポーネント（JourneyStampBook / JourneyStamp）は残してあるので、この行を戻せば復活する */}
+
+      {!isWaitingApproval && <PushNotificationSetting user={user} language={language} />}
     </div>
   );
 }
