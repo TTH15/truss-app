@@ -4,6 +4,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { supabase } from '@truss/core';
+import { sendPushNotification } from '../lib/web-push';
 import { queryEvents } from '@truss/core';
 import { queryEventParticipantsGrouped } from '@truss/core';
 import {
@@ -680,9 +681,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
       if (error) throw error;
       await fetchMessages();
+      // 運営からの返信は、相手がアプリを閉じていても届くようにプッシュも送る。
+      // 失敗しても送信自体は成功しているので、ここでは例外にしない。
+      if (isAdmin) void notifyByPush(receiverId, text);
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;
+    }
+  };
+
+  /** 運営からのメッセージをプッシュ通知でも知らせる（受信設定はサーバー側で絞り込む） */
+  const notifyByPush = async (receiverId: string, text: string) => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (!accessToken) return;
+      await sendPushNotification(accessToken, {
+        userIds: [receiverId],
+        title: '運営からメッセージが届きました',
+        body: text.length > 80 ? `${text.slice(0, 79)}…` : text,
+        url: '/dashboard',
+        tag: 'truss-message',
+        category: 'message',
+      });
+    } catch (error) {
+      console.error('Push notification failed (message was sent):', error);
     }
   };
 

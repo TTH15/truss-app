@@ -74,7 +74,19 @@ self.addEventListener('push', (event) => {
     renotify: Boolean(payload.tag),
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    (async () => {
+      await self.registration.showNotification(title, options);
+      // アプリを開いていなくてもアイコンに件数を出す（対応端末のみ）
+      if (typeof payload.badge === 'number' && 'setAppBadge' in self.navigator) {
+        try {
+          await self.navigator.setAppBadge(payload.badge);
+        } catch {
+          // 非対応・権限なしの環境では黙って諦める
+        }
+      }
+    })()
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {

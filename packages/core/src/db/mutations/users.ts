@@ -195,3 +195,17 @@ export async function queryWithdrawnRecord(studentNumber: string): Promise<{
     isRenewal: Boolean(row.is_renewal),
   };
 }
+
+/** 通知の種類ごとの受信設定（migration 037）。端末ではなく人ごとの設定 */
+export async function updateNotificationPrefsRow(
+  userId: string,
+  prefs: { notifyMessage?: boolean; notifyEvent?: boolean; notifyAnnouncement?: boolean }
+): Promise<{ error: Error | null }> {
+  const patch: Record<string, boolean> = {};
+  if (prefs.notifyMessage !== undefined) patch.notify_message = prefs.notifyMessage;
+  if (prefs.notifyEvent !== undefined) patch.notify_event = prefs.notifyEvent;
+  if (prefs.notifyAnnouncement !== undefined) patch.notify_announcement = prefs.notifyAnnouncement;
+  if (Object.keys(patch).length === 0) return { error: null };
+  const { error } = await supabase.from("users").update(patch).eq("id", userId);
+  return { error: toErrorOrNull(error) };
+}

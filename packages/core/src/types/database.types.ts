@@ -64,6 +64,10 @@ export interface DbUser {
   is_admin: boolean;
   /** 役職。'member' がデフォルト（roles.ts の UserRole を参照） */
   role: UserRole;
+  /** 通知の種類ごとの受信設定（migration 037） */
+  notify_message: boolean;
+  notify_event: boolean;
+  notify_announcement: boolean;
   avatar_path: string | null;
   student_id_image: string | null;
   student_number: string | null;

@@ -10,6 +10,15 @@ import webpush from "web-push";
  * service role で行う（RLS 上、他人の購読は本人以外読めないため）。
  */
 
+/** 通知の種類。会員ごとの受信設定（users.notify_*）で絞り込む */
+type NotificationCategory = "message" | "event" | "announcement";
+
+const PREFERENCE_COLUMN: Record<NotificationCategory, string> = {
+  message: "notify_message",
+  event: "notify_event",
+  announcement: "notify_announcement",
+};
+
 type SendBody = {
   userIds?: string[];
   title?: string;
@@ -17,6 +26,7 @@ type SendBody = {
   /** 通知をタップしたときに開くパス（既定は /dashboard） */
   url?: string;
   tag?: string;
+  category?: NotificationCategory;
 };
 
 export async function POST(req: Request) {
@@ -66,7 +76,7 @@ export async function POST(req: Request) {
   }
 
   // 2) 送信内容
-  const { userIds, title, body, url, tag } = (await req.json()) as SendBody;
+  const { userIds, title, body, url, tag, category } = (await req.json()) as SendBody;
   if (!Array.isArray(userIds) || userIds.length === 0) {
     return NextResponse.json({ error: "userIds is required" }, { status: 400 });
   }
@@ -74,10 +84,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "title is required" }, { status: 400 });
   }
 
+  // 種類が指定されていれば、その通知を受け取る設定の人だけに絞る
+  let targetUserIds = userIds;
+  if (category && PREFERENCE_COLUMN[category]) {
+    const { data: optedIn } = await adminClient
+      .from("users")
+      .select("id")
+      .in("id", userIds)
+      .eq(PREFERENCE_COLUMN[category], true);
+    targetUserIds = (optedIn ?? []).map((row) => row.id as string);
+    if (targetUserIds.length === 0) {
+      return NextResponse.json({ sent: 0, failed: 0, removed: 0, skipped: userIds.length });
+    }
+  }
+
   const { data: subscriptions, error: subError } = await adminClient
     .from("push_subscriptions")
     .select("endpoint,p256dh,auth")
-    .in("user_id", userIds);
+    .in("user_id", targetUserIds);
 
   if (subError) {
     return NextResponse.json({ error: subError.message }, { status: 500 });

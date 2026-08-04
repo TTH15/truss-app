@@ -27,6 +27,7 @@ import {
   normalizeStudentIdImageDataUrl,
 } from '../../lib/student-id-image';
 import { hasSeenUserTour, startUserTour } from '../../lib/user-tour';
+import { setAppBadge } from '../../lib/app-badge';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleQuestion } from '@fortawesome/free-solid-svg-icons';
 
@@ -288,6 +289,12 @@ export function Dashboard({
     const userMessages = messageThreads[user.id] || [];
     return userMessages.filter((msg) => msg.isAdmin && !msg.read).length;
   };
+
+  // ホーム画面に追加している場合、アプリアイコンにも未読件数を出す
+  const unreadCount = unreadMessageCount();
+  useEffect(() => {
+    setAppBadge(unreadCount);
+  }, [unreadCount]);
 
   /** 運営とのチャットを開く(下部ナビ・通知・会費ダイアログから共通で使う) */
   const handleAdminChatClick = () => {

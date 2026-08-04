@@ -112,7 +112,15 @@ export async function subscribeToPush(): Promise<SubscribeResult> {
  */
 export async function sendPushNotification(
   accessToken: string,
-  input: { userIds: string[]; title: string; body?: string; url?: string; tag?: string }
+  input: {
+    userIds: string[];
+    title: string;
+    body?: string;
+    url?: string;
+    tag?: string;
+    /** 会員ごとの受信設定（users.notify_*）で絞り込む種類 */
+    category?: 'message' | 'event' | 'announcement';
+  }
 ): Promise<{ sent: number; failed: number; removed: number } | null> {
   try {
     const response = await fetch('/api/push/send', {

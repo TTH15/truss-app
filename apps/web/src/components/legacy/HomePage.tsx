@@ -3,6 +3,7 @@ import { useRef, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPeopleGroup } from '@fortawesome/free-solid-svg-icons';
 import { PwaInstallBanner } from './PwaInstallBanner';
+import { PushPermissionPrompt } from './PushPermissionPrompt';
 import { useLocalStorageDismissal } from '../../lib/use-local-storage-dismissal';
 import { MembershipCard } from './MembershipCard';
 import { Button } from '../ui/button';
@@ -116,6 +117,7 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
         </div>
       )}
       <PwaInstallBanner language={language} />
+      {user.approved && <PushPermissionPrompt user={user} language={language} />}
       {showOrganizationsNudge && (
         <div className="relative bg-white border border-[#49B1E4]/40 p-4 rounded-xl mb-4 shadow-sm">
           <button

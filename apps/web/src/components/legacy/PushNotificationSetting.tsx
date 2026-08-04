@@ -3,7 +3,8 @@ import { Bell, BellOff } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { toast } from 'sonner';
-import { savePushSubscriptionRow, deletePushSubscriptionRow } from '@truss/core';
+import { savePushSubscriptionRow, deletePushSubscriptionRow, updateNotificationPrefsRow } from '@truss/core';
+import { Checkbox } from '../ui/checkbox';
 import type { Language, User } from '@truss/core';
 import {
   isPushSupported,
@@ -53,6 +54,21 @@ export function PushNotificationSetting({ user, language }: { user: User; langua
   const t = translations[language];
   const [busy, setBusy] = useState(false);
   const [enabled, setEnabled] = useState(false);
+  const [prefs, setPrefs] = useState({
+    notifyMessage: user.notifyMessage ?? true,
+    notifyEvent: user.notifyEvent ?? true,
+    notifyAnnouncement: user.notifyAnnouncement ?? true,
+  });
+
+  const handlePrefChange = async (key: keyof typeof prefs, value: boolean) => {
+    const previous = prefs;
+    setPrefs({ ...prefs, [key]: value });
+    const { error } = await updateNotificationPrefsRow(user.id, { [key]: value });
+    if (error) {
+      setPrefs(previous);
+      toast.error(t.failed);
+    }
+  };
 
   if (!isPushSupported()) return null;
 
@@ -107,6 +123,26 @@ export function PushNotificationSetting({ user, language }: { user: User; langua
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-[#6B6B7A]">{t.description}</p>
+
+        {/* 種類ごとの受信設定。ブラウザの許可は「全部か無しか」しか持てないので、
+            細かい制御はアプリ側で持ち、送信時に絞り込む */}
+        <div className="space-y-2 border-t border-[#E8E4DB] pt-3">
+          {([
+            { key: 'notifyMessage' as const, label: language === 'ja' ? '運営からのメッセージ' : 'Messages from staff' },
+            { key: 'notifyEvent' as const, label: language === 'ja' ? 'イベントの案内' : 'Event news' },
+            { key: 'notifyAnnouncement' as const, label: language === 'ja' ? 'お知らせ・会費のご連絡' : 'Announcements and fees' },
+          ]).map((item) => (
+            <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={prefs[item.key]}
+                onCheckedChange={(checked) => void handlePrefChange(item.key, checked === true)}
+                className="border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
+              />
+              <span className="text-sm text-[#3D3D4E]">{item.label}</span>
+            </label>
+          ))}
+        </div>
+
         {enabled ? (
           <Button variant="outline" onClick={handleDisable} disabled={busy}>
             <BellOff className="w-4 h-4 mr-2" />

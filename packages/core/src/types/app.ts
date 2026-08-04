@@ -29,6 +29,10 @@ export interface User {
   isAdmin?: boolean;
   /** 役職（member がデフォルト）。現段階は肩書き表示用で権限制御には未使用 */
   role?: UserRole;
+  /** 通知の種類ごとの受信設定（既定はすべて true） */
+  notifyMessage?: boolean;
+  notifyEvent?: boolean;
+  notifyAnnouncement?: boolean;
   /** Storage path in bucket `user-avatars`（例: `{uuid}/avatar.jpg`）。表示は署名付きURL */
   avatarPath?: string;
   studentIdImage?: string;
