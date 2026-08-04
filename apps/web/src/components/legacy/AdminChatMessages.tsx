@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from 
 import { UserAvatarImage } from './UserAvatarImage';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { ScrollArea } from '../ui/scroll-area';
+import { ScrollFade } from './ScrollFade';
 import { MessageCircle, Send, Pin, Flag, ArrowLeft, Image as ImageIcon, Images, Calendar, Clock, MapPin, X, FileText } from 'lucide-react';
 import type { Language, MessageThread, User as UserType, Message, ChatThreadMetadata } from '@truss/core';
 import { formatDateLabel, formatMessageTime, formatRelativeListTime, getChatAttachmentSignedUrl, getMessageCategoryLabel, parseMessageDate, splitTextWithUrls, toDateKey, updateMessageFlagsRow } from '@truss/core';
@@ -323,7 +323,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
     <div className="flex h-[600px] gap-4">
       <div className={`w-full md:w-80 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col ${selectedUserId ? 'hidden md:flex' : 'flex'}`}>
         <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
+          <ScrollFade fadeColor="#ffffff">
             {sortedUsers.length === 0 ? <div className="p-4 text-center text-gray-500 text-sm">{t.noMessages}</div> : (
               <div>{sortedUsers.map((user) => (
                 <div key={user.userId} className={`relative w-full text-left hover:bg-gray-50 transition-colors border-b border-gray-200 group ${selectedUserId === user.userId ? 'bg-blue-50 border-l-4 border-[#49B1E4]' : ''}`}>
@@ -360,7 +360,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                 </div>
               ))}</div>
             )}
-          </ScrollArea>
+          </ScrollFade>
         </div>
       </div>
 
@@ -391,7 +391,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
               </div>
             )}
             <div className="flex-1 overflow-hidden">
-              <ScrollArea className="h-full">
+              <ScrollFade fadeColor="#F5F1E8">
                 <div className="space-y-4 p-4">
                   {currentMessages.map((message, index) => {
                     const currentDate = parseMessageDate(message.time);
@@ -412,7 +412,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                   })}
                   <div ref={messagesEndRef} />
                 </div>
-              </ScrollArea>
+              </ScrollFade>
             </div>
             {pendingPreviewUrl && (
               <div className="px-4 py-2 flex items-center gap-2 shrink-0 border-t border-gray-200">

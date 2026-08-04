@@ -11,6 +11,7 @@ import { useData } from '../../contexts/DataContext';
 import { toast } from 'sonner';
 import { linkifyText } from '../../lib/linkify';
 import { LinkPreviewCard } from './LinkPreviewCard';
+import { ScrollFade } from './ScrollFade';
 
 interface MessagesPageProps {
   language: Language;
@@ -259,7 +260,8 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
         <Avatar className="w-10 h-10"><AvatarFallback className="bg-[#49B1E4] text-white">{recipientAvatar}</AvatarFallback></Avatar>
         <div className="flex-1"><h2 className="text-[#3D3D4E]">{recipientName}</h2>{isAdmin && <p className="text-xs text-[#6B6B7A]">{language === 'ja' ? '運営' : 'Admin'}</p>}</div>
       </div>
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
+      <ScrollFade scrollRef={messagesContainerRef} fadeColor="#F5F1E8" className="px-4 py-6">
+        <div className="space-y-1">
         {messages.map((message, index) => {
           const currentDate = parseMessageDate(message.time);
           const prevDate = index > 0 ? parseMessageDate(messages[index - 1].time) : null;
@@ -277,8 +279,9 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
             </div>
           );
         })}
-        <div ref={messagesEndRef} />
-      </div>
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollFade>
       {(pendingFile || pendingMention) && (
         <div className="bg-white px-4 py-2 flex items-center gap-3 shrink-0 border-t border-[#E8E4DB]">
           {pendingFile && pendingPreviewUrl && (
