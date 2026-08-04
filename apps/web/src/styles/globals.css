@@ -324,3 +324,15 @@ html {
     animation: none !important;
   }
 }
+/* チャットの新規メッセージ: 下から少し持ち上がりながら現れる */
+@keyframes truss-message-in {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-truss-message-in {
+  animation: truss-message-in 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-truss-message-in { animation: none !important; }
+}

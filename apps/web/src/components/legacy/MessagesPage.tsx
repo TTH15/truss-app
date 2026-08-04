@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { linkifyText } from '../../lib/linkify';
 import { LinkPreviewCard } from './LinkPreviewCard';
 import { ScrollFade } from './ScrollFade';
+import { UserAvatarImage } from './UserAvatarImage';
 
 interface MessagesPageProps {
   language: Language;
@@ -48,11 +49,22 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [attachPanelMode, setAttachPanelMode] = useState<'grid' | 'event' | 'memory'>('grid');
   const [sending, setSending] = useState(false);
+  // 送信した瞬間に吹き出しを出すための仮メッセージ。
+  // DB への書き込みと再取得を待つと、ひと呼吸おいて画面が入れ替わる感じになるため、
+  // 先に描いておき、本物が届いたら捨てる
+  const [pendingSent, setPendingSent] = useState<Message[]>([]);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  // 相手（運営）のアイコン。運営受信箱のアカウントのものを使う
+  // 送信直後の仮メッセージを末尾に足して描く
+  const renderedMessages = pendingSent.length > 0 ? [...messages, ...pendingSent] : messages;
+
+  const staffAvatarPath =
+    approvedMembers.find((member) => member.id === staffInboxUserId)?.avatarPath ??
+    approvedMembers.find((member) => member.isAdmin)?.avatarPath;
   useEffect(() => { setMessages(messageHistory[recipientId] ?? []); }, [recipientId, isAdmin, language]);
   useEffect(() => {
     if (!(isAdmin && messageThreads[user.id])) return;
@@ -72,7 +84,7 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
     const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
     const isNearBottom = distanceFromBottom < 240;
     anchor.scrollIntoView({ behavior: isNearBottom ? 'smooth' : 'auto', block: 'end' });
-  }, [messages]);
+  }, [renderedMessages]);
   useEffect(() => {
     const missing = messages.filter((m) => m.attachmentPath && !signedUrls[m.attachmentPath]).map((m) => m.attachmentPath as string);
     if (missing.length === 0) return;
@@ -150,17 +162,34 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
       const fallbackText =
         (pendingFile && !pendingFile.type.startsWith('image/') ? pendingFile.name : undefined) ??
         (pendingMention ? `${pendingMention.title}について` : '（添付ファイル）');
-      await sendMessage(adminUserId, text || fallbackText, false, { attachmentPath, attachmentType, mention: pendingMention ?? undefined });
+      const body = text || fallbackText;
+      const optimistic: Message = {
+        id: -Date.now(),
+        sender: 'user',
+        text: body,
+        time: new Date().toISOString(),
+        attachmentPath,
+        attachmentType,
+        mention: pendingMention ?? undefined,
+      };
+      setPendingSent((prev) => [...prev, optimistic]);
       setNewMessage('');
       clearPendingFile();
       setPendingMention(null);
+      try {
+        await sendMessage(adminUserId, body, false, { attachmentPath, attachmentType, mention: pendingMention ?? undefined });
+      } finally {
+        // 本物が messageThreads 経由で届くので、仮のものは取り下げる
+        setPendingSent((prev) => prev.filter((m) => m.id !== optimistic.id));
+      }
     } catch {
       toast.error(language === 'ja' ? 'メッセージ送信に失敗しました' : 'Failed to send message');
+      setNewMessage((current) => current || newMessage);
     } finally {
       setSending(false);
     }
   };
-  const renderMessage = (message: Message) => {
+  const renderMessage = (message: Message, startsGroup: boolean) => {
     const attachmentUrl = message.attachmentPath ? signedUrls[message.attachmentPath] : undefined;
     const firstLinkUrl = message.text ? splitTextWithUrls(message.text).find((s) => s.type === 'url')?.value : undefined;
     const isImageAttachment = !!attachmentUrl && (!message.attachmentType || message.attachmentType.startsWith('image/'));
@@ -178,9 +207,21 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
     return (
       <div
         key={message.id}
-        className={`flex items-end gap-1.5 ${message.sender === 'user' ? 'justify-end' : 'justify-start'} group`}
+        className={`flex items-end gap-1.5 ${message.sender === 'user' ? 'justify-end' : 'justify-start'} group ${message.id < 0 ? 'animate-truss-message-in' : ''}`}
       >
         {message.sender === 'user' && meta}
+        {/* 相手側はアイコンを出す。まとまりの2通目以降は、幅だけ空けて位置を揃える */}
+        {message.sender !== 'user' &&
+          (startsGroup ? (
+            <UserAvatarImage
+              avatarPath={staffAvatarPath}
+              name={recipientName}
+              className="w-8 h-8 shrink-0"
+              fallbackClassName="bg-[#49B1E4] text-white text-xs"
+            />
+          ) : (
+            <div className="w-8 shrink-0" aria-hidden />
+          ))}
         <div className="max-w-[75%] relative">
           {/* メンション・吹き出し・リンクプレビューは同じflex-colにまとめ、items-end/startで揃えることで
               互いの端(送信者側なら右端、相手側なら左端)を必ず一致させる */}
@@ -225,6 +266,17 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
             })()}
             {(attachmentUrl || hasCaption) && (
               <div className={`rounded-2xl px-4 py-2 relative ${message.sender === 'user' ? 'bg-[#49B1E4] text-white' : 'bg-white text-[#3D3D4E]'}`}>
+                {/* 吹き出しのとんがり。まとまりの先頭にだけ付ける */}
+                {startsGroup && (
+                  <span
+                    aria-hidden
+                    className={`absolute top-3 w-0 h-0 border-y-[6px] border-y-transparent ${
+                      message.sender === 'user'
+                        ? '-right-[7px] border-l-[8px] border-l-[#49B1E4]'
+                        : '-left-[7px] border-r-[8px] border-r-white'
+                    }`}
+                  />
+                )}
                 {isImageAttachment && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={attachmentUrl} alt="添付画像" className="max-w-[220px] rounded-lg mb-1" />
@@ -261,11 +313,19 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
         <div className="flex-1"><h2 className="text-[#3D3D4E]">{recipientName}</h2>{isAdmin && <p className="text-xs text-[#6B6B7A]">{language === 'ja' ? '運営' : 'Admin'}</p>}</div>
       </div>
       <ScrollFade scrollRef={messagesContainerRef} fadeColor="#F5F1E8" className="px-4 py-6">
-        <div className="space-y-1">
-        {messages.map((message, index) => {
+        <div className="space-y-2">
+        {renderedMessages.map((message, index) => {
           const currentDate = parseMessageDate(message.time);
-          const prevDate = index > 0 ? parseMessageDate(messages[index - 1].time) : null;
+          const previous = index > 0 ? renderedMessages[index - 1] : null;
+          const prevDate = previous ? parseMessageDate(previous.time) : null;
           const shouldShowDate = !prevDate || toDateKey(currentDate) !== toDateKey(prevDate);
+          // 同じ相手が同じ時刻に続けて送ったものは、ひとつの発言のまとまりとして扱う。
+          // アイコンと吹き出しのとんがりは、そのまとまりの先頭にだけ付ける
+          const startsGroup =
+            shouldShowDate ||
+            !previous ||
+            previous.sender !== message.sender ||
+            formatMessageTime(previous.time) !== formatMessageTime(message.time);
           return (
             <div key={message.id}>
               {shouldShowDate && (
@@ -275,7 +335,7 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
                   </span>
                 </div>
               )}
-              {renderMessage(message)}
+              {renderMessage(message, startsGroup)}
             </div>
           );
         })}
