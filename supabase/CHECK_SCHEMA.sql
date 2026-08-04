@@ -8,6 +8,10 @@
 --   デプロイ前後にこれを流せば、どのマイグレーションが未適用かが一目で分かる。
 --
 -- 見方: status が MISSING の行が未適用。該当するマイグレーション番号を適用する。
+--
+-- 限界: **データだけを書き換えるマイグレーションは検出できない**。
+--   スキーマに痕跡が残らないため。例: 031（電話番号のハイフン除去）は既存行の UPDATE のみ。
+--   その種のものは末尾の「データ側の確認」を使うか、個別にクエリを書くこと。
 
 WITH expected(migration, kind, object_name, detail) AS (
   VALUES
@@ -56,3 +60,10 @@ SELECT
   END AS status
 FROM expected e
 ORDER BY e.migration, e.object_name, e.detail NULLS FIRST;
+
+-- ---- データ側の確認（スキーマでは検出できないぶん） ----
+-- 031: 電話番号がハイフンなし（数字と先頭の + のみ）に揃っているか。
+--      count が 0 でなければ 031 が未適用、または適用後に旧形式が入っている。
+SELECT COUNT(*) AS phone_not_normalized
+FROM public.users
+WHERE phone <> '' AND phone !~ '^\+?[0-9]+$';
