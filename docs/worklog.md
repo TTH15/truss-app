@@ -329,3 +329,9 @@
 - 1つずつ潰すと往復が増えるため、`supabase/CATCHUP_2026-08-05.sql` を用意。026（category / read_at / attachment_path / attachment_type と message_category 型）・028（mention）・030（attachment_waveform）を**冪等に**まとめて適用し、末尾でアプリが INSERT 時に送る14列が揃っているかを確認するクエリを実行する。
 - 適用済みでも安全に再実行できる（`IF NOT EXISTS` と `DO` ブロック）。
 - 教訓: `sendMessageRow` は列を常に送るため、1列でも欠けると**運営・会員を問わず全ての送信が失敗**する。マイグレーションの適用漏れは局所的な機能停止では済まないことがある。
+
+## 2026-08-05 スキーマ適用状況の確認クエリを追加
+
+- 適用漏れの確認が「実行して初めて失敗が分かる」状態だったため、`supabase/CHECK_SCHEMA.sql` を追加。026〜036 で追加された列・テーブル・関数について `ok` / `MISSING` を一覧で返す（読み取り専用なのでいつでも安全に実行できる）。
+- `supabase/README.md` に、デプロイ前後の実行を推奨する記述と、今回の事例（1列の欠落で全メッセージ送信が停止した）を追記。
+- CATCHUP 適用後、messages の14列すべてが `present = true` になったことを確認済み。

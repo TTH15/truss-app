@@ -20,6 +20,16 @@
 
 > **注意**: この連番は本プロジェクトが実際に運用している「方法B: Dashboard SQL Editorで手動適用」を前提にした命名で、Supabase CLIの適用履歴管理（`supabase db push`が内部で使う `supabase_migrations.schema_migrations` テーブル）とは連動していない。過去に日付ファイル名で`supabase db push`を使って適用した形跡がある場合、そのCLI管理下のプロジェクトに対して連番リネーム後に`supabase db push`を実行すると、全マイグレーションが「未適用」とみなされ再実行されてエラーになる可能性がある。CLI経由で適用する場合は、先に `supabase migration list` でリモートの適用状況を確認すること。
 
+### 適用漏れの確認（推奨: デプロイ前後に実行）
+
+本プロジェクトは Dashboard から手動適用しているため、**適用漏れが起きても実行するまで気づけない**。
+`CHECK_SCHEMA.sql` を SQL Editor で流すと、マイグレーションごとに `ok` / `MISSING` の一覧が出る。
+読み取り専用なのでいつ実行しても安全。
+
+> 2026-08-05 の事例: `messages` に `attachment_waveform` / `mention` 等の列が欠けており、
+> `sendMessageRow` は列を常に指定して INSERT するため、**運営・会員を問わず全てのメッセージ送信が失敗**していた。
+> 1列の欠落が局所的な機能停止では済まないことがある。
+
 ### 方法 A: Supabase CLI（推奨）
 
 ```bash
