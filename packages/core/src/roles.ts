@@ -7,6 +7,7 @@
  */
 
 export const USER_ROLES = [
+  "non_member",
   "member",
   "officer",
   "vice_president",
@@ -16,9 +17,11 @@ export const USER_ROLES = [
 
 export type UserRole = (typeof USER_ROLES)[number];
 
-export const DEFAULT_USER_ROLE: UserRole = "member";
+/** 新規登録者は年会費未払いなので非会員から始まる */
+export const DEFAULT_USER_ROLE: UserRole = "non_member";
 
 export const USER_ROLE_LABELS: Record<UserRole, { ja: string; en: string }> = {
+  non_member: { ja: "非会員", en: "Non-member" },
   member: { ja: "部員", en: "Member" },
   officer: { ja: "役職者", en: "Officer" },
   vice_president: { ja: "副代表", en: "Vice President" },
@@ -26,7 +29,15 @@ export const USER_ROLE_LABELS: Record<UserRole, { ja: string; en: string }> = {
   advisor: { ja: "顧問教員", en: "Advisor" },
 };
 
+/**
+ * `non_member` ⇄ `member` は年会費の支払い状況（`fee_paid`）に連動して
+ * DB トリガーが自動更新する（migration 035）。運営が手で選ぶ意味があるのは役職側だけ。
+ */
+export function isFeeDerivedRole(role: UserRole | undefined): boolean {
+  return role === "non_member" || role === "member";
+}
+
 /** バッジ表示など「部員以外だけ目立たせたい」場面の判定 */
 export function isPrivilegedRole(role: UserRole | undefined): boolean {
-  return !!role && role !== "member";
+  return !!role && role !== "member" && role !== "non_member";
 }
