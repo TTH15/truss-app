@@ -322,3 +322,10 @@
 - **和文の日付が 0 埋めされていた**（「04月15日」）: 和文では 0 埋めしない慣習なので「4月15日」に変更。数字を桁揃えする欧文表記（MM/DD）はそのまま。
   - 書式は `@platform/utils` の `chat-time.ts`（vendor コピー）にあるため、**原本（`~/Developer/packages/utils`）を編集して sync**。全プロジェクト共通の表記の誤りと判断（`formatRelativeListTime` と `formatDateLabel` の2箇所）。
 - 検証: `tsc --noEmit`・`next build` 通過。
+
+## 2026-08-05 本番DBの適用漏れ（messages 列）をまとめて解消する SQL を用意
+
+- 030 適用後、今度は `mention` 列（028）で同じエラーになった。マイグレーションが番号順に適用されておらず、`messages` に複数の列が欠けている状態。
+- 1つずつ潰すと往復が増えるため、`supabase/CATCHUP_2026-08-05.sql` を用意。026（category / read_at / attachment_path / attachment_type と message_category 型）・028（mention）・030（attachment_waveform）を**冪等に**まとめて適用し、末尾でアプリが INSERT 時に送る14列が揃っているかを確認するクエリを実行する。
+- 適用済みでも安全に再実行できる（`IF NOT EXISTS` と `DO` ブロック）。
+- 教訓: `sendMessageRow` は列を常に送るため、1列でも欠けると**運営・会員を問わず全ての送信が失敗**する。マイグレーションの適用漏れは局所的な機能停止では済まないことがある。
