@@ -202,14 +202,16 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
     return (
       <div
         key={message.id}
-        className={`flex items-end gap-1.5 ${message.sender === 'user' ? 'justify-end' : 'justify-start'} group ${message.id < 0 ? 'animate-truss-message-in' : ''}`}
+        className={`flex items-end gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'} group ${message.id < 0 ? 'animate-truss-message-in' : ''}`}
       >
         {message.sender === 'user' && meta}
-        {/* 相手側はアイコンを出す。まとまりの2通目以降は、幅だけ空けて位置を揃える */}
+        {/* 相手側はアイコンを出す。まとまりの2通目以降は、幅だけ空けて位置を揃える。
+            アイコンは吹き出しの上端に揃える（self-start）。行の基準は時刻に合わせた items-end だが、
+            アイコンまで下端に揃うと吹き出しの中ほどに来てしまい、そのアイコンが喋っているように見えない */}
         {message.sender !== 'user' &&
           (startsGroup ? (
             // 運営は個人ではないので、人物アイコンではなく Truss のロゴを出す
-            <div className="w-8 h-8 shrink-0 rounded-full bg-white border border-[#E8E4DB] flex items-center justify-center overflow-hidden">
+            <div className="w-8 h-8 shrink-0 self-start rounded-full bg-white border border-[#E8E4DB] flex items-center justify-center overflow-hidden">
               <ImageWithFallback src={logoImage} alt={recipientName} className="w-6 h-6 object-contain" />
             </div>
           ) : (
@@ -258,16 +260,18 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
               );
             })()}
             {(attachmentUrl || hasCaption) && (
-              <div className={`rounded-2xl px-4 py-2 relative ${message.sender === 'user' ? 'bg-[#49B1E4] text-white' : 'bg-white text-[#3D3D4E]'} ${startsGroup ? (message.sender === 'user' ? 'rounded-tr-none' : 'rounded-tl-none') : ''}`}>
+              <div className={`rounded-2xl px-4 py-2 relative ${message.sender === 'user' ? 'bg-[#49B1E4] text-white' : 'bg-white text-[#3D3D4E]'}`}>
                 {/* 吹き出しのとんがり。まとまりの先頭にだけ付ける。
-                    上辺を吹き出しの上端に合わせた直角三角形にし、角丸を落とした側の角へ密着させる */}
+                    角丸(16px)は全周そのまま残し、丸みが終わる位置（上端から8px）から生やす。
+                    上辺が水平な直角三角形なので、そこから下の直線部分と輪郭が繋がる。
+                    角丸を弱めて上端に密着させる作りにすると、丸みの途中に三角が刺さって形が崩れる */}
                 {startsGroup && (
                   <span
                     aria-hidden
-                    className={`absolute top-0 w-0 h-0 border-b-[12px] border-b-transparent ${
+                    className={`absolute top-[8px] w-0 h-0 border-b-[9px] border-b-transparent ${
                       message.sender === 'user'
-                        ? '-right-[8px] border-l-[8px] border-l-[#49B1E4]'
-                        : '-left-[8px] border-r-[8px] border-r-white'
+                        ? '-right-[7px] border-l-[9px] border-l-[#49B1E4]'
+                        : '-left-[7px] border-r-[9px] border-r-white'
                     }`}
                   />
                 )}
@@ -336,7 +340,7 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
             previous.sender !== message.sender ||
             formatMessageTime(previous.time) !== formatMessageTime(message.time);
           return (
-            <div key={message.id} className={index === 0 ? '' : startsGroup ? 'mt-2' : 'mt-0.5'}>
+            <div key={message.id} className={index === 0 ? '' : startsGroup ? 'mt-3' : 'mt-1'}>
               {shouldShowDate && (
                 <div className="flex justify-center my-4">
                   <span className="text-xs text-[#6B6B7A] bg-[#EEEBE3] px-3 py-1 rounded-full">

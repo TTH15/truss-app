@@ -283,17 +283,18 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                 );
               })()}
               {(attachmentUrl || hasCaption) && (
-                <div className={`rounded-2xl px-4 py-2 relative overflow-visible min-w-0 ${message.isAdmin ? 'bg-[#3D3D4E] text-white' : 'bg-gray-100 text-[#3D3D4E]'} ${message.pinned ? 'ring-2 ring-[#FFD700]' : ''} ${startsGroup ? (message.isAdmin ? 'rounded-tr-none' : 'rounded-tl-none') : ''}`}>
+                <div className={`rounded-2xl px-4 py-2 relative overflow-visible min-w-0 ${message.isAdmin ? 'bg-[#3D3D4E] text-white' : 'bg-gray-100 text-[#3D3D4E]'} ${message.pinned ? 'ring-2 ring-[#FFD700]' : ''}`}>
                   {/* 吹き出しのとんがり。まとまりの先頭にだけ付ける。
-                      上辺を吹き出しの上端に合わせた直角三角形にし、角丸を落とした側の角へ密着させる。
-                      上下対称の三角を角から離して置くと、丸みとの間に段差ができて別部品に見えてしまう */}
+                      角丸(16px)は全周そのまま残し、丸みが終わる位置（上端から8px）から生やす。
+                      上辺が水平な直角三角形なので、そこから下の直線部分と輪郭が繋がる。
+                      角丸を弱めて上端に密着させる作りにすると、丸みの途中に三角が刺さって形が崩れる */}
                   {startsGroup && (
                     <span
                       aria-hidden
-                      className={`absolute top-0 w-0 h-0 border-b-[12px] border-b-transparent ${
+                      className={`absolute top-[8px] w-0 h-0 border-b-[9px] border-b-transparent ${
                         message.isAdmin
-                          ? '-right-[8px] border-l-[8px] border-l-[#3D3D4E]'
-                          : '-left-[8px] border-r-[8px] border-r-gray-100'
+                          ? '-right-[7px] border-l-[9px] border-l-[#3D3D4E]'
+                          : '-left-[7px] border-r-[9px] border-r-gray-100'
                       }`}
                     />
                   )}
@@ -423,7 +424,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                       previous.isAdmin !== message.isAdmin ||
                       formatMessageTime(previous.time) !== formatMessageTime(message.time);
                     return (
-                      <div key={message.id} className={index === 0 ? '' : startsGroup ? 'mt-2' : 'mt-0.5'}>
+                      <div key={message.id} className={index === 0 ? '' : startsGroup ? 'mt-3' : 'mt-1'}>
                         {shouldShowDate && (
                           <div className="flex justify-center my-4">
                             <span className="text-xs font-medium text-gray-600 bg-gray-200 px-3 py-1 rounded-full">
