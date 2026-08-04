@@ -163,6 +163,9 @@ plan.md 7節の元案は`chat_threads`テーブルによる本格的なマルチ
 
 ## Phase 5: Electronic Stamp（NFC） + Connection Bump（BLE）
 
+**2026-08-04 追記**: Web に Journey Stamp の UI を実装済み（`JourneyStamp` / `JourneyStampBook` / CSS の `truss-stamp`）だが、**画面からは外してある**。このフェーズに着手するタイミングで、`ProfilePage.tsx` と `EventsPage.tsx` の該当コメント箇所に呼び出しを戻せば復活する。獲得条件は `event_participants.attended`（スタンプ用のテーブルは持たず参加情報から導出）。モバイルの `PassportScreen` は現在も「参加登録済み」で判定しており条件が食い違っているため、復活時に揃えること。
+なお静電容量式の多点接触スタンプ（画面に押し当てるとマルチタッチのパターンとして認識される方式）も選択肢になる。電源・通信が不要で iOS/Android どちらでも同じように動くため、NFC の iOS 制約を回避できる。
+
 Electronic StampはBLEではなくNFCを採用（当初案から変更）。タップという明確な動作を要求するため、BLEのRSSI距離判定より「その場に確実にいた」ことの担保が強く、ハードも電池不要の受動タグで安価。Connection Bumpは近接検知という性質上BLEを継続。
 
 - [ ] Dev Client / EAS Build への切り替え（Expo Go非対応のため、このフェーズの入り口で実施）
@@ -217,3 +220,32 @@ Electronic StampはBLEではなくNFCを採用（当初案から変更）。タ�
 - [ ] `git mv` 直後に `npm run build` をローカルで確認してからPR化
 - [ ] 新規クエリ追加時もRLSポリシーを正とし、クライアント側チェックだけに頼らない
 - [ ] Google OAuthリダイレクト設定はモバイル用スキームを「追加」のみ、既存Web用Redirect URLは変更しない
+
+## 横断タスク: モバイル着手前に済ませたい `packages/core` 抽出（2026-08-04 調査）
+
+Web の改善作業中に、モバイル開発で確実に踏むことになる問題が判明したもの。**Phase 4 の画面移植を始める前**に片付けると、写経と手戻りを避けられる。
+
+### 先に直したい（モバイルへの効き目が大きい順）
+
+- [ ] **イベント参加の業務ルールが web/mobile に写経されている** — `EventsPage.tsx:208-225` ↔ `JourneyScreen.tsx:107-130` に「制限中は1イベントのみ参加可」の判定が文言ごと重複。`packages/core` に `checkEventJoinEligibility(user, attendingCount, language)` として抽出する
+- [ ] **`eventParticipants` からの「自分の参加イベント」導出が5箇所に散在** — `LegacyApp.tsx:135-144`、`JourneyScreen.tsx:53-60`、`PassportScreen.tsx:29-31`、`TrussEmbassyScreen.tsx:151-152`、`CheckinScannerScreen.tsx:60`。`selectAttendingEventIds()` / `selectMyEvents()` を core の selectors として用意
+- [ ] **モバイルの「いいね」が DB と繋がっていない**（機能欠落）— `JourneyScreen.tsx:43` の `likedEvents` は画面ローカル state のみで、再マウントで消える。core には `queryLikedEventIds` 等が既にあるが呼んでいるのは web だけ。web の `DataContext` と同じ「楽観更新 + 未確定差分の再適用」方式を移植する
+- [ ] **`packages/core` が FontAwesome に暗黙依存** — `event-icons.ts:1` が `@fortawesome/free-solid-svg-icons` を import しているが宣言は web の package.json のみ（ホイストで偶然解決）。mobile が `normalizeEventIconKey` を使うだけで **Metro が FontAwesome 一式を取り込む**（Metro はツリーシェイクしない）。アイコンキー定義と FontAwesome マッピングを別ファイルに分離し、core からは前者だけ export
+- [ ] **core の Storage API が `File`（DOM型）を受けている** — `supabase.ts` の `uploadEventImage` / `uploadBoardPostImage` / `uploadUserAvatar`、`db/mutations/board.ts` の `imageFile`。RN に `File` は無いため、Passport のアバター編集や掲示板投稿を作る時点で詰まる。`uploadStudentIdImage` / gallery は既に `Blob` なので、そちらに揃える
+- [ ] **`User` の更新パッチ生成が web の AuthContext にベタ書き** — `AuthContext.tsx:202-242` の21行のマッピング。Event には `buildEventUpdatePatch` が core にあるのに User だけ非対称。mobile の AuthContext には `updateUser` 自体が無いので、作る前に core へ出す
+- [ ] **チャットの共通ロジック2種が重複** — メンション生成（`MessagesPage.tsx:109-128` ↔ `TrussEmbassyScreen.tsx:422-444`）と署名付きURL解決（web 2箇所 + mobile 1箇所）。`buildEventMention` / `buildMemoryMention` / `resolveMissingSignedUrls` として core へ
+- [ ] **`GalleryPhoto.image: string | { src: string }`** — `{ src }` は Next.js の `StaticImageData` 由来だが mapper は常に string を返す。unwrap の三項演算子が web/mobile 計10箇所に散っている。`image: string` に単純化
+- [ ] **キャッシュ + in-flight 重複排除の仕組みが web にしか無い** — mobile の DataContext は素の `await` のみで、タブ復帰のたびに全件再取得。storage を注入できる形で `createCachedFetcher({ storage, ttlMs })` として core へ
+
+### テスト（上記の抽出を安全に行うため）
+
+- [ ] `packages/core` にのみ vitest を導入（web/mobile には入れない = 設定コスト最小）
+- [ ] 最初の対象: `profile-completion.ts` / `db/mappers.ts` / `buildEventUpdatePatch` / 上で新設する純粋関数 / `event-checkin.ts` のラウンドトリップ
+
+### 参考: Web 側に残っている改善候補（モバイルとは独立、着手は任意）
+
+- realtime 購読が「1行変更 = 全件再取得」でデバウンスも重複防止も無い（`DataContext.tsx:368-383`）
+- 一斉送信・ギャラリー複数枚アップロードが直列ループ + 毎回全件再取得
+- メッセージが毎回全件取得（ページングが事実上存在しない）
+- `DataContext` / `AuthContext` の value が未メモ化で、1つの state 変更が全画面を再レンダーさせる
+- 画像が原寸配信（`next/image` 未使用、Supabase の画像変換も未使用）
