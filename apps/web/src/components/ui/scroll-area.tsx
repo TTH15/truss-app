@@ -16,9 +16,12 @@ function ScrollArea({
       className={cn("relative", className)}
       {...props}
     >
+      {/* Radix の Viewport は内部に display:table の div を挟む。table は内容に合わせて広がるため、
+          長い文字列があると子の w-full がビューポート幅を超え、truncate が効かずに端で切れる。
+          block に戻すことで幅がビューポートに揃い、省略記号が出るようになる */}
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1"
+        className="focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1 [&>div]:!block"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>

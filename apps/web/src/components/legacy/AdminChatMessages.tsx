@@ -324,8 +324,19 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                         />
                         <div className="absolute -right-1 top-0 flex flex-col gap-0.5">{user.pinned && <Pin className="w-3 h-3 text-yellow-500 fill-yellow-500" />}{user.flagged && <Flag className="w-3 h-3 text-red-500 fill-red-500" />}</div>
                       </div>
-                      {/* 右側にピン/フラグのボタンが重なるので、本文はそのぶん内側で終わらせる */}
-                      <div className="flex-1 min-w-0 pr-2"><p className="font-medium text-gray-900 truncate">{user.userName}</p><p className="text-xs text-gray-500 truncate">{user.lastMessage}</p><div className="flex items-center gap-2 mt-1"><p className="text-xs text-gray-400">{user.lastMessageTime}</p>{user.unreadCount > 0 && <div className="bg-red-500 text-white text-xs rounded-full h-4 min-w-[16px] px-1.5 flex items-center justify-center font-medium">{user.unreadCount}</div>}{user.flaggedMessageCount > 0 && <div className="flex items-center gap-0.5 bg-red-100 text-red-600 text-xs rounded-full h-4 px-1.5 font-medium"><Flag className="w-2.5 h-2.5 fill-red-600" />{user.flaggedMessageCount}</div>}</div></div>
+                      {/* 名前と日付を1行に、本文をその下に。日付を右端に寄せることで
+                          本文の折り返し位置が決まり、端まで届いて切れることがなくなる */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <p className="font-medium text-gray-900 truncate">{user.userName}</p>
+                          <p className="ml-auto shrink-0 text-xs text-gray-400">{user.lastMessageTime}</p>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="flex-1 min-w-0 text-xs text-gray-500 truncate">{user.lastMessage}</p>
+                          {user.unreadCount > 0 && <div className="shrink-0 bg-red-500 text-white text-xs rounded-full h-4 min-w-[16px] px-1.5 flex items-center justify-center font-medium">{user.unreadCount}</div>}
+                          {user.flaggedMessageCount > 0 && <div className="shrink-0 flex items-center gap-0.5 bg-red-100 text-red-600 text-xs rounded-full h-4 px-1.5 font-medium"><Flag className="w-2.5 h-2.5 fill-red-600" />{user.flaggedMessageCount}</div>}
+                        </div>
+                      </div>
                     </div>
                   </button>
                   <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 transition-opacity pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100">
