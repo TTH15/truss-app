@@ -18,8 +18,8 @@ interface BulkEmailModalProps {
 }
 
 const translations = {
-  ja: { title: 'メール作成', subject: '件名', message: 'メッセージ', japanese: '日本語', english: 'English', autoTranslate: '自動翻訳', notificationType: '通知タイプ', inAppNotification: 'アプリ内通知', emailNotification: 'メール通知', sendDateTime: '送信日時', sendDateTimeNote: '（空欄の場合は即時送信）', send: '送信', cancel: 'キャンセル', translating: '翻訳中...', translationError: '翻訳に失敗しました', placeholder: { monthDay: '4/7', time: '15:00' } },
-  en: { title: 'Compose Email', subject: 'Subject', message: 'Message', japanese: '日本語', english: 'English', autoTranslate: 'Auto Translate', notificationType: 'Notification Type', inAppNotification: 'In-App Notification', emailNotification: 'Email Notification', sendDateTime: 'Send Date/Time', sendDateTimeNote: '(Leave blank for immediate send)', send: 'Send', cancel: 'Cancel', translating: 'Translating...', translationError: 'Translation failed', placeholder: { monthDay: '4/7', time: '15:00' } }
+  ja: { title: 'メール作成', subject: '件名', message: 'メッセージ', japanese: '日本語', english: 'English', autoTranslate: '自動翻訳', notificationType: '通知タイプ', inAppNotification: 'アプリ内通知', emailNotification: 'メール通知', emailNotAvailable: '（現在利用できません）', sendDateTime: '送信日時', sendDateTimeNote: '（空欄の場合は即時送信）', send: '送信', cancel: 'キャンセル', translating: '翻訳中...', translationError: '翻訳に失敗しました', placeholder: { monthDay: '4/7', time: '15:00' } },
+  en: { title: 'Compose Email', subject: 'Subject', message: 'Message', japanese: '日本語', english: 'English', autoTranslate: 'Auto Translate', notificationType: 'Notification Type', inAppNotification: 'In-App Notification', emailNotification: 'Email Notification', emailNotAvailable: '(not available yet)', sendDateTime: 'Send Date/Time', sendDateTimeNote: '(Leave blank for immediate send)', send: 'Send', cancel: 'Cancel', translating: 'Translating...', translationError: 'Translation failed', placeholder: { monthDay: '4/7', time: '15:00' } }
 };
 
 export function BulkEmailModal({ isOpen, onClose, language, recipientCount, onSend }: BulkEmailModalProps) {
@@ -29,7 +29,8 @@ export function BulkEmailModal({ isOpen, onClose, language, recipientCount, onSe
   const [messageJa, setMessageJa] = useState('');
   const [messageEn, setMessageEn] = useState('');
   const [inAppNotification, setInAppNotification] = useState(true);
-  const [emailNotification, setEmailNotification] = useState(false);
+  // メール送信は未実装のため常に false（実装したら state に戻す）
+  const emailNotification = false;
   const [year, setYear] = useState('2026');
   const [monthDay, setMonthDay] = useState('');
   const [time, setTime] = useState('');
@@ -56,8 +57,8 @@ export function BulkEmailModal({ isOpen, onClose, language, recipientCount, onSe
   const handleSend = () => {
     if (!subjectJa && !subjectEn) return;
     if (!messageJa && !messageEn) return;
-    const messageType = inAppNotification && emailNotification ? '通知とメール' : inAppNotification ? '通知' : 'メール';
-    toast.success(language === 'ja' ? `${recipientCount}人に${messageType}を送信しました` : `Sent ${messageType} to ${recipientCount} members`);
+    // 送信結果のトーストは呼び出し側（実際に送る側）が出す。ここで出すと、
+    // 送信に失敗しても「送信しました」が先に見えてしまう
     onClose();
     onSend?.(subjectJa, subjectEn, messageJa, messageEn, inAppNotification, emailNotification);
   };
@@ -79,7 +80,13 @@ export function BulkEmailModal({ isOpen, onClose, language, recipientCount, onSe
             <label className="block text-sm font-medium text-[#3D3D4E]">{t.notificationType}</label>
             <div className="space-y-2">
               <div className="flex items-center gap-2"><button onClick={() => setInAppNotification(!inAppNotification)} className={`w-[18px] h-[17px] rounded border flex items-center justify-center ${inAppNotification ? 'bg-[#3D3D4E] border-[#3D3D4E]' : 'bg-[#EEEBE3] border-[rgba(61,61,78,0.15)]'}`}>{inAppNotification && <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 14 14"><path d={svgPaths.p3de7e600} stroke="#F5F1E8" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.16667" /></svg>}</button><span className="text-sm text-[#3D3D4E]">{t.inAppNotification}</span></div>
-              <div className="flex items-center gap-2"><button onClick={() => setEmailNotification(!emailNotification)} className={`w-[18px] h-[17px] rounded border flex items-center justify-center ${emailNotification ? 'bg-[#3D3D4E] border-[#3D3D4E]' : 'bg-[#EEEBE3] border-[rgba(61,61,78,0.15)]'}`}>{emailNotification && <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 14 14"><path d={svgPaths.p3de7e600} stroke="#F5F1E8" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.16667" /></svg>}</button><span className="text-sm font-medium text-[#3D3D4E]">{t.emailNotification}</span></div>
+              {/* メール送信は未実装（送信処理が console.log のみ）。選べる状態だと
+                  「メールを送信しました」と表示されるのに実際には届かないため、当面は無効化する */}
+              <div className="flex items-center gap-2 opacity-50">
+                <div className="w-[18px] h-[17px] rounded border bg-[#EEEBE3] border-[rgba(61,61,78,0.15)]" />
+                <span className="text-sm text-[#3D3D4E]">{t.emailNotification}</span>
+                <span className="text-xs text-[#6B6B7A]">{t.emailNotAvailable}</span>
+              </div>
             </div>
           </div>
           <div className="space-y-2">

@@ -693,11 +693,17 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
           await sendMessage(userId, language === 'ja' ? messageJa : messageEn, true);
         }
       }
-      if (sendEmail) console.log('Email sending:', { userIds, subjectJa, subjectEn, messageJa, messageEn });
-      const messageType = sendInApp && sendEmail ? (language === 'ja' ? '通知とメール' : 'notification and email')
-        : sendInApp ? (language === 'ja' ? '通知' : 'notification')
-        : (language === 'ja' ? 'メール' : 'email');
-      toast.success(language === 'ja' ? `${userIds.length}人に${messageType}を送信しました` : `Sent ${messageType} to ${userIds.length} members`);
+      // メール送信は未実装。実装するまで「送信した」と表示しない
+      if (sendEmail) {
+        console.warn('Email sending is not implemented; skipped.', { userIds });
+      }
+      if (sendInApp) {
+        toast.success(
+          language === 'ja'
+            ? `${userIds.length}人に通知を送信しました`
+            : `Sent notification to ${userIds.length} members`
+        );
+      }
     } catch (error) {
       console.error('Bulk send failed in LegacyApp:', error);
       toast.error(language === 'ja' ? '一斉送信に失敗しました' : 'Failed to send bulk messages');
