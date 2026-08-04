@@ -5,6 +5,13 @@ import { supabase } from "../../supabase";
 import { mapDbMessageRowToMessage } from "../mappers";
 import type { Message, MessageThread, ChatThreadMetadata } from "../../types/app";
 
+/**
+ * 一度に取得するメッセージ件数の上限。
+ * これを超える古い履歴は読み込まれない（本来はスレッド単位のページングにすべきで、
+ * ここは「新しいメッセージが表示されない」を止めるための暫定対応）。
+ */
+const MESSAGE_FETCH_LIMIT = 1000;
+
 function compareMessagesByTimeThenId(a: Message, b: Message): number {
   const ta = Date.parse(a.time);
   const tb = Date.parse(b.time);
@@ -19,13 +26,19 @@ export async function queryMessageThreadsAndMetadata(): Promise<{
   metadata: ChatThreadMetadata;
 }> {
   const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+  // PostgREST は上限（Supabase の既定は 1000 行）を超える分を黙って切り捨てる。
+  // 昇順のまま取ると「最も古い 1000 件」しか返らず、新しく送ったメッセージが
+  // いつまでも画面に出ない（2026-08-05 に発生。4月以降の全メッセージが欠落していた）。
+  // 新しい順に取ってから並べ直すことで、直近ぶんが必ず含まれるようにする。
   const { data, error } = await supabase
     .from("messages")
     .select("*")
     .is("cancelled_at", null)
-    .order("time", { ascending: true });
+    .order("time", { ascending: false })
+    .limit(MESSAGE_FETCH_LIMIT);
   if (error) throw error;
-  const rows = data ?? [];
+  // 表示・スレッド構築は古い順を前提にしているので戻す
+  const rows = (data ?? []).slice().reverse();
 
   const threads: MessageThread = {};
   const pushThread = (userId: string, msg: Message) => {
@@ -74,7 +87,7 @@ export async function queryMessageThreadsAndMetadata(): Promise<{
 
   const endedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
   console.info(
-    `[perf] queryMessageThreadsAndMetadata: ${Math.round(endedAt - startedAt)}ms, threadKeys=${Object.keys(threads).length}, globalBroadcastRows=${globalBroadcastRows.length}`
+    `[perf] queryMessageThreadsAndMetadata: ${Math.round(endedAt - startedAt)}ms, rows=${rows.length}${rows.length >= MESSAGE_FETCH_LIMIT ? '(上限に達しており古い履歴は未取得)' : ''}, threadKeys=${Object.keys(threads).length}, globalBroadcastRows=${globalBroadcastRows.length}`
   );
 
   const { data: metaData, error: metaError } = await supabase
