@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useLayoutEffect, type Dispatch, type SetStateAction } from 'react';
-import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Send, Images, Calendar, Clock, MapPin, X, FileText } from 'lucide-react';
@@ -12,7 +11,8 @@ import { toast } from 'sonner';
 import { linkifyText } from '../../lib/linkify';
 import { LinkPreviewCard } from './LinkPreviewCard';
 import { ScrollFade } from './ScrollFade';
-import { UserAvatarImage } from './UserAvatarImage';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
+import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
 
 interface MessagesPageProps {
   language: Language;
@@ -58,13 +58,8 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  // 相手（運営）のアイコン。運営受信箱のアカウントのものを使う
   // 送信直後の仮メッセージを末尾に足して描く
   const renderedMessages = pendingSent.length > 0 ? [...messages, ...pendingSent] : messages;
-
-  const staffAvatarPath =
-    approvedMembers.find((member) => member.id === staffInboxUserId)?.avatarPath ??
-    approvedMembers.find((member) => member.isAdmin)?.avatarPath;
   useEffect(() => { setMessages(messageHistory[recipientId] ?? []); }, [recipientId, isAdmin, language]);
   useEffect(() => {
     if (!(isAdmin && messageThreads[user.id])) return;
@@ -213,12 +208,10 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
         {/* 相手側はアイコンを出す。まとまりの2通目以降は、幅だけ空けて位置を揃える */}
         {message.sender !== 'user' &&
           (startsGroup ? (
-            <UserAvatarImage
-              avatarPath={staffAvatarPath}
-              name={recipientName}
-              className="w-8 h-8 shrink-0"
-              fallbackClassName="bg-[#49B1E4] text-white text-xs"
-            />
+            // 運営は個人ではないので、人物アイコンではなく Truss のロゴを出す
+            <div className="w-8 h-8 shrink-0 rounded-full bg-white border border-[#E8E4DB] flex items-center justify-center overflow-hidden">
+              <ImageWithFallback src={logoImage} alt={recipientName} className="w-6 h-6 object-contain" />
+            </div>
           ) : (
             <div className="w-8 shrink-0" aria-hidden />
           ))}
@@ -308,9 +301,22 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
 
   return (
     <div className="flex flex-col bg-[#F5F1E8] h-full">
+      {/* 相手は運営で固定なので、名前と肩書きを二重に書かない。
+          代わりに「ここで何ができるか」を添える */}
       <div className="bg-white border-b border-[#E8E4DB] px-4 py-3 flex items-center gap-3 shrink-0">
-        <Avatar className="w-10 h-10"><AvatarFallback className="bg-[#49B1E4] text-white">{recipientAvatar}</AvatarFallback></Avatar>
-        <div className="flex-1"><h2 className="text-[#3D3D4E]">{recipientName}</h2>{isAdmin && <p className="text-xs text-[#6B6B7A]">{language === 'ja' ? '運営' : 'Admin'}</p>}</div>
+        <div className="w-10 h-10 shrink-0 rounded-full bg-[#F5F1E8] border border-[#E8E4DB] flex items-center justify-center overflow-hidden">
+          <ImageWithFallback src={logoImage} alt="Truss" className="w-7 h-7 object-contain" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[#3D3D4E] truncate">{isAdmin ? (language === 'ja' ? 'Truss 運営' : 'Truss Staff') : recipientName}</h2>
+          {isAdmin && (
+            <p className="text-xs text-[#6B6B7A] truncate">
+              {language === 'ja'
+                ? 'イベント・会費・困りごとのご相談はこちらへ'
+                : 'Ask us about events, fees or anything else'}
+            </p>
+          )}
+        </div>
       </div>
       <ScrollFade scrollRef={messagesContainerRef} fadeColor="#F5F1E8" className="px-4 py-6">
         <div className="space-y-2">

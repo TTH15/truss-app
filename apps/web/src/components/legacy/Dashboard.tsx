@@ -67,7 +67,7 @@ interface DashboardProps {
   onForceOpenEventHandled?: () => void;
 }
 
-type Page = 'home' | 'events' | 'members' | 'bulletin' | 'gallery' | 'profile' | 'messages' | 'message-detail';
+type Page = 'home' | 'events' | 'members' | 'bulletin' | 'gallery' | 'profile' | 'messages';
 
 interface SelectedNotification {
   senderName: string;
@@ -270,7 +270,7 @@ export function Dashboard({
     try {
       const saved = localStorage.getItem(DASHBOARD_PAGE_STORAGE_KEY) as Page | null;
       if (!saved) return;
-      const validPages: Page[] = ['home', 'events', 'members', 'bulletin', 'gallery', 'profile', 'messages', 'message-detail'];
+      const validPages: Page[] = ['home', 'events', 'members', 'bulletin', 'gallery', 'profile', 'messages'];
       if (validPages.includes(saved)) setCurrentPage(saved);
     } catch {
       // ignore storage errors
@@ -695,13 +695,15 @@ export function Dashboard({
             onWithdrawn={onLogout}
           />
         )}
-        {currentPage === 'messages' && selectedNotification && (
+        {/* 相手は運営で固定。selectedNotification に依存させると、
+            再読み込みや戻る操作で messages を復元したときに空白画面になる */}
+        {currentPage === 'messages' && (
           <MessagesPage
             language={language}
             user={user}
-            recipientName={selectedNotification.senderName}
-            recipientAvatar={selectedNotification.senderAvatar}
-            isAdmin={selectedNotification.isAdmin}
+            recipientName={selectedNotification?.senderName ?? (language === 'ja' ? '運営管理者' : 'Admin')}
+            recipientAvatar={selectedNotification?.senderAvatar ?? 'A'}
+            isAdmin={selectedNotification?.isAdmin ?? true}
             messageHistory={messageHistory}
             setMessageHistory={setMessageHistory}
             messageThreads={messageThreads}

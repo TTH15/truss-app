@@ -213,7 +213,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
       return { ...prev, [userId]: { ...currentMetadata, flagged: !currentMetadata.flagged } };
     });
   };
-  const renderMessage = (message: Message) => {
+  const renderMessage = (message: Message, startsGroup: boolean) => {
     const categoryLabel = !message.isAdmin ? getMessageCategoryLabel(message.category, language) : undefined;
     const attachmentUrl = message.attachmentPath ? signedUrls[message.attachmentPath] : undefined;
     const showRead = message.isAdmin && message.read;
@@ -283,7 +283,18 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                 );
               })()}
               {(attachmentUrl || hasCaption) && (
-                <div className={`rounded-2xl px-4 py-2 relative overflow-visible min-w-0 ${message.isAdmin ? 'bg-[#3D3D4E] text-white' : 'bg-gray-100 text-[#3D3D4E]'} ${message.pinned ? 'ring-2 ring-[#FFD700]' : ''}`}>
+                <div className={`rounded-2xl px-4 py-2 relative overflow-visible min-w-0 ${message.isAdmin ? 'bg-[#3D3D4E] text-white' : 'bg-gray-100 text-[#3D3D4E]'} ${message.pinned ? 'ring-2 ring-[#FFD700]' : ''} ${startsGroup ? (message.isAdmin ? 'rounded-tr-md' : 'rounded-tl-md') : ''}`}>
+                  {/* 吹き出しのとんがり。まとまりの先頭にだけ、上の角へ付ける */}
+                  {startsGroup && (
+                    <span
+                      aria-hidden
+                      className={`absolute top-[6px] w-0 h-0 border-y-[7px] border-y-transparent ${
+                        message.isAdmin
+                          ? '-right-[7px] border-l-[9px] border-l-[#3D3D4E]'
+                          : '-left-[7px] border-r-[9px] border-r-gray-100'
+                      }`}
+                    />
+                  )}
                   {message.flagged && <Flag className="w-3 h-3 text-red-500 absolute -top-1 -right-1 fill-red-500" />}
                   {message.pinned && <Pin className="w-3 h-3 text-yellow-500 absolute -top-1 -left-1 fill-yellow-500" />}
                   {isImageAttachment && (
@@ -392,11 +403,18 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
             )}
             <div className="flex-1 overflow-hidden">
               <ScrollFade fadeColor="#F5F1E8">
-                <div className="space-y-4 p-4">
+                <div className="space-y-2 p-4">
                   {currentMessages.map((message, index) => {
                     const currentDate = parseMessageDate(message.time);
-                    const prevDate = index > 0 ? parseMessageDate(currentMessages[index - 1].time) : null;
+                    const previous = index > 0 ? currentMessages[index - 1] : null;
+                    const prevDate = previous ? parseMessageDate(previous.time) : null;
                     const shouldShowDate = !prevDate || toDateKey(currentDate) !== toDateKey(prevDate);
+                    // 同じ相手が同じ時刻に続けて送ったものはひとまとまり。とんがりは先頭にだけ
+                    const startsGroup =
+                      shouldShowDate ||
+                      !previous ||
+                      previous.isAdmin !== message.isAdmin ||
+                      formatMessageTime(previous.time) !== formatMessageTime(message.time);
                     return (
                       <div key={message.id}>
                         {shouldShowDate && (
@@ -406,7 +424,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                             </span>
                           </div>
                         )}
-                        {renderMessage(message)}
+                        {renderMessage(message, startsGroup)}
                       </div>
                     );
                   })}
