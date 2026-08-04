@@ -71,14 +71,22 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
   const allUserIds = new Set<string>();
   approvedMembers.forEach((member) => { if (!member.isAdmin) allUserIds.add(member.id); });
   Object.keys(messageThreads).forEach((userId) => allUserIds.add(userId));
+  // 会員数ぶんの find を人数ぶん繰り返すと二乗になるので、先に索引を作る
+  const memberById = new Map<string, UserType>();
+  approvedMembers.forEach((member) => memberById.set(member.id, member));
+  pendingUsers?.forEach((member) => { if (!memberById.has(member.id)) memberById.set(member.id, member); });
+
   const usersWithMessages = Array.from(allUserIds).map((userId) => {
     const messages = messageThreads[userId] || [];
     const lastMessage = messages[messages.length - 1];
-    const user = approvedMembers.find((m) => m.id === userId) || pendingUsers?.find((m) => m.id === userId);
+    const user = memberById.get(userId);
     const metadata = chatThreadMetadata[userId] || {};
     const rawTime = lastMessage?.time || '';
+    const parsedTime = rawTime ? Date.parse(rawTime) : NaN;
     return {
       userId,
+      // 並び替え用。やりとりが無いスレッドは 0 にして末尾へ送る
+      lastMessageAt: Number.isNaN(parsedTime) ? 0 : parsedTime,
       userName: user?.name || 'Unknown User',
       userAvatar: user?.nickname ? user.nickname.charAt(0).toUpperCase() : 'U',
       // 設定済みのプロフィール画像を出す（従来は常にイニシャルだった）
@@ -91,7 +99,13 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
       flaggedMessageCount: messages.filter((m) => m.flagged).length,
     };
   });
-  const sortedUsers = [...usersWithMessages].sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
+  // ピン留めを先頭に、そのうえで最近やりとりがあった順。
+  // やりとりが無い会員（まだ一度も送受信していない）は末尾にまとまる
+  const sortedUsers = [...usersWithMessages].sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    if (a.lastMessageAt !== b.lastMessageAt) return b.lastMessageAt - a.lastMessageAt;
+    return a.userName.localeCompare(b.userName, 'ja');
+  });
   const selectedUser = selectedUserId ? usersWithMessages.find((u) => u.userId === selectedUserId) : null;
   const currentMessages = selectedUserId ? (messageThreads[selectedUserId] || []) : [];
   const pinnedMessages = currentMessages.filter((m) => m.pinned);
