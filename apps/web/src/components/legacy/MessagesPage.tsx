@@ -258,15 +258,16 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
               );
             })()}
             {(attachmentUrl || hasCaption) && (
-              <div className={`rounded-2xl px-4 py-2 relative ${message.sender === 'user' ? 'bg-[#49B1E4] text-white' : 'bg-white text-[#3D3D4E]'}`}>
-                {/* 吹き出しのとんがり。まとまりの先頭にだけ付ける */}
+              <div className={`rounded-2xl px-4 py-2 relative ${message.sender === 'user' ? 'bg-[#49B1E4] text-white' : 'bg-white text-[#3D3D4E]'} ${startsGroup ? (message.sender === 'user' ? 'rounded-tr-none' : 'rounded-tl-none') : ''}`}>
+                {/* 吹き出しのとんがり。まとまりの先頭にだけ付ける。
+                    上辺を吹き出しの上端に合わせた直角三角形にし、角丸を落とした側の角へ密着させる */}
                 {startsGroup && (
                   <span
                     aria-hidden
-                    className={`absolute top-3 w-0 h-0 border-y-[6px] border-y-transparent ${
+                    className={`absolute top-0 w-0 h-0 border-b-[12px] border-b-transparent ${
                       message.sender === 'user'
-                        ? '-right-[7px] border-l-[8px] border-l-[#49B1E4]'
-                        : '-left-[7px] border-r-[8px] border-r-white'
+                        ? '-right-[8px] border-l-[8px] border-l-[#49B1E4]'
+                        : '-left-[8px] border-r-[8px] border-r-white'
                     }`}
                   />
                 )}
@@ -319,7 +320,9 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
         </div>
       </div>
       <ScrollFade scrollRef={messagesContainerRef} fadeColor="#F5F1E8" className="px-4 py-6">
-        <div className="space-y-2">
+        {/* 間隔は space-y ではなく各行の mt で付ける。まとまりの2通目以降だけ詰めたいので、
+            space-y の一律指定だと打ち消せない（詳細度が高く負マージンが効かない） */}
+        <div>
         {renderedMessages.map((message, index) => {
           const currentDate = parseMessageDate(message.time);
           const previous = index > 0 ? renderedMessages[index - 1] : null;
@@ -333,7 +336,7 @@ export function MessagesPage({ language, user, recipientName, recipientAvatar, i
             previous.sender !== message.sender ||
             formatMessageTime(previous.time) !== formatMessageTime(message.time);
           return (
-            <div key={message.id}>
+            <div key={message.id} className={index === 0 ? '' : startsGroup ? 'mt-2' : 'mt-0.5'}>
               {shouldShowDate && (
                 <div className="flex justify-center my-4">
                   <span className="text-xs text-[#6B6B7A] bg-[#EEEBE3] px-3 py-1 rounded-full">

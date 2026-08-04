@@ -225,7 +225,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
     const hasCaption = !isFileAttachment && !isAudioAttachment && !!message.text && message.text !== autoFallbackText;
     return (
       <div key={message.id} className={`flex ${message.isAdmin ? 'justify-end' : 'justify-start'} group`}>
-        <div className="max-w-[85%]">
+        <div className="max-w-[85%] relative">
           {categoryLabel && (
             <div className="flex justify-start mb-1"><span className="text-xs bg-[#49B1E4]/15 text-[#49B1E4] px-2 py-0.5 rounded-full">{categoryLabel}</span></div>
           )}
@@ -283,15 +283,17 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                 );
               })()}
               {(attachmentUrl || hasCaption) && (
-                <div className={`rounded-2xl px-4 py-2 relative overflow-visible min-w-0 ${message.isAdmin ? 'bg-[#3D3D4E] text-white' : 'bg-gray-100 text-[#3D3D4E]'} ${message.pinned ? 'ring-2 ring-[#FFD700]' : ''} ${startsGroup ? (message.isAdmin ? 'rounded-tr-md' : 'rounded-tl-md') : ''}`}>
-                  {/* 吹き出しのとんがり。まとまりの先頭にだけ、上の角へ付ける */}
+                <div className={`rounded-2xl px-4 py-2 relative overflow-visible min-w-0 ${message.isAdmin ? 'bg-[#3D3D4E] text-white' : 'bg-gray-100 text-[#3D3D4E]'} ${message.pinned ? 'ring-2 ring-[#FFD700]' : ''} ${startsGroup ? (message.isAdmin ? 'rounded-tr-none' : 'rounded-tl-none') : ''}`}>
+                  {/* 吹き出しのとんがり。まとまりの先頭にだけ付ける。
+                      上辺を吹き出しの上端に合わせた直角三角形にし、角丸を落とした側の角へ密着させる。
+                      上下対称の三角を角から離して置くと、丸みとの間に段差ができて別部品に見えてしまう */}
                   {startsGroup && (
                     <span
                       aria-hidden
-                      className={`absolute top-[6px] w-0 h-0 border-y-[7px] border-y-transparent ${
+                      className={`absolute top-0 w-0 h-0 border-b-[12px] border-b-transparent ${
                         message.isAdmin
-                          ? '-right-[7px] border-l-[9px] border-l-[#3D3D4E]'
-                          : '-left-[7px] border-r-[9px] border-r-gray-100'
+                          ? '-right-[8px] border-l-[8px] border-l-[#3D3D4E]'
+                          : '-left-[8px] border-r-[8px] border-r-gray-100'
                       }`}
                     />
                   )}
@@ -321,7 +323,9 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
               {firstLinkUrl && <LinkPreviewCard url={firstLinkUrl} />}
             </div>
           </div>
-          <div className={`flex items-center gap-1 mt-1 opacity-0 transition-opacity pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 ${message.isAdmin ? 'justify-end' : 'justify-start'}`}>
+          {/* ピン/フラグは吹き出しの外側の横に重ねる。行の中に置くと、隠れている間も高さを取り続けて
+              メッセージ同士が離れてしまう（同時刻のまとまりを詰めても効かなくなる） */}
+          <div className={`absolute top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 transition-opacity pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 ${message.isAdmin ? 'right-full mr-1' : 'left-full ml-1'}`}>
             <button type="button" onClick={() => togglePin(message.id)} className={`p-1 rounded hover:bg-gray-200 transition-colors ${message.pinned ? 'text-yellow-500' : 'text-gray-400'}`}><Pin className="w-3.5 h-3.5" /></button>
             <button type="button" onClick={() => toggleFlag(message.id)} className={`p-1 rounded hover:bg-gray-200 transition-colors ${message.flagged ? 'text-red-500' : 'text-gray-400'}`}><Flag className="w-3.5 h-3.5" /></button>
           </div>
@@ -402,8 +406,11 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
               </div>
             )}
             <div className="flex-1 overflow-hidden">
-              <ScrollFade fadeColor="#F5F1E8">
-                <div className="space-y-2 p-4">
+              {/* ぼかしの色は実際の背景（白）に合わせる。クリーム色を重ねると端が変色して見える */}
+              <ScrollFade fadeColor="#ffffff">
+                {/* 間隔は space-y ではなく各行の mt で付ける。まとまりの2通目以降だけ詰めたいので、
+                    space-y の一律指定だと打ち消せない（詳細度が高く負マージンが効かない） */}
+                <div className="p-4">
                   {currentMessages.map((message, index) => {
                     const currentDate = parseMessageDate(message.time);
                     const previous = index > 0 ? currentMessages[index - 1] : null;
@@ -416,7 +423,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                       previous.isAdmin !== message.isAdmin ||
                       formatMessageTime(previous.time) !== formatMessageTime(message.time);
                     return (
-                      <div key={message.id}>
+                      <div key={message.id} className={index === 0 ? '' : startsGroup ? 'mt-2' : 'mt-0.5'}>
                         {shouldShowDate && (
                           <div className="flex justify-center my-4">
                             <span className="text-xs font-medium text-gray-600 bg-gray-200 px-3 py-1 rounded-full">
