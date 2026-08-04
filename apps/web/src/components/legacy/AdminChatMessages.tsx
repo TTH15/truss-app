@@ -152,8 +152,14 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
       }
       setNewMessage('');
       clearPendingFile();
-    } catch {
-      toast.error(language === 'ja' ? 'メッセージ送信に失敗しました' : 'Failed to send message');
+    } catch (error) {
+      // 原因（RLS 拒否・制約違反など）が分からないと直しようがないので、DB からのメッセージをそのまま出す
+      const detail = error instanceof Error ? error.message : String(error);
+      console.error('Admin message send failed:', error);
+      toast.error(
+        (language === 'ja' ? 'メッセージ送信に失敗しました' : 'Failed to send message') + `: ${detail}`,
+        { duration: 15000 }
+      );
     } finally {
       setSending(false);
     }

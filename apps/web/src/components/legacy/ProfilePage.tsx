@@ -11,6 +11,7 @@ import { UserAvatarImage } from './UserAvatarImage';
 import { RoleBadge } from './RoleBadge';
 import { ProfileAvatarCropDialog } from './ProfileAvatarCropDialog';
 import { PushNotificationSetting } from './PushNotificationSetting';
+import { WithdrawAccount } from './WithdrawAccount';
 import { uploadUserAvatar } from '@truss/core';
 
 interface ProfilePageProps {
@@ -21,6 +22,8 @@ interface ProfilePageProps {
   isProfileComplete?: boolean;
   /** プロフィール項目の保存（アバターは別途アップロード後に `avatarPath` を渡す） */
   onUpdateProfile?: (updates: Partial<User>) => Promise<{ error: Error | null }>;
+  /** 退会完了後の処理（ログアウトしてトップへ戻す） */
+  onWithdrawn?: () => void;
 }
 
 const translations = {
@@ -95,6 +98,7 @@ export function ProfilePage({
   user,
   isCompact = false,
   onUpdateProfile,
+  onWithdrawn,
 }: ProfilePageProps) {
   const t = translations[language];
   const [isEditing, setIsEditing] = useState(false);
@@ -467,6 +471,8 @@ export function ProfilePage({
           コンポーネント（JourneyStampBook / JourneyStamp）は残してあるので、この行を戻せば復活する */}
 
       {!isWaitingApproval && <PushNotificationSetting user={user} language={language} />}
+
+      {onWithdrawn && <WithdrawAccount language={language} onWithdrawn={onWithdrawn} />}
     </div>
   );
 }

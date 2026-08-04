@@ -539,6 +539,14 @@ export interface Database {
         Args: Record<string, never>;
         Returns: string | null;
       };
+      withdraw_own_account: {
+        Args: Record<string, never>;
+        Returns: void;
+      };
+      find_withdrawn_record: {
+        Args: { p_student_number: string };
+        Returns: Array<{ fee_paid: boolean; membership_year: number | null; is_renewal: boolean }>;
+      };
     };
     Enums: {
       user_category: UserCategory;

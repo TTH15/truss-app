@@ -685,6 +685,7 @@ export function Dashboard({
             user={user}
             isProfileComplete={profileDone}
             onUpdateProfile={onUpdateProfile}
+            onWithdrawn={onLogout}
           />
         )}
         {currentPage === 'messages' && selectedNotification && (

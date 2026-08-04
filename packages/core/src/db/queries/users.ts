@@ -54,7 +54,11 @@ export async function queryPendingAndApprovedUsers(): Promise<{
   approved: AppUser[];
 }> {
   const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
-  const { data, error } = await supabase.from("users").select(USER_SELECT_COLUMNS);
+  // 退会済みは名簿にも承認待ちにも出さない（行は再登録の検知のために残してある）
+  const { data, error } = await supabase
+    .from("users")
+    .select(USER_SELECT_COLUMNS)
+    .is("withdrawn_at", null);
   if (error) throw error;
 
   const rows = (data ?? []) as unknown as Array<Parameters<typeof mapDbUserRowToUser>[0]>;

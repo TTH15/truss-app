@@ -167,3 +167,31 @@ export async function completeInitialRegistrationRow(
   return { error: toErrorOrNull(error) };
 }
 
+
+/**
+ * 退会（本人によるアカウント削除、migration 036）。
+ * 行は物理削除せず、個人情報を消して退会済みにする。
+ * 学籍番号と会費の状況は残るので、作り直しても未払いのままになる。
+ */
+export async function withdrawOwnAccount(): Promise<{ error: Error | null }> {
+  const { error } = await supabase.rpc("withdraw_own_account");
+  return { error: toErrorOrNull(error) };
+}
+
+/** 学籍番号から退会済みの記録を引く（初期登録時に会費状況を引き継ぐため） */
+export async function queryWithdrawnRecord(studentNumber: string): Promise<{
+  feePaid: boolean;
+  membershipYear: number | null;
+  isRenewal: boolean;
+} | null> {
+  const { data, error } = await supabase.rpc("find_withdrawn_record", {
+    p_student_number: studentNumber,
+  });
+  if (error || !data || data.length === 0) return null;
+  const row = data[0];
+  return {
+    feePaid: Boolean(row.fee_paid),
+    membershipYear: row.membership_year ?? null,
+    isRenewal: Boolean(row.is_renewal),
+  };
+}
