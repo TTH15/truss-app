@@ -264,16 +264,22 @@ Web の改善作業中に、モバイル開発で確実に踏むことになる�
 - [x] 購読の保存・削除（`packages/core/src/db/mutations/push-subscriptions.ts`）
 - [x] プロフィールに「プッシュ通知」のオン/オフ（`PushNotificationSetting`）
 
-### 残作業（送信側）
+### 実装済み（送信側）
 
-- [ ] **VAPID 鍵ペアを生成**し、公開鍵を `NEXT_PUBLIC_VAPID_PUBLIC_KEY`、秘密鍵を `VAPID_PRIVATE_KEY` として Vercel に設定
-  - `npx web-push generate-vapid-keys` で生成できる
+- [x] **送信 API**（`apps/web/src/app/api/push/send/route.ts`）
+  - 呼び出し元のアクセストークンで `users.is_admin` を検証してから送信（誰でも会員に通知を送れないように）
+  - 購読の読み取りと失効行の削除は service role。`404` / `410` が返った endpoint は購読切れなので行ごと削除する
+  - クライアントからは `sendPushNotification(accessToken, { userIds, title, body, url })`（`apps/web/src/lib/web-push.ts`）
+
+### 残作業
+
+- [ ] **VAPID 鍵を Vercel に設定**（鍵は生成済み。`npx web-push generate-vapid-keys` で再生成も可）
+  - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`（公開鍵）／ `VAPID_PRIVATE_KEY`（秘密鍵）／ 任意で `VAPID_SUBJECT`（既定は `mailto:truss.kobe@gmail.com`）
   - 公開鍵が未設定の間、購読ボタンは「準備中」を返して何も起きない（安全側に倒してある）
-- [ ] **送信用のサーバー処理**（Vercel Function / Supabase Edge Function）
-  - service role で `push_subscriptions` を読み、`web-push` パッケージで各 endpoint に配信
-  - 410 Gone / 404 が返った endpoint は購読切れなので行を削除する（放置すると失敗が積み上がる）
-- [ ] 既存の `notifications` テーブルへの書き込みと同時に Web Push を送る導線（運営の一斉送信・個別メッセージ）
 - [ ] マイグレーション 034 を本番へ適用
+- [ ] 運営の一斉送信・個別メッセージから `sendPushNotification()` を呼ぶ導線（現状は API があるだけで、どこからも呼んでいない）
+  - 既存の `notifications` テーブルへの書き込みと同じタイミングで送るのが自然
+- [ ] 実機確認（特に iOS はホーム画面に追加してから）
 
 ### 注意点
 

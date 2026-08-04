@@ -106,6 +106,34 @@ export async function subscribeToPush(): Promise<SubscribeResult> {
   }
 }
 
+/**
+ * 運営から指定ユーザーへ Web Push を送る（実際の送信はサーバー側 /api/push/send）。
+ * 呼び出しには本人のアクセストークンが要る（サーバー側で is_admin を検証するため）。
+ */
+export async function sendPushNotification(
+  accessToken: string,
+  input: { userIds: string[]; title: string; body?: string; url?: string; tag?: string }
+): Promise<{ sent: number; failed: number; removed: number } | null> {
+  try {
+    const response = await fetch('/api/push/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(input),
+    });
+    if (!response.ok) {
+      console.error('Push send failed:', response.status, await response.text());
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Push send failed:', error);
+    return null;
+  }
+}
+
 /** 端末側の購読を解除して endpoint を返す（DB からの削除は呼び出し側で行う） */
 export async function unsubscribeFromPush(): Promise<string | null> {
   if (!isPushSupported()) return null;

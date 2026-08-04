@@ -267,3 +267,12 @@
 - 検証: `tsc --noEmit`・`next build` 通過。
 - 残課題: VAPID 鍵の生成と設定、送信用のサーバー処理、migration 034 の適用。詳細は docs/tasks.md の「横断タスク: PWA 化と Web Push」を参照。
 - 補足: このリポジトリは tsconfig が `strict: false` のため、判別可能ユニオンの絞り込みが効かない。戻り値の型は単一の形にして呼び出し側で判定する必要がある（今回踏んだ）。
+
+## 2026-08-04 05:40 Web Push の送信 API を実装
+
+- `POST /api/push/send` を追加。**呼び出し元のアクセストークンで `users.is_admin` を検証してから送信する**（誰でも会員へ通知を送れる状態にしない）。購読の読み取りと失効行の削除は service role で行う（RLS 上、他人の購読は本人以外読めないため）。
+- `404` / `410` が返った endpoint は購読切れとみなして行ごと削除。放置すると毎回失敗が積み上がるため。
+- クライアント側は `sendPushNotification(accessToken, { userIds, title, body, url })`（`apps/web/src/lib/web-push.ts`）。
+- `web-push` パッケージを apps/web に追加。
+- 検証: `tsc --noEmit`・`next build` 通過（`ƒ /api/push/send` がルートとして生成されることを確認）。
+- 残課題: VAPID 鍵の Vercel 設定、migration 034 の適用、運営の一斉送信からこの API を呼ぶ導線、実機確認（iOS はホーム画面追加後）。
