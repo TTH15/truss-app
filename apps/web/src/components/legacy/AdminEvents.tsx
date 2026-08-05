@@ -1,35 +1,32 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
-import { Checkbox } from '../ui/checkbox';
-import { X, Calendar as CalendarIcon, Clock, MapPin, Users, Mail, Edit2, Languages, Save, Trash2, Heart, Share2 } from 'lucide-react';
+import { X, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrashCan, faUpload, faEye, faWandMagicSparkles, faFloppyDisk, faRotateLeft } from '@fortawesome/free-solid-svg-icons';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
-import type { Language, Event as DomainEvent, EventParticipant as DomainEventParticipant } from '@truss/core';
+import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import type { Language } from '@truss/core';
 import { BulkEmailModal } from './BulkEmailModal';
-import { translateText } from '../../utils/translate';
-import { uploadEventImage } from '@truss/core';
-import { applyMosaicAtPoint } from '../../lib/mosaicCanvas';
 import { useData } from '../../contexts/DataContext';
 import { supabase } from '@truss/core';
-import { EVENT_ICON_OPTIONS, getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '@truss/core';
-import { linkifyText } from '../../lib/linkify';
-import { DatePicker } from '@platform/ui';
-import { ja as rdpJa, enUS as rdpEnUS } from 'react-day-picker/locale';
-
-// Supabaseの生データはドメイン型に無い snake_case フィールドを含むことがあるため許容しておく
-type AdminEvent = DomainEvent & { event_icon?: string };
-type AdminEventParticipant = DomainEventParticipant & {
-  id?: string;
-  user_id?: string;
-  is_attended?: boolean;
-  is_paid?: boolean;
-};
-type AdminEventFormData = Record<string, unknown>;
+import { adminEventsTranslations } from './admin-events/translations';
+import {
+  eventToFormValues,
+  getEmptyEventForm,
+  getEventText,
+  importedEventToFormValues,
+  toCreatePayload,
+  toUpdatePayload,
+} from './admin-events/event-form';
+import { EventFormModal } from './admin-events/EventFormModal';
+import { ImageEditorModal } from './admin-events/ImageEditorModal';
+import { EventCalendar } from './admin-events/EventCalendar';
+import { EventDetailModal } from './admin-events/EventDetailModal';
+import { ConfirmDialog } from './admin-events/ConfirmDialog';
+import { clearEventDraft, useEventDraft } from './admin-events/useEventDraft';
+import { useEventParticipants } from './admin-events/useEventParticipants';
+import { useCalendarMonth } from './admin-events/useCalendarMonth';
+import { useEventImageEditor } from './admin-events/useEventImageEditor';
+import type { AdminEvent, AdminEventFormData, AdminEventParticipant, EventFormValues } from './admin-events/types';
 
 interface AdminEventsProps {
   language: Language;
@@ -44,109 +41,6 @@ interface AdminEventsProps {
   onFocusEventHandled?: () => void;
 }
 
-const translations = {
-  ja: {
-    title: 'イベント管理',
-    eventManagement: 'イベント管理',
-    albumAdd: 'アルバム追加',
-    month: '月',
-    newEvent: '新規イベント作成',
-    editEvent: 'イベント編集',
-    eventName: 'イベント名',
-    eventNamePlaceholderJa: '日本語',
-    eventNamePlaceholderEn: 'English',
-    description: '説明',
-    descriptionPlaceholderJa: '日本語',
-    descriptionPlaceholderEn: 'English',
-    lineGroupLink: 'LINEグループ招待リンク',
-    lineGroupPlaceholder: 'https://line.me/ti/g/...',
-    lineGroupNote: '参加者がイベント登録後にLINEグループに参加できるリンクを入力してください',
-    eventImage: 'イベント画像',
-    upload: 'アップロード',
-    imageNote: 'PNG, JPG, GIF（最大10MB）',
-    date: '日付',
-    time: '時間',
-    locationName: '場所名',
-    locationNamePlaceholderJa: '日本語の場所名',
-    locationNamePlaceholderEn: '英語の場所名',
-    googleMapUrl: 'Google Map URL',
-    googleMapUrlPlaceholder: 'https://maps.google.com/...',
-    participationFee: '参加費（円）',
-    maxParticipants: '最大参加者数',
-    save: '保存',
-    cancel: 'キャンセル',
-    deleteEvent: '削除',
-    delete: '削除',
-    autoTranslate: '自動翻訳',
-    participants: '参加者',
-    participantsList: '参加者一覧',
-    nameFilter: '名前で検索',
-    attended: '出席',
-    paid: '支払い済み',
-    sendBulkEmail: 'メールを一斉送信',
-    selectForEmail: 'メール送信先として選択',
-    edit: '編集',
-    confirmCreate: 'イベントを作成しますか？',
-    confirmCreateMessage: '新しいイベントが作成されます。',
-    confirmUpdate: 'イベントを更新しますか？',
-    confirmUpdateMessage: 'イベント情報が更新されます。',
-    confirmDelete: '本当にこのイベントを削除しますか？',
-    confirmDeleteMessage: 'この操作は取り消せません。',
-    close: '閉じる',
-  },
-  en: {
-    title: 'Event Management',
-    eventManagement: 'Event Management',
-    albumAdd: 'Add Album',
-    month: 'Month',
-    newEvent: 'Create New Event',
-    editEvent: 'Edit Event',
-    eventName: 'Event Name',
-    eventNamePlaceholderJa: 'Japanese',
-    eventNamePlaceholderEn: 'English',
-    description: 'Description',
-    descriptionPlaceholderJa: 'Japanese',
-    descriptionPlaceholderEn: 'English',
-    lineGroupLink: 'LINE Group Invitation Link',
-    lineGroupPlaceholder: 'https://line.me/ti/g/...',
-    lineGroupNote: 'Enter the LINE group link that participants can join after registering',
-    eventImage: 'Event Image',
-    upload: 'Upload',
-    imageNote: 'PNG, JPG, GIF (max 10MB)',
-    date: 'Date',
-    time: 'Time',
-    locationName: 'Location Name',
-    locationNamePlaceholderJa: 'Location Name in Japanese',
-    locationNamePlaceholderEn: 'Location Name in English',
-    googleMapUrl: 'Google Map URL',
-    googleMapUrlPlaceholder: 'https://maps.google.com/...',
-    participationFee: 'Participation Fee (JPY)',
-    maxParticipants: 'Max Participants',
-    save: 'Save',
-    cancel: 'Cancel',
-    deleteEvent: 'Delete Event',
-    delete: 'Delete',
-    autoTranslate: 'Auto Translate',
-    participants: 'Participants',
-    participantsList: 'Participants List',
-    nameFilter: 'Filter by name',
-    attended: 'Attended',
-    paid: 'Paid',
-    sendBulkEmail: 'Send Bulk Email',
-    selectForEmail: 'Select for email',
-    edit: 'Edit',
-    confirmCreate: 'Create this event?',
-    confirmCreateMessage: 'A new event will be created.',
-    confirmUpdate: 'Update this event?',
-    confirmUpdateMessage: 'Event information will be updated.',
-    confirmDelete: 'Are you sure you want to delete this event?',
-    confirmDeleteMessage: 'This action cannot be undone.',
-    close: 'Close',
-  }
-};
-
-// タブ切り替えや画面遷移でフォームがアンマウントされても編集内容を復元できるようにするための一時保存キー
-const EVENT_DRAFT_STORAGE_KEY = 'truss-admin-event-draft-v1';
 
 export function AdminEvents({
   language,
@@ -159,15 +53,8 @@ export function AdminEvents({
   focusEventId,
   onFocusEventHandled,
 }: AdminEventsProps) {
-  const t = translations[language];
-  const now = new Date();
-  const [currentMonth, setCurrentMonth] = useState(now.getMonth());
-  const [currentYear, setCurrentYear] = useState(now.getFullYear());
-  const currentMonthRef = useRef(currentMonth);
-  const currentYearRef = useRef(currentYear);
-  const monthManuallyChangedRef = useRef(false);
-  const lastMonthSwitchAtRef = useRef<number>(0);
-  const calendarContainerRef = useRef<HTMLDivElement | null>(null);
+  const t = adminEventsTranslations[language];
+  const calendar = useCalendarMonth(propsEvents, language);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<AdminEvent | null>(null);
   const [showNewEventForm, setShowNewEventForm] = useState(false);
@@ -175,27 +62,11 @@ export function AdminEvents({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [imageEditorOpen, setImageEditorOpen] = useState(false);
-  const [imageEditorMode, setImageEditorMode] = useState<'preview' | 'mosaic'>('preview');
-  const [imageEditorSource, setImageEditorSource] = useState<string | null>(null);
-  const [mosaicBrushSize, setMosaicBrushSize] = useState(20);
   const [isSavingEvent, setIsSavingEvent] = useState(false);
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isImageProcessing, setIsImageProcessing] = useState(false);
-  const imageCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const isDrawingRef = useRef(false);
-  const imageHistoryRef = useRef<ImageData[]>([]);
-  const [canUndoImageEdit, setCanUndoImageEdit] = useState(false);
-  const [draggingEvent, setDraggingEvent] = useState<AdminEvent | null>(null);
-  const draggingEventRef = useRef<AdminEvent | null>(null);
-  const [dragOverDateStr, setDragOverDateStr] = useState<string | null>(null);
   const [isImportingEvent, setIsImportingEvent] = useState(false);
   const saveInFlightRef = useRef(false);
   const [confirmType, setConfirmType] = useState<'create' | 'update'>('create');
-  const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
-  const [participantStatusOverrides, setParticipantStatusOverrides] = useState<Record<string, { attended?: boolean; paid?: boolean }>>({});
-  const [participantFilter, setParticipantFilter] = useState('');
   // event_participants は登録時点の氏名しか持たないため、フリガナは会員情報から引く
   const { approvedMembers } = useData();
   const furiganaByUserId = useMemo(() => {
@@ -205,8 +76,15 @@ export function AdminEvents({
     });
     return map;
   }, [approvedMembers]);
+  // 参加者一覧（並び替え・絞り込み・宛先の選択・当日の出席/支払いの保存）
+  const participants = useEventParticipants({
+    language,
+    selectedEvent,
+    eventParticipants,
+    furiganaByUserId,
+  });
+
   const [initialEventSnapshot, setInitialEventSnapshot] = useState('');
-  const draftRestoredRef = useRef(false);
 
   useEffect(() => {
     if (!focusEventId) return;
@@ -220,125 +98,20 @@ export function AdminEvents({
     onFocusEventHandled?.();
   }, [focusEventId, propsEvents, onFocusEventHandled]);
 
-  const [edgeZone, setEdgeZone] = useState<'left' | 'right' | null>(null);
-  const [monthSwitching, setMonthSwitching] = useState(false);
-  const edgeSwitchTimeoutRef = useRef<number | null>(null);
-  const pendingEdgeZoneRef = useRef<'left' | 'right' | null>(null);
 
-  const getEventText = (event: AdminEvent, key: 'title' | 'description' | 'location', locale: 'ja' | 'en') => {
-    const jaKeyMap = {
-      title: ['titleJa', 'title'],
-      description: ['descriptionJa', 'description'],
-      location: ['locationJa', 'location'],
-    } as const;
-    const enKeyMap = {
-      title: ['titleEn', 'title'],
-      description: ['descriptionEn', 'description', 'descriptionJa'],
-      location: ['locationEn', 'location'],
-    } as const;
-    const keys = locale === 'ja' ? jaKeyMap[key] : enKeyMap[key];
-    for (const candidate of keys) {
-      const value = event?.[candidate];
-      if (typeof value === 'string' && value.trim().length > 0) return value;
-    }
-    return '';
-  };
+  // 新規・編集フォームの入力値（変換や保存用ペイロードの組み立ては ./admin-events/event-form に集約）
+  const [newEvent, setNewEvent] = useState<EventFormValues>(getEmptyEventForm());
 
-  const parseEventTime = (event: AdminEvent) => {
-    if (event?.startTime || event?.endTime) {
-      return {
-        startTime: event.startTime || '',
-        endTime: event.endTime || '',
-      };
-    }
-    const raw = typeof event?.time === 'string' ? event.time : '';
-    if (!raw) return { startTime: '', endTime: '' };
-    const parts = raw.split(/[〜~\-]/).map((p: string) => p.trim());
-    return {
-      startTime: parts[0] || '',
-      endTime: parts[1] || '',
-    };
-  };
-
-  const getEmptyEventForm = (date: string = '') => ({
-    titleJa: '',
-    titleEn: '',
-    descriptionJa: '',
-    descriptionEn: '',
-    date,
-    startTime: '',
-    endTime: '',
-    location: '',
-    locationEn: '',
-    googleMapUrl: '',
-    participationFee: '0',
-    maxParticipants: '',
-    lineGroupUrl: '',
-    image: null as string | null,
-    eventColor: '#49B1E4',
-    eventIconKey: DEFAULT_EVENT_ICON_KEY,
+  // 画像のプレビュー・モザイク加工・アップロード（キャンバス操作と履歴は hook 側が持つ）
+  const imageEditor = useEventImageEditor({
+    language,
+    uploadKey: selectedEvent?.id,
+    onSaved: (url) => setNewEvent((prev) => ({ ...prev, image: url })),
+    onRemoved: () => setNewEvent((prev) => ({ ...prev, image: null })),
   });
 
-  // 新規イントフォーム用の状態
-  const [newEvent, setNewEvent] = useState(getEmptyEventForm());
-
-  const eventColors = ['#49B1E4', '#4285F4', '#34A853', '#FBBC04', '#EA4335', '#A142F4'];
-
-  // カレンダーの日付を生成
-  const getDaysInMonth = (year: number, month: number) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (year: number, month: number) => {
-    return new Date(year, month, 1).getDay();
-  };
-
-  const daysInMonth = getDaysInMonth(currentYear, currentMonth);
-  const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
-  const totalCells = Math.ceil((daysInMonth + firstDay) / 7) * 7;
-
-  const calendarDays = Array.from({ length: totalCells }, (_, i) => {
-    const dayNumber = i - firstDay + 1;
-    if (dayNumber > 0 && dayNumber <= daysInMonth) {
-      return dayNumber;
-    }
-    return null;
-  });
-
-  const normalizeEventDateKey = (raw: unknown): string => {
-    const text = String(raw ?? '').trim();
-    if (!text) return '';
-    const head = text.split('T')[0]?.replace(/\//g, '-');
-    if (!head) return '';
-    const m = head.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-    if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
-    const d = new Date(text);
-    if (Number.isNaN(d.getTime())) return '';
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
-
-  const eventsByDate = useMemo(() => {
-    const grouped = new Map<string, AdminEvent[]>();
-    propsEvents.forEach((event) => {
-      const key = normalizeEventDateKey(event?.date);
-      if (!key) return;
-      const existing = grouped.get(key);
-      if (existing) existing.push(event);
-      else grouped.set(key, [event]);
-    });
-    return grouped;
-  }, [propsEvents]);
-
-  // 日付のイベントを取得
-  const getEventsForDate = (day: number | null) => {
-    if (!day) return [];
-    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return eventsByDate.get(dateStr) || [];
-  };
-
-  const handleAddEvent = (day: number | null) => {
-    if (!day) return;
-    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const handleAddEvent = (day: number) => {
+    const dateStr = calendar.dateKeyOf(day);
     setSelectedDate(dateStr);
     const nextEvent = { ...newEvent, date: dateStr };
     setNewEvent(nextEvent);
@@ -347,70 +120,19 @@ export function AdminEvents({
     setSelectedEvent(null);
   };
 
-  const handleImportEventToDate = (sourceEvent: AdminEvent, day: number | null) => {
-    if (!day) return;
-    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    setSelectedDate(dateStr);
-    const { startTime, endTime } = parseEventTime(sourceEvent);
-    const nextEvent = {
-      titleJa: getEventText(sourceEvent, 'title', 'ja'),
-      titleEn: getEventText(sourceEvent, 'title', 'en'),
-      descriptionJa: getEventText(sourceEvent, 'description', 'ja'),
-      descriptionEn: getEventText(sourceEvent, 'description', 'en'),
-      date: dateStr,
-      startTime,
-      endTime,
-      location: getEventText(sourceEvent, 'location', 'ja'),
-      locationEn: getEventText(sourceEvent, 'location', 'en'),
-      googleMapUrl: sourceEvent?.googleMapUrl || '',
-      participationFee: String(sourceEvent?.participationFee ?? 0),
-      maxParticipants: String(sourceEvent?.maxParticipants || ''),
-      lineGroupUrl: '',
-      image: sourceEvent?.image || null,
-      eventColor: sourceEvent?.eventColor || '#49B1E4',
-      eventIconKey: sourceEvent?.eventIconKey || sourceEvent?.event_icon || DEFAULT_EVENT_ICON_KEY,
-    };
-    setNewEvent(nextEvent);
-    setInitialEventSnapshot(JSON.stringify(nextEvent));
-    setShowNewEventForm(true);
-    setSelectedEvent(null);
-  };
-
   // ドロップした日に、モーダル無しで即時作成する（LINEグループ招待リンク以外を流用）
-  const handleCreateImportedEventToDate = async (sourceEvent: AdminEvent, day: number | null) => {
-    if (!day) return;
+  const handleCreateImportedEventToDate = async (sourceEvent: AdminEvent, day: number) => {
     if (!onCreateEvent) return;
+    if (isImportingEvent) return;
     try {
-      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dateStr = calendar.dateKeyOf(day);
       // 同じ日付にドロップした場合は複製せずキャンセル
       if (typeof sourceEvent?.date === 'string' && sourceEvent.date === dateStr) {
         return;
       }
       setIsImportingEvent(true);
-      const { startTime, endTime } = parseEventTime(sourceEvent);
-
-      const eventData = {
-        title: getEventText(sourceEvent, 'title', 'ja'),
-        titleEn: getEventText(sourceEvent, 'title', 'en') || undefined,
-        description: getEventText(sourceEvent, 'description', 'ja'),
-        descriptionEn: getEventText(sourceEvent, 'description', 'en') || undefined,
-        date: dateStr,
-        time: `${startTime}〜${endTime}`,
-        location: getEventText(sourceEvent, 'location', 'ja'),
-        locationEn: getEventText(sourceEvent, 'location', 'en') || undefined,
-        googleMapUrl: sourceEvent?.googleMapUrl || undefined,
-        participationFee: Number(sourceEvent?.participationFee ?? 0),
-        maxParticipants: parseInt(String(sourceEvent?.maxParticipants ?? ''), 10) || 30,
-        image: sourceEvent?.image || undefined,
-        eventColor: sourceEvent?.eventColor || '#49B1E4',
-        eventIconKey: sourceEvent?.eventIconKey || sourceEvent?.event_icon || DEFAULT_EVENT_ICON_KEY,
-        tags: { friendsCanMeet: false, photoContest: false },
-        status: 'upcoming' as const,
-        // LINEグループ招待リンクは除外（空で作成）
-        lineGroupLink: undefined,
-      };
-
-      await onCreateEvent(eventData);
+      // LINEグループ招待リンクだけは引き継がない（importedEventToFormValues で空にしている）
+      await onCreateEvent(toCreatePayload(importedEventToFormValues(sourceEvent, dateStr)));
       toast.success(language === 'ja' ? 'イベントを作成しました（インポート）' : 'Event created (import)');
     } catch (error) {
       console.error('Import create failed:', error);
@@ -422,30 +144,12 @@ export function AdminEvents({
 
   const handleEventClick = (event: AdminEvent) => {
     setSelectedEvent(event);
-    const { startTime, endTime } = parseEventTime(event);
-    const nextEvent = {
-      titleJa: getEventText(event, 'title', 'ja'),
-      titleEn: getEventText(event, 'title', 'en'),
-      descriptionJa: getEventText(event, 'description', 'ja'),
-      descriptionEn: getEventText(event, 'description', 'en'),
-      date: event?.date || '',
-      startTime,
-      endTime,
-      location: getEventText(event, 'location', 'ja'),
-      locationEn: getEventText(event, 'location', 'en'),
-      googleMapUrl: event?.googleMapUrl || '',
-      participationFee: String(event?.participationFee ?? 0),
-      maxParticipants: String(event?.maxParticipants || ''),
-      lineGroupUrl: event?.lineGroupLink || event?.lineGroupUrl || '',
-      image: event?.image || null,
-      eventColor: event?.eventColor || '#49B1E4',
-      eventIconKey: event?.eventIconKey || event?.event_icon || DEFAULT_EVENT_ICON_KEY,
-    };
+    const nextEvent = eventToFormValues(event);
     setNewEvent(nextEvent);
     setInitialEventSnapshot(JSON.stringify(nextEvent));
     // まず詳細表示を開き、参加者一覧・いいね数を確認できるようにする
     setEditMode(false);
-    setSelectedParticipants(new Set());
+    participants.clearSelection();
     setShowNewEventForm(false);
     if (!event?.image) {
       void (async () => {
@@ -465,56 +169,14 @@ export function AdminEvents({
     }
   };
 
-  const selectedEventParticipants = useMemo(() => {
-    if (!selectedEvent) return [];
-    const rows = eventParticipants[selectedEvent.id] || [];
-    return [...rows].sort((a, b) => {
-      const ta = new Date(String(a?.registeredAt ?? '')).getTime();
-      const tb = new Date(String(b?.registeredAt ?? '')).getTime();
-      if (Number.isNaN(ta) && Number.isNaN(tb)) {
-        return getParticipantUserId(a).localeCompare(getParticipantUserId(b));
-      }
-      if (Number.isNaN(ta)) return 1;
-      if (Number.isNaN(tb)) return -1;
-      if (ta !== tb) return ta - tb;
-      return getParticipantUserId(a).localeCompare(getParticipantUserId(b));
-    });
-  }, [selectedEvent, eventParticipants]);
-  const selectedEventParticipantsCount = selectedEventParticipants.length;
-  // 当日の受付は名前で引く。以前は検索欄が置いてあるだけで値が繋がっておらず、入力しても絞り込めなかった
-  const filteredEventParticipants = useMemo(() => {
-    const query = participantFilter.trim().toLowerCase();
-    if (!query) return selectedEventParticipants;
-    return selectedEventParticipants.filter((participant) =>
-      [participant.userName, participant.userNickname, furiganaByUserId.get(getParticipantUserId(participant))]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(query))
-    );
-  }, [selectedEventParticipants, participantFilter, furiganaByUserId]);
-  const selectedEventParticipantIds = useMemo(
-    () => selectedEventParticipants.map((participant) => getParticipantUserId(participant)).filter(Boolean),
-    [selectedEventParticipants],
-  );
-  const allParticipantsSelected = selectedEventParticipantIds.length > 0
-    && selectedEventParticipantIds.every((id) => selectedParticipants.has(id));
-  const selectedEventLikesCount = selectedEvent?.likes || 0;
-  const selectedEventParticipationFee = Number(selectedEvent?.participationFee ?? 0);
   const selectedEventShareUrl = useMemo(() => {
     if (!selectedEvent?.shareToken || typeof window === 'undefined') return null;
     return `${window.location.origin}/event/${selectedEvent.shareToken}`;
   }, [selectedEvent]);
-  const selectedEventDetailTitle = selectedEvent ? getEventText(selectedEvent, 'title', language === 'ja' ? 'ja' : 'en') : '';
-  const selectedEventDetailDescription = selectedEvent
-    ? getEventText(selectedEvent, 'description', language === 'ja' ? 'ja' : 'en')
-    : '';
-  const selectedEventDetailLocation = selectedEvent
-    ? getEventText(selectedEvent, 'location', language === 'ja' ? 'ja' : 'en')
-    : '';
-  const selectedEventDetailTime = selectedEvent ? parseEventTime(selectedEvent) : { startTime: '', endTime: '' };
-
   const handleShareEventLink = async () => {
     if (!selectedEventShareUrl || !selectedEvent) return;
-    const shareTitle = selectedEventDetailTitle || (language === 'ja' ? 'イベント共有' : 'Event share');
+    const shareTitle = getEventText(selectedEvent, 'title', language === 'ja' ? 'ja' : 'en')
+      || (language === 'ja' ? 'イベント共有' : 'Event share');
     try {
       if (navigator.share) {
         await navigator.share({
@@ -531,15 +193,6 @@ export function AdminEvents({
     }
   };
 
-  const clearEventDraft = () => {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.removeItem(EVENT_DRAFT_STORAGE_KEY);
-    } catch {
-      // ストレージが使用できない環境では何もしない
-    }
-  };
-
   const handleCloseForm = () => {
     setShowNewEventForm(false);
     setSelectedEvent(null);
@@ -550,75 +203,50 @@ export function AdminEvents({
   };
 
   const handleSaveEvent = () => {
-    if (isSavingEvent || isUploadingImage) return;
+    if (isSavingEvent || imageEditor.isProcessing) return;
     setConfirmType('create');
     setShowSaveConfirm(true);
   };
 
-  // 翻訳ボタンのハンドラー
-  const handleTranslate = async (field: 'title' | 'description') => {
-    const sourceField = field === 'title' ? 'titleJa' : 'descriptionJa';
-    const targetField = field === 'title' ? 'titleEn' : 'descriptionEn';
-    const sourceText = newEvent[sourceField];
-
-    if (!sourceText.trim()) {
-      toast.error(language === 'ja' ? '翻訳する内容を入力してください' : 'Please enter text to translate');
-      return;
-    }
-
-    toast.loading(language === 'ja' ? '翻訳中...' : 'Translating...');
-
-    try {
-      const translatedText = await translateText(sourceText, 'en');
-
-      if (translatedText) {
-        setNewEvent({
-          ...newEvent,
-          [targetField]: translatedText,
-        });
-        toast.dismiss();
-        toast.success(language === 'ja' ? '翻訳が完了しました' : 'Translation completed');
-      }
-    } catch (error) {
-      toast.dismiss();
-      toast.error(language === 'ja' ? '翻訳に失敗しました' : 'Translation failed');
-    }
-  };
-
   const handleEditEvent = () => {
     if (!selectedEvent) return;
-    const { startTime, endTime } = parseEventTime(selectedEvent);
     setEditMode(true);
-    const nextEvent = {
-      titleJa: getEventText(selectedEvent, 'title', 'ja'),
-      titleEn: getEventText(selectedEvent, 'title', 'en'),
-      descriptionJa: getEventText(selectedEvent, 'description', 'ja'),
-      descriptionEn: getEventText(selectedEvent, 'description', 'en'),
-      date: selectedEvent.date || '',
-      startTime,
-      endTime,
-      location: getEventText(selectedEvent, 'location', 'ja'),
-      locationEn: getEventText(selectedEvent, 'location', 'en'),
-      googleMapUrl: selectedEvent.googleMapUrl || '',
-      participationFee: String(selectedEvent.participationFee ?? 0),
-      maxParticipants: String(selectedEvent.maxParticipants || ''),
-      lineGroupUrl: selectedEvent.lineGroupLink || selectedEvent.lineGroupUrl || '',
-      image: selectedEvent.image || null,
-      eventColor: selectedEvent.eventColor || '#49B1E4',
-      eventIconKey: selectedEvent.eventIconKey || selectedEvent.event_icon || DEFAULT_EVENT_ICON_KEY,
-    };
+    const nextEvent = eventToFormValues(selectedEvent);
     setNewEvent(nextEvent);
     setInitialEventSnapshot(JSON.stringify(nextEvent));
   };
 
   const handleSaveEditedEvent = () => {
-    if (isSavingEvent || isUploadingImage) return;
+    if (isSavingEvent || imageEditor.isProcessing) return;
     setConfirmType('update');
     setShowSaveConfirm(true);
   };
 
   const handleDeleteEvent = () => {
     setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmSave = async () => {
+    if (isSavingEvent || imageEditor.isProcessing || saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setIsSavingEvent(true);
+    try {
+      if (confirmType === 'create') {
+        await onCreateEvent(toCreatePayload(newEvent));
+        toast.success(language === 'ja' ? 'イベントを作成しました' : 'Event created successfully');
+      } else {
+        if (selectedEvent) {
+          await onUpdateEvent(selectedEvent.id, toUpdatePayload(newEvent));
+        }
+        toast.success(language === 'ja' ? 'イベントを更新しました' : 'Event updated successfully');
+        setEditMode(false);
+      }
+      setShowSaveConfirm(false);
+      handleCloseForm();
+    } finally {
+      saveInFlightRef.current = false;
+      setIsSavingEvent(false);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -638,355 +266,36 @@ export function AdminEvents({
     }
   };
 
-  const openImageEditor = (source: string, mode: 'preview' | 'mosaic' = 'preview') => {
-    setImageEditorSource(source);
-    setImageEditorMode(mode);
-    setImageEditorOpen(true);
-  };
-
-  const closeImageEditor = () => {
-    setImageEditorOpen(false);
-    setImageEditorSource(null);
-    setImageEditorMode('preview');
-    imageHistoryRef.current = [];
-    setCanUndoImageEdit(false);
-  };
-
-  const pushImageHistory = () => {
-    const canvas = imageCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    imageHistoryRef.current.push(snapshot);
-    if (imageHistoryRef.current.length > 40) imageHistoryRef.current.shift();
-    setCanUndoImageEdit(true);
-  };
-
-  const undoImageEdit = () => {
-    const canvas = imageCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const snapshot = imageHistoryRef.current.pop();
-    if (!snapshot) return;
-    ctx.putImageData(snapshot, 0, 0);
-    setCanUndoImageEdit(imageHistoryRef.current.length > 0);
-  };
-
-  const handleCanvasPointer = (clientX: number, clientY: number) => {
-    if (imageEditorMode !== 'mosaic') return;
-    const canvas = imageCanvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = (clientX - rect.left) * scaleX;
-    const y = (clientY - rect.top) * scaleY;
-    applyMosaicAtPoint(canvas, x, y, mosaicBrushSize);
-  };
-
-  const saveEditedImage = async () => {
-    const canvas = imageCanvasRef.current;
-    if (!canvas) return;
-    setIsImageProcessing(true);
-    try {
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
-      if (!blob) {
-        toast.error(language === 'ja' ? '画像変換に失敗しました' : 'Failed to process image');
-        return;
-      }
-      const file = new File([blob], `event-${selectedEvent?.id ?? Date.now()}.jpg`, { type: 'image/jpeg' });
-      const uploadKey = selectedEvent?.id ?? Date.now();
-      const { url, error } = await uploadEventImage(uploadKey, file);
-      if (error || !url) {
-        toast.error(language === 'ja' ? '画像アップロードに失敗しました' : 'Failed to upload image');
-        return;
-      }
-      setNewEvent((prev) => ({ ...prev, image: url }));
-      toast.success(language === 'ja' ? '画像を更新しました' : 'Image updated');
-      closeImageEditor();
-    } finally {
-      setIsImageProcessing(false);
-    }
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result;
-      if (typeof result === 'string') {
-        openImageEditor(result, 'mosaic');
-      }
-      e.currentTarget.value = '';
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const participantStatusKey = (eventId: number, userId: string) => `${eventId}:${userId}`;
-  function getParticipantUserId(participant: AdminEventParticipant): string {
-    return String(participant?.userId ?? participant?.user_id ?? participant?.id ?? '');
-  }
-  const getParticipantStatusRaw = (participant: AdminEventParticipant, field: 'attended' | 'paid') => {
-    if (field === 'attended') return participant?.attended ?? participant?.is_attended ?? false;
-    return participant?.paid ?? participant?.is_paid ?? false;
-  };
-
-  const getParticipantStatusValue = (
-    participant: AdminEventParticipant,
-    field: 'attended' | 'paid',
-  ) => {
-    if (!selectedEvent) return false;
-    const participantUserId = getParticipantUserId(participant);
-    const override = participantStatusOverrides[participantStatusKey(selectedEvent.id, participantUserId)];
-    if (override && override[field] !== undefined) return Boolean(override[field]);
-    return Boolean(getParticipantStatusRaw(participant, field));
-  };
-
-  // getParticipantStatusValue の定義より前に置くと、レンダー時に TDZ で
-  // 「Cannot access before initialization」になり画面全体が落ちるため、必ずこの位置で数える
-  const attendedCount = selectedEventParticipants.filter((participant) =>
-    getParticipantStatusValue(participant, 'attended')
-  ).length;
-
-  const handleParticipantStatusChange = async (
-    participant: AdminEventParticipant,
-    field: 'attended' | 'paid',
-    checked: boolean,
-  ) => {
-    if (!selectedEvent) return;
-    const participantUserId = getParticipantUserId(participant);
-    if (!participantUserId) {
-      toast.error(language === 'ja' ? '参加者IDが取得できないため更新できません' : 'Cannot update participant without id');
-      return;
-    }
-    const key = participantStatusKey(selectedEvent.id, participantUserId);
-    const prev = getParticipantStatusValue(participant, field);
-    setParticipantStatusOverrides((prevMap) => ({
-      ...prevMap,
-      [key]: { ...(prevMap[key] || {}), [field]: checked },
-    }));
-    const query = supabase
-      .from('event_participants')
-      .update((field === 'attended' ? { attended: checked } : { paid: checked }) as never)
-      .eq('event_id', selectedEvent.id)
-      .eq('user_id', participantUserId);
-    const { error } = await query;
-    if (error) {
-      setParticipantStatusOverrides((prevMap) => ({
-        ...prevMap,
-        [key]: { ...(prevMap[key] || {}), [field]: prev },
-      }));
-      toast.error(language === 'ja' ? '参加者ステータスの更新に失敗しました' : 'Failed to update participant status');
-    }
-  };
-
-  const monthNames = language === 'ja'
-    ? ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
-    : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-  const dayNames = language === 'ja'
-    ? ['日', '月', '火', '水', '木', '金', '土']
-    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  // 前月・次月への移動
-  const handlePreviousMonth = () => {
-    monthManuallyChangedRef.current = true;
-    if (currentMonth === 0) {
-      setCurrentMonth(11);
-      setCurrentYear(currentYear - 1);
-    } else {
-      setCurrentMonth(currentMonth - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    monthManuallyChangedRef.current = true;
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear(currentYear + 1);
-    } else {
-      setCurrentMonth(currentMonth + 1);
-    }
-  };
-
-  useEffect(() => {
-    currentMonthRef.current = currentMonth;
-  }, [currentMonth]);
-
-  useEffect(() => {
-    currentYearRef.current = currentYear;
-  }, [currentYear]);
-
-  useEffect(() => {
-    draggingEventRef.current = draggingEvent;
-  }, [draggingEvent]);
-
-  const handleCalendarDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    if (!draggingEventRef.current) return;
-    e.preventDefault();
-
-    const el = calendarContainerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const threshold = 70; // 左右何px寄せたら判定するか
-
-    const zone: 'left' | 'right' | null =
-      e.clientX < rect.left + threshold ? 'left' :
-      e.clientX > rect.right - threshold ? 'right' :
-      null;
-
-    setEdgeZone(zone);
-
-    if (!zone) {
-      if (edgeSwitchTimeoutRef.current) window.clearTimeout(edgeSwitchTimeoutRef.current);
-      edgeSwitchTimeoutRef.current = null;
-      pendingEdgeZoneRef.current = null;
-      return;
-    }
-
-    const now = Date.now();
-    if (now - lastMonthSwitchAtRef.current < 550) return;
-
-    // 寄せた瞬間は色だけ変えて、少し遅らせてから切り替える
-    pendingEdgeZoneRef.current = zone;
-    if (edgeSwitchTimeoutRef.current) window.clearTimeout(edgeSwitchTimeoutRef.current);
-    edgeSwitchTimeoutRef.current = window.setTimeout(() => {
-      if (!draggingEventRef.current) return;
-      if (pendingEdgeZoneRef.current !== zone) return;
-
-      setMonthSwitching(true);
-      lastMonthSwitchAtRef.current = Date.now();
-
-      const cm = currentMonthRef.current;
-      const cy = currentYearRef.current;
-      if (zone === 'left') {
-        monthManuallyChangedRef.current = true;
-        if (cm === 0) {
-          setCurrentMonth(11);
-          setCurrentYear(cy - 1);
-        } else {
-          setCurrentMonth(cm - 1);
-        }
-      } else {
-        monthManuallyChangedRef.current = true;
-        if (cm === 11) {
-          setCurrentMonth(0);
-          setCurrentYear(cy + 1);
-        } else {
-          setCurrentMonth(cm + 1);
-        }
-      }
-
-      window.setTimeout(() => setMonthSwitching(false), 260);
-    }, 260);
-  };
-
-  const selectedDateValue = useMemo(() => {
-    if (!newEvent.date) return undefined;
-    const parsed = new Date(`${newEvent.date}T00:00:00`);
-    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
-  }, [newEvent.date]);
-
   const hasUnsavedChanges = useMemo(() => {
     if (!initialEventSnapshot) return false;
     return JSON.stringify(newEvent) !== initialEventSnapshot;
   }, [newEvent, initialEventSnapshot]);
 
-  // タブ切り替えなどでこのコンポーネントがアンマウントされる前に保存した下書きを、再マウント時に一度だけ復元する
-  useEffect(() => {
-    if (draftRestoredRef.current) return;
-    if (typeof window === 'undefined') return;
-
-    let raw: string | null = null;
-    try {
-      raw = window.localStorage.getItem(EVENT_DRAFT_STORAGE_KEY);
-    } catch {
-      draftRestoredRef.current = true;
-      return;
-    }
-    if (!raw) {
-      draftRestoredRef.current = true;
-      return;
-    }
-
-    let draft: { mode: 'create' | 'edit'; eventId?: AdminEvent['id']; date?: string; formData?: typeof newEvent } | null = null;
-    try {
-      draft = JSON.parse(raw);
-    } catch {
-      draft = null;
-    }
-    if (!draft || !draft.formData) {
-      draftRestoredRef.current = true;
-      clearEventDraft();
-      return;
-    }
-
-    if (draft.mode === 'edit') {
-      // 編集対象のイベントが一覧に読み込まれるまで待つ
-      if (propsEvents.length === 0) return;
-      const target = propsEvents.find((ev) => String(ev.id) === String(draft.eventId));
-      if (!target) {
-        draftRestoredRef.current = true;
-        clearEventDraft();
-        return;
+  useEventDraft({
+    language,
+    values: newEvent,
+    isFormOpen: showNewEventForm || (Boolean(selectedEvent) && editMode),
+    editingEvent: selectedEvent,
+    isEditMode: editMode,
+    selectedDate,
+    events: propsEvents,
+    onRestore: ({ formData, date, target }) => {
+      if (target) {
+        setSelectedEvent(target);
+        setEditMode(true);
+        setShowNewEventForm(false);
+        // 未保存かどうかは「保存済みの内容」との比較で判定するため、下書きではなく元のイベントを基準にする
+        setInitialEventSnapshot(JSON.stringify(eventToFormValues(target)));
+      } else {
+        setSelectedDate(date);
+        setShowNewEventForm(true);
+        setSelectedEvent(null);
+        setEditMode(false);
+        setInitialEventSnapshot(JSON.stringify(getEmptyEventForm(date || '')));
       }
-      setSelectedEvent(target);
-      setEditMode(true);
-      setShowNewEventForm(false);
-      const { startTime, endTime } = parseEventTime(target);
-      const baseline = {
-        titleJa: getEventText(target, 'title', 'ja'),
-        titleEn: getEventText(target, 'title', 'en'),
-        descriptionJa: getEventText(target, 'description', 'ja'),
-        descriptionEn: getEventText(target, 'description', 'en'),
-        date: target.date || '',
-        startTime,
-        endTime,
-        location: getEventText(target, 'location', 'ja'),
-        locationEn: getEventText(target, 'location', 'en'),
-        googleMapUrl: target.googleMapUrl || '',
-        participationFee: String(target.participationFee ?? 0),
-        maxParticipants: String(target.maxParticipants || ''),
-        lineGroupUrl: target.lineGroupLink || target.lineGroupUrl || '',
-        image: target.image || null,
-        eventColor: target.eventColor || '#49B1E4',
-        eventIconKey: target.eventIconKey || target.event_icon || DEFAULT_EVENT_ICON_KEY,
-      };
-      setInitialEventSnapshot(JSON.stringify(baseline));
-    } else {
-      setSelectedDate(draft.date ?? null);
-      setShowNewEventForm(true);
-      setSelectedEvent(null);
-      setEditMode(false);
-      setInitialEventSnapshot(JSON.stringify(getEmptyEventForm(draft.date || '')));
-    }
-    setNewEvent(draft.formData);
-    draftRestoredRef.current = true;
-    toast.success(language === 'ja' ? '編集中だった内容を復元しました' : 'Restored your unsaved draft');
-  }, [propsEvents, language]);
-
-  // フォームを開いている間、入力内容を一定間隔でローカルに一時保存する（タブ切替・画面遷移対策）
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!draftRestoredRef.current) return;
-    const isFormOpen = showNewEventForm || (Boolean(selectedEvent) && editMode);
-    if (!isFormOpen) return;
-
-    const timer = window.setTimeout(() => {
-      const draft = editMode && selectedEvent
-        ? { mode: 'edit' as const, eventId: selectedEvent.id, formData: newEvent }
-        : { mode: 'create' as const, date: selectedDate, formData: newEvent };
-      try {
-        window.localStorage.setItem(EVENT_DRAFT_STORAGE_KEY, JSON.stringify(draft));
-      } catch {
-        // ストレージ容量超過などは無視する
-      }
-    }, 400);
-    return () => window.clearTimeout(timer);
-  }, [newEvent, showNewEventForm, editMode, selectedEvent, selectedDate]);
+      setNewEvent(formData);
+    },
+  });
 
   // ブラウザタブを閉じる・再読み込みする場合にも未保存の変更を警告する
   useEffect(() => {
@@ -999,1077 +308,66 @@ export function AdminEvents({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  useEffect(() => {
-    if (!imageEditorOpen || !imageEditorSource) return;
-    const canvas = imageCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    image.onload = () => {
-      const maxWidth = 1200;
-      const maxHeight = 700;
-      const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
-      canvas.width = Math.max(1, Math.floor(image.width * scale));
-      canvas.height = Math.max(1, Math.floor(image.height * scale));
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-      imageHistoryRef.current = [];
-      setCanUndoImageEdit(false);
-    };
-    image.src = imageEditorSource;
-  }, [imageEditorOpen, imageEditorSource]);
-
-  useEffect(() => {
-    if (!imageEditorOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const isUndo = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && !event.shiftKey;
-      if (!isUndo) return;
-      event.preventDefault();
-      undoImageEdit();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [imageEditorOpen]);
-
-  useEffect(() => {
-    if (monthManuallyChangedRef.current) return;
-    if (propsEvents.length === 0) return;
-
-    const hasAnyEventInCurrentMonth = propsEvents.some((event) => {
-      const key = normalizeEventDateKey(event?.date);
-      if (!key) return false;
-      const [yy, mm] = key.split('-');
-      return Number(yy) === currentYear && Number(mm) === currentMonth + 1;
-    });
-    if (hasAnyEventInCurrentMonth) return;
-
-    const firstValid = propsEvents
-      .map((event) => normalizeEventDateKey(event?.date))
-      .find((key) => Boolean(key));
-    if (!firstValid) return;
-    const [yy, mm] = firstValid.split('-');
-    const nextYear = Number(yy);
-    const nextMonth = Number(mm) - 1;
-    if (Number.isNaN(nextYear) || Number.isNaN(nextMonth)) return;
-    setCurrentYear(nextYear);
-    setCurrentMonth(nextMonth);
-  }, [propsEvents, currentYear, currentMonth]);
-
-  const renderEventImageField = () => (
-    <div>
-      <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-        {t.eventImage}
-      </label>
-      <div className="bg-[#F5F1E8] border border-[rgba(61,61,78,0.15)] rounded-[8px] h-[126px] flex items-center justify-center relative overflow-hidden group">
-        {newEvent.image ? (
-          <button type="button" className="w-full h-full" onClick={() => openImageEditor(newEvent.image!, 'preview')}>
-            <img src={newEvent.image} alt="Event" className="w-full h-full object-cover" />
-          </button>
-        ) : (
-          <label className="cursor-pointer flex flex-col items-center">
-            <FontAwesomeIcon icon={faUpload} className="w-4 h-4 text-[#3D3D4E] mb-1" />
-            <span className="text-[#3D3D4E] text-sm font-medium">{t.upload}</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-            />
-          </label>
-        )}
-      </div>
-      <p className="text-[#6A7282] text-xs mt-2">{t.imageNote}</p>
-    </div>
-  );
-
-  const renderEventIconPicker = () => (
-    <div>
-      <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-        {language === 'ja' ? 'カレンダー表示アイコン' : 'Calendar icon'}
-      </label>
-      <div className="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto pr-1">
-        {EVENT_ICON_OPTIONS.map((opt) => (
-          <button
-            key={opt.key}
-            type="button"
-            title={language === 'ja' ? opt.labelJa : opt.labelEn}
-            onClick={() => setNewEvent({ ...newEvent, eventIconKey: opt.key })}
-            className={`h-9 w-9 rounded-lg flex items-center justify-center border transition-colors ${
-              newEvent.eventIconKey === opt.key
-                ? 'border-[#49B1E4] bg-[#49B1E4]/15'
-                : 'border-[rgba(61,61,78,0.15)] bg-[#EEEBE3] hover:bg-[#E8E4DB]'
-            }`}
-          >
-            <FontAwesomeIcon icon={opt.icon} className="text-[#3D3D4E] text-sm" />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-6">
-      {/* カレンダー */}
-      <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-6 pb-8">
-        {/* 月表示とナビゲーション */}
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={handlePreviousMonth}
-            className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors p-1 hover:bg-[#F5F1E8] rounded"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          <h3 className="text-[#3D3D4E] text-base font-semibold">
-            {currentYear}{language === 'ja' ? '年' : ''} {monthNames[currentMonth]}
-          </h3>
-
-          <button
-            onClick={handleNextMonth}
-            className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors p-1 hover:bg-[#F5F1E8] rounded"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-
-        {/* カレンダーグリッド */}
-        <div
-          className={`overflow-hidden relative transition-all duration-200 ${monthSwitching ? 'opacity-70 blur-[1px]' : 'opacity-100 blur-0'}`}
-          ref={calendarContainerRef}
-          onDragOver={handleCalendarDragOver}
-        >
-          {draggingEvent && edgeZone === 'left' && (
-            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-20 bg-red-200/35 transition-colors duration-150" />
-          )}
-          {draggingEvent && edgeZone === 'right' && (
-            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-20 bg-blue-200/35 transition-colors duration-150" />
-          )}
-          <div className="grid grid-cols-7 gap-px bg-[#E5E7EB] border border-[#E5E7EB] overflow-hidden">
-            {/* 曜日ヘッダー */}
-            {dayNames.map((day, index) => (
-              <div
-                key={`day-${index}`}
-                className={`p-2 text-center ${index === 0 ? 'bg-red-50' : index === 6 ? 'bg-blue-50' : 'bg-[#F9FAFB]'
-                  }`}
-              >
-                <span className={`text-xs font-bold ${index === 0 ? 'text-red-600' : index === 6 ? 'text-blue-600' : 'text-[#6B6B7A]'}`}>{day}</span>
-              </div>
-            ))}
-
-            {/* 日付セル */}
-            {calendarDays.map((day, index) => {
-              const dayEvents = getEventsForDate(day);
-              const column = index % 7;
-              const isSunday = column === 0;
-              const isSaturday = column === 6;
-              const cellDateStr = day
-                ? `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-                : null;
-              return (
-                <div
-                  key={`cell-${index}`}
-                  className={`p-2 flex flex-col relative overflow-hidden h-[120px] ${isSunday ? 'bg-red-50/35' : isSaturday ? 'bg-blue-50/35' : 'bg-white'
-                    } ${day ? 'cursor-pointer hover:bg-[#F5F8FC]' : ''} ${
-                      day && dragOverDateStr === cellDateStr ? 'bg-[#49B1E4]/25' : ''
-                    }`}
-                  onClick={() => {
-                    if (draggingEventRef.current) return;
-                    handleAddEvent(day);
-                  }}
-                  onDragOver={(e) => {
-                    if (draggingEventRef.current && day && cellDateStr) {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = 'copy';
-                      setDragOverDateStr(cellDateStr);
-                    }
-                  }}
-                  onDragLeave={() => {
-                    if (draggingEventRef.current && dragOverDateStr === cellDateStr) {
-                      setDragOverDateStr(null);
-                    }
-                  }}
-                  onDrop={(e) => {
-                    if (draggingEventRef.current && day && cellDateStr) {
-                      e.preventDefault();
-                      void handleCreateImportedEventToDate(draggingEventRef.current, day);
-                      setDraggingEvent(null);
-                      setDragOverDateStr(null);
-                      setEdgeZone(null);
-                      pendingEdgeZoneRef.current = null;
-                      if (edgeSwitchTimeoutRef.current) window.clearTimeout(edgeSwitchTimeoutRef.current);
-                      edgeSwitchTimeoutRef.current = null;
-                    }
-                  }}
-                >
-                  {day && (
-                    <>
-                      {/* 日付番号 */}
-                      <div className={`text-center text-sm font-bold mb-2 ${isSunday ? 'text-red-600' : isSaturday ? 'text-blue-600' : 'text-[#3D3D4E]'}`}>{day}</div>
-
-                      {/* イベント表示 */}
-                      <div className="space-y-1">
-                        {dayEvents.map((event) => (
-                          <button
-                            key={event.id}
-                            draggable
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEventClick(event);
-                            }}
-                            onDragStart={(e) => {
-                              setDraggingEvent(event);
-                              setDragOverDateStr(null);
-                              e.dataTransfer.effectAllowed = 'copy';
-                            }}
-                            onDragEnd={() => {
-                              setDraggingEvent(null);
-                              setDragOverDateStr(null);
-                              setEdgeZone(null);
-                              setMonthSwitching(false);
-                              pendingEdgeZoneRef.current = null;
-                              if (edgeSwitchTimeoutRef.current) window.clearTimeout(edgeSwitchTimeoutRef.current);
-                              edgeSwitchTimeoutRef.current = null;
-                            }}
-                            className="flex items-center gap-1 text-left w-full px-1 py-0.5 rounded hover:bg-black/5 transition-colors"
-                          >
-                            <FontAwesomeIcon
-                              icon={getEventIconDefinition(event.eventIconKey || event.event_icon)}
-                              className="shrink-0 text-[10px]"
-                              style={{ color: event.eventColor || '#49B1E4' }}
-                            />
-                            <span className="truncate text-[10px] text-[#3D3D4E] font-medium">
-                              {language === 'ja' ? event.title : (event.titleEn || event.title)}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <EventCalendar
+        language={language}
+        calendar={calendar}
+        onAddEvent={handleAddEvent}
+        onEventClick={handleEventClick}
+        onDropEvent={(source, day) => void handleCreateImportedEventToDate(source, day)}
+      />
 
       {/* 新規イベント作成フォーム */}
       {showNewEventForm && (
-        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4" onClick={handleCloseForm}>
-          <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-6 relative w-full max-w-[1100px] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            {/* 閉じるボタン */}
-            <button
-              onClick={handleCloseForm}
-              className="absolute top-4 right-4 text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <h3 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px] mb-6">{t.newEvent}</h3>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 左側 */}
-              <div className="space-y-4">
-                {/* イベント名 */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
-                      {t.eventName}
-                    </label>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTranslate('title')}
-                      disabled={!newEvent.titleJa?.trim()}
-                      className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
-                    >
-                      <Languages className="w-3 h-3 mr-1" />
-                      {t.autoTranslate}
-                    </Button>
-                  </div>
-                  <Input
-                    value={newEvent.titleJa}
-                    onChange={(e) => setNewEvent({ ...newEvent, titleJa: e.target.value })}
-                    placeholder={t.eventNamePlaceholderJa}
-                    className="bg-[#EEEBE3] border-0 mb-2"
-                  />
-                  <Input
-                    value={newEvent.titleEn}
-                    onChange={(e) => setNewEvent({ ...newEvent, titleEn: e.target.value })}
-                    placeholder={t.eventNamePlaceholderEn}
-                    className="bg-[#EEEBE3] border-0"
-                  />
-                </div>
-
-                {/* 説明 */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
-                      {t.description}
-                    </label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTranslate('description')}
-                      disabled={!newEvent.descriptionJa?.trim()}
-                      className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
-                    >
-                      <Languages className="w-3 h-3 mr-1" />
-                      {t.autoTranslate}
-                    </Button>
-                  </div>
-                  <Textarea
-                    value={newEvent.descriptionJa}
-                    onChange={(e) => setNewEvent({ ...newEvent, descriptionJa: e.target.value })}
-                    placeholder={t.descriptionPlaceholderJa}
-                    className="bg-[#EEEBE3] border-0 mb-2 min-h-[64px]"
-                  />
-                  <Textarea
-                    value={newEvent.descriptionEn}
-                    onChange={(e) => setNewEvent({ ...newEvent, descriptionEn: e.target.value })}
-                    placeholder={t.descriptionPlaceholderEn}
-                    className="bg-[#EEEBE3] border-0 min-h-[64px]"
-                  />
-                </div>
-
-                {/* LINEグループ招待リンク */}
-                <div>
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {t.lineGroupLink}
-                  </label>
-                  <Input
-                    value={newEvent.lineGroupUrl}
-                    onChange={(e) => setNewEvent({ ...newEvent, lineGroupUrl: e.target.value })}
-                    placeholder={t.lineGroupPlaceholder}
-                    className="bg-[#EEEBE3] border-0"
-                  />
-                  <p className="text-[#6A7282] text-xs mt-2">{t.lineGroupNote}</p>
-                </div>
-
-                {/* 最大参加者数 */}
-                <div>
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {t.maxParticipants}
-                  </label>
-                  <Input
-                    type="number"
-                    value={newEvent.maxParticipants}
-                    onChange={(e) => setNewEvent({ ...newEvent, maxParticipants: e.target.value })}
-                    className="bg-[#EEEBE3] border-0 w-24"
-                  />
-                </div>
-
-                {/* 参加費 */}
-                <div>
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {t.participationFee}
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={newEvent.participationFee}
-                    onChange={(e) => setNewEvent({ ...newEvent, participationFee: e.target.value })}
-                    className="bg-[#EEEBE3] border-0 w-32"
-                  />
-                </div>
-              </div>
-
-              {/* 右側 */}
-              <div className="space-y-4">
-                {/* イベント画像 */}
-                {renderEventImageField()}
-
-                <div>
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {language === 'ja' ? 'イベントカラー' : 'Event Color'}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    {eventColors.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        aria-label={`event-color-${color}`}
-                        onClick={() => setNewEvent({ ...newEvent, eventColor: color })}
-                        className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-105 ${newEvent.eventColor === color ? 'border-[#3D3D4E]' : 'border-transparent'}`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {renderEventIconPicker()}
-
-                {/* 日付・時間 */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                      {t.date}
-                    </label>
-                    <DatePicker
-                      value={selectedDateValue}
-                      onChange={(date) => {
-                        if (!date) return;
-                        setNewEvent({ ...newEvent, date: format(date, 'yyyy-MM-dd') });
-                      }}
-                      formatLabel={(d) =>
-                        format(d, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined })
-                      }
-                      placeholder={language === 'ja' ? '日付を選択' : 'Select date'}
-                      locale={language === 'ja' ? rdpJa : rdpEnUS}
-                      buttonClassName="bg-[#EEEBE3] border-0 text-[#3D3D4E]"
-                      iconClassName="text-[#6B6B7A]"
-                      contentClassName="bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                      {t.time}
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="time"
-                        value={newEvent.startTime}
-                        onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
-                        className="bg-[#EEEBE3] border-0 text-sm"
-                      />
-                      <span className="text-[#6B6B7A] text-sm">〜</span>
-                      <Input
-                        type="time"
-                        value={newEvent.endTime}
-                        onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                        className="bg-[#EEEBE3] border-0 text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Google Map URL */}
-                <div>
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {t.googleMapUrl}
-                  </label>
-                  <Input
-                    value={newEvent.googleMapUrl}
-                    onChange={(e) => setNewEvent({ ...newEvent, googleMapUrl: e.target.value })}
-                    placeholder={t.googleMapUrlPlaceholder}
-                    className="bg-[#EEEBE3] border-0"
-                  />
-                </div>
-
-                {/* 場所名 */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
-                      {t.locationName}
-                    </label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        if (!newEvent.location?.trim()) {
-                          toast.error(language === 'ja' ? '翻訳する内容を入力してください' : 'Please enter text to translate');
-                          return;
-                        }
-                        toast.loading(language === 'ja' ? '翻訳中...' : 'Translating...');
-                        try {
-                          const translatedText = await translateText(newEvent.location, 'en');
-                          if (translatedText) {
-                            setNewEvent({ ...newEvent, locationEn: translatedText });
-                            toast.dismiss();
-                            toast.success(language === 'ja' ? '翻訳が完了しました' : 'Translation completed');
-                          }
-                        } catch (error) {
-                          toast.dismiss();
-                          toast.error(language === 'ja' ? '翻訳に失敗しました' : 'Translation failed');
-                        }
-                      }}
-                      disabled={!newEvent.location?.trim()}
-                      className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
-                    >
-                      <Languages className="w-3 h-3 mr-1" />
-                      {t.autoTranslate}
-                    </Button>
-                  </div>
-                  <Input
-                    value={newEvent.location}
-                    onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                    placeholder={t.locationNamePlaceholderJa}
-                    className="bg-[#EEEBE3] border-0 mb-2"
-                  />
-                  <Input
-                    value={newEvent.locationEn}
-                    onChange={(e) => setNewEvent({ ...newEvent, locationEn: e.target.value })}
-                    placeholder={t.locationNamePlaceholderEn}
-                    className="bg-[#EEEBE3] border-0"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* ボタン */}
-            <div className="flex gap-3 pt-4 justify-center">
-              <Button
-                onClick={editMode ? handleSaveEditedEvent : handleSaveEvent}
-                className="w-32 bg-[#00A63E] hover:bg-[#008C35] text-white"
-              >
-                {editMode ? t.save : t.save}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <EventFormModal
+          mode="create"
+          language={language}
+          t={t}
+          values={newEvent}
+          onChange={setNewEvent}
+          onOpenImageEditor={(source) => imageEditor.open(source, 'preview')}
+          onSelectImageFile={imageEditor.handleFileSelect}
+          onClose={handleCloseForm}
+          onSave={handleSaveEvent}
+        />
       )}
 
-      {/* イベント詳細モーダル表示 */}
       {selectedEvent && !editMode && (
-        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4" onClick={handleCloseForm}>
-          <div
-            className={`bg-white rounded-[14px] p-6 relative w-full max-w-[1100px] max-h-[90vh] overflow-y-auto ${selectedEventParticipantsCount >= selectedEvent.maxParticipants
-              ? 'border-2 border-[#00A63E]'
-              : 'border-2 border-[#49B1E4]'
-              }`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 左側：イベント情報 */}
-            <div className="space-y-4">
-              {/* タイトルと編集ボタン */}
-              <div className="flex items-start justify-between">
-                <h3 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">
-                  {selectedEventDetailTitle || (language === 'ja' ? '無題のイベント' : 'Untitled event')}
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-[#3D3D4E] h-8"
-                  onClick={handleEditEvent}
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {/* イベント画像 */}
-              {selectedEvent.image && (
-                <div className="rounded-[10px] overflow-hidden">
-                  <img src={selectedEvent.image} alt={selectedEventDetailTitle} className="w-full h-[126px] object-cover" />
-                </div>
-              )}
-
-              {/* 説明 */}
-              <div className="bg-[#F9FAFB] rounded-lg p-4">
-                <h4 className="text-[#3D3D4E] text-sm font-semibold mb-2">
-                  {language === 'ja' ? 'イベント説明' : 'Event Description'}
-                </h4>
-                <p className="text-[#3D3D4E] text-sm leading-relaxed whitespace-pre-wrap">
-                  {selectedEventDetailDescription
-                    ? linkifyText(selectedEventDetailDescription)
-                    : (language === 'ja' ? '説明文がありません' : 'No description')}
-                </p>
-              </div>
-
-              {/* イベント情報 */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
-                  <CalendarIcon className="w-4 h-4" />
-                  <span>{selectedEvent.date}</span>
-                </div>
-                <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
-                  <Clock className="w-4 h-4" />
-                  <span>
-                    {selectedEventDetailTime.startTime || selectedEventDetailTime.endTime
-                      ? `${selectedEventDetailTime.startTime || '--:--'} 〜 ${selectedEventDetailTime.endTime || '--:--'}`
-                      : '--:--'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
-                  <MapPin className="w-4 h-4" />
-                  <span>{selectedEventDetailLocation}</span>
-                </div>
-                {selectedEvent.googleMapUrl && (
-                  <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
-                    <a
-                      href={selectedEvent.googleMapUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#49B1E4] hover:underline flex items-center gap-1"
-                    >
-                      <MapPin className="w-4 h-4" />
-                      <span>{language === 'ja' ? 'Google Map で開く' : 'Open in Google Maps'}</span>
-                    </a>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
-                  <Users className="w-4 h-4" />
-                  <span className={`font-semibold ${selectedEventParticipantsCount >= selectedEvent.maxParticipants
-                    ? 'text-[#00A63E]'
-                    : 'text-[#49B1E4]'
-                    }`}>
-                    {selectedEventParticipantsCount} / {selectedEvent.maxParticipants}
-                  </span>
-                  <span>{language === 'ja' ? '参加者' : 'Participants'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
-                  <span className="font-semibold">¥{selectedEventParticipationFee.toLocaleString()}</span>
-                  <span>{language === 'ja' ? '参加費' : 'Participation fee'}</span>
-                </div>
-                {/* いいね数 */}
-                <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
-                  <Heart className="w-4 h-4 text-red-500" />
-                  <span className="font-semibold text-red-500">
-                    {selectedEventLikesCount}
-                  </span>
-                  <span>{language === 'ja' ? 'いいね' : 'Likes'}</span>
-                </div>
-                {selectedEventShareUrl && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void handleShareEventLink()}
-                    className="w-fit text-[#49B1E4] border-[#49B1E4] hover:bg-[#EAF6FD]"
-                  >
-                    <Share2 className="w-4 h-4 mr-1" />
-                    {language === 'ja' ? '共有リンク' : 'Share link'}
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* 右側：参加者リスト */}
-            <div className="space-y-4">
-              {/* タイトルとメール送信ボタン */}
-              <div className="flex items-center justify-between gap-4">
-                <h4 className="text-[#3D3D4E] text-base font-semibold">{t.participantsList}</h4>
-                <Button
-                  size="icon"
-                  className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white h-9 w-9"
-                  onClick={() => {
-                    if (selectedParticipants.size === 0) {
-                      toast.error(language === 'ja' ? 'メール送信先を選択してください' : 'Please select recipients');
-                      return;
-                    }
-                    setShowEmailModal(true);
-                  }}
-                  title={t.sendBulkEmail}
-                >
-                  <Mail className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {/* フィルター */}
-              <div className="flex items-center gap-3">
-                <Input
-                  placeholder={t.nameFilter}
-                  value={participantFilter}
-                  onChange={(e) => setParticipantFilter(e.target.value)}
-                  className="flex-1"
-                />
-                <span className="text-sm text-[#6B6B7A] shrink-0">
-                  {language === 'ja' ? '出席' : 'Attended'} {attendedCount}/{selectedEventParticipantsCount}
-                </span>
-              </div>
-
-              {/* 左右のチェックボックスは役割が違う（左=メールの宛先選択 / 右=当日の記録）ので、
-                  列の見出しを置いて何のチェックかが分かるようにする */}
-              <div className="flex items-center justify-between gap-4 px-3 text-xs text-[#6B6B7A]">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={allParticipantsSelected}
-                    onCheckedChange={(checked) => {
-                      if (checked === true) {
-                        setSelectedParticipants(new Set(selectedEventParticipantIds));
-                        return;
-                      }
-                      setSelectedParticipants(new Set());
-                    }}
-                    className="border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
-                  />
-                  <span>{language === 'ja' ? 'メールの宛先（全選択）' : 'Email recipients (all)'}</span>
-                </label>
-                <span>{language === 'ja' ? '当日の記録 →' : 'On the day →'}</span>
-              </div>
-
-              {/* 参加者リスト */}
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {filteredEventParticipants.map((participant) => (
-                  <div
-                    key={getParticipantUserId(participant)}
-                    className="flex items-center gap-3 p-3 bg-[#F9FAFB] rounded-[8px]"
-                  >
-                    {/* 左側：メール送信先選択チェックボックス */}
-                    <div className="flex items-center">
-                      <Checkbox
-                        aria-label={t.selectForEmail}
-                        checked={selectedParticipants.has(getParticipantUserId(participant))}
-                        onCheckedChange={(checked) => {
-                          const participantUserId = getParticipantUserId(participant);
-                          if (!participantUserId) return;
-                          const newSelected = new Set(selectedParticipants);
-                          if (checked) {
-                            newSelected.add(participantUserId);
-                          } else {
-                            newSelected.delete(participantUserId);
-                          }
-                          setSelectedParticipants(newSelected);
-                        }}
-                        title={t.selectForEmail}
-                        className="border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
-                      />
-                    </div>
-
-                    {/* 中央：参加者情報 */}
-                    <div className="flex-1">
-                      <p className="text-[#101828] text-sm font-medium">
-                        {participant.userName}
-                        {furiganaByUserId.get(getParticipantUserId(participant)) && (
-                          <span className="text-[#6B6B7A] text-xs font-normal ml-2">
-                            {furiganaByUserId.get(getParticipantUserId(participant))}
-                          </span>
-                        )}
-                      </p>
-                      {participant.userNickname && participant.userNickname !== participant.userName && (
-                        <p className="text-[#4A5565] text-xs">{participant.userNickname}</p>
-                      )}
-                      <p className="text-[#6B6B7A] text-xs">
-                        {language === 'ja' ? '登録日時:' : 'Registered:'} {new Date(participant.registeredAt).toLocaleString(language === 'ja' ? 'ja-JP' : 'en-US')}
-                      </p>
-                      {participant.photoRefusal && (
-                        <p className="text-[#D4183D] text-xs font-medium">
-                          {language === 'ja' ? '写真撮影NG' : 'No photos please'}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* 右側：出席・支払い済みチェックボックス */}
-                    <div className="flex flex-col gap-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox
-                          checked={getParticipantStatusValue(participant, 'attended')}
-                          onCheckedChange={(checked) => {
-                            void handleParticipantStatusChange(participant, 'attended', checked === true);
-                          }}
-                          className="border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
-                        />
-                        <span className="text-[#3D3D4E] text-xs">{t.attended}</span>
-                      </label>
-                      {selectedEventParticipationFee >= 1 && (
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <Checkbox
-                            checked={getParticipantStatusValue(participant, 'paid')}
-                            onCheckedChange={(checked) => {
-                              void handleParticipantStatusChange(participant, 'paid', checked === true);
-                            }}
-                            className="border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
-                          />
-                          <span className="text-[#3D3D4E] text-xs">{t.paid}</span>
-                        </label>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {filteredEventParticipants.length === 0 && (
-                  <p className="text-[#6B6B7A] text-sm text-center py-4">
-                    {selectedEventParticipantsCount === 0
-                      ? (language === 'ja' ? 'まだ参加者がいません' : 'No participants yet')
-                      : (language === 'ja' ? '該当する参加者がいません' : 'No matching participants')}
-                  </p>
-                )}
-              </div>
-            </div>
-            </div>
-          </div>
-        </div>
+        <EventDetailModal
+          language={language}
+          t={t}
+          event={selectedEvent}
+          participants={participants}
+          shareUrl={selectedEventShareUrl}
+          onShare={() => void handleShareEventLink()}
+          onEdit={handleEditEvent}
+          onClose={handleCloseForm}
+          onSendEmail={() => {
+            if (participants.selectedIds.size === 0) {
+              toast.error(language === 'ja' ? 'メール送信先を選択してください' : 'Please select recipients');
+              return;
+            }
+            setShowEmailModal(true);
+          }}
+        />
       )}
 
       {/* イベント編集フォーム */}
       {selectedEvent && editMode && (
-        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4" onClick={handleCloseForm}>
-          <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-6 relative w-full max-w-[1100px] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            {/* 閉じるボタン */}
-            <button
-              onClick={handleCloseForm}
-              className="absolute top-4 right-4 text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-start justify-between gap-3 mb-6 pr-6">
-              <div>
-                <h3 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">{t.editEvent}</h3>
-                <p className="text-[#6B6B7A] text-sm mt-1">
-                  {newEvent.titleJa || newEvent.titleEn || (language === 'ja' ? '無題のイベント' : 'Untitled event')}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 左側 */}
-              <div className="space-y-4">
-                {/* イベント名 */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
-                      {t.eventName}
-                    </label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTranslate('title')}
-                      disabled={!newEvent.titleJa?.trim()}
-                      className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
-                    >
-                      <Languages className="w-3 h-3 mr-1" />
-                      {t.autoTranslate}
-                    </Button>
-                  </div>
-                  <Input
-                    value={newEvent.titleJa}
-                    onChange={(e) => setNewEvent({ ...newEvent, titleJa: e.target.value })}
-                    placeholder={t.eventNamePlaceholderJa}
-                    className="bg-[#EEEBE3] border-0 mb-2"
-                  />
-                  <Input
-                    value={newEvent.titleEn}
-                    onChange={(e) => setNewEvent({ ...newEvent, titleEn: e.target.value })}
-                    placeholder={t.eventNamePlaceholderEn}
-                    className="bg-[#EEEBE3] border-0"
-                  />
-                </div>
-
-                {/* 説明 */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
-                      {t.description}
-                    </label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTranslate('description')}
-                      disabled={!newEvent.descriptionJa?.trim()}
-                      className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
-                    >
-                      <Languages className="w-3 h-3 mr-1" />
-                      {t.autoTranslate}
-                    </Button>
-                  </div>
-                  <Textarea
-                    value={newEvent.descriptionJa}
-                    onChange={(e) => setNewEvent({ ...newEvent, descriptionJa: e.target.value })}
-                    placeholder={t.descriptionPlaceholderJa}
-                    className="bg-[#EEEBE3] border-0 mb-2 min-h-[64px]"
-                  />
-                  <Textarea
-                    value={newEvent.descriptionEn}
-                    onChange={(e) => setNewEvent({ ...newEvent, descriptionEn: e.target.value })}
-                    placeholder={t.descriptionPlaceholderEn}
-                    className="bg-[#EEEBE3] border-0 min-h-[64px]"
-                  />
-                </div>
-
-                {/* LINEグループ招待リンク */}
-                <div>
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {t.lineGroupLink}
-                  </label>
-                  <Input
-                    value={newEvent.lineGroupUrl}
-                    onChange={(e) => setNewEvent({ ...newEvent, lineGroupUrl: e.target.value })}
-                    placeholder={t.lineGroupPlaceholder}
-                    className="bg-[#EEEBE3] border-0"
-                  />
-                  <p className="text-[#6A7282] text-xs mt-2">{t.lineGroupNote}</p>
-                </div>
-
-                {/* 最大参加者数 */}
-                <div>
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {t.maxParticipants}
-                  </label>
-                  <Input
-                    type="number"
-                    value={newEvent.maxParticipants}
-                    onChange={(e) => setNewEvent({ ...newEvent, maxParticipants: e.target.value })}
-                    className="bg-[#EEEBE3] border-0 w-24"
-                  />
-                </div>
-
-                {/* 参加費 */}
-                <div>
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {t.participationFee}
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={newEvent.participationFee}
-                    onChange={(e) => setNewEvent({ ...newEvent, participationFee: e.target.value })}
-                    className="bg-[#EEEBE3] border-0 w-32"
-                  />
-                </div>
-              </div>
-
-              {/* 右側 */}
-              <div className="space-y-4">
-                {/* イベント画像 */}
-                {renderEventImageField()}
-
-                <div>
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {language === 'ja' ? 'イベントカラー' : 'Event Color'}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    {eventColors.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        aria-label={`event-color-${color}`}
-                        onClick={() => setNewEvent({ ...newEvent, eventColor: color })}
-                        className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-105 ${newEvent.eventColor === color ? 'border-[#3D3D4E]' : 'border-transparent'}`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {renderEventIconPicker()}
-
-                {/* 日付・時間 */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                      {t.date}
-                    </label>
-                    <DatePicker
-                      value={selectedDateValue}
-                      onChange={(date) => {
-                        if (!date) return;
-                        setNewEvent({ ...newEvent, date: format(date, 'yyyy-MM-dd') });
-                      }}
-                      formatLabel={(d) =>
-                        format(d, language === 'ja' ? 'yyyy年MM月dd日' : 'MMM dd, yyyy', { locale: language === 'ja' ? ja : undefined })
-                      }
-                      placeholder={language === 'ja' ? '日付を選択' : 'Select date'}
-                      locale={language === 'ja' ? rdpJa : rdpEnUS}
-                      buttonClassName="bg-[#EEEBE3] border-0 text-[#3D3D4E]"
-                      iconClassName="text-[#6B6B7A]"
-                      contentClassName="bg-white opacity-100 shadow-xl border border-[#E5E7EB] z-80"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                      {t.time}
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="time"
-                        value={newEvent.startTime}
-                        onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
-                        className="bg-[#EEEBE3] border-0 text-sm"
-                      />
-                      <span className="text-[#6B6B7A] text-sm">〜</span>
-                      <Input
-                        type="time"
-                        value={newEvent.endTime}
-                        onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                        className="bg-[#EEEBE3] border-0 text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Google Map URL */}
-                <div>
-                  <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px] block mb-2">
-                    {t.googleMapUrl}
-                  </label>
-                  <Input
-                    value={newEvent.googleMapUrl}
-                    onChange={(e) => setNewEvent({ ...newEvent, googleMapUrl: e.target.value })}
-                    placeholder={t.googleMapUrlPlaceholder}
-                    className="bg-[#EEEBE3] border-0"
-                  />
-                </div>
-
-                {/* 場所名 */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-[#3D3D4E] text-sm font-medium tracking-[-0.1504px]">
-                      {t.locationName}
-                    </label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        if (!newEvent.location?.trim()) {
-                          toast.error(language === 'ja' ? '翻訳する内容を入力してください' : 'Please enter text to translate');
-                          return;
-                        }
-                        toast.loading(language === 'ja' ? '翻訳中...' : 'Translating...');
-                        try {
-                          const translatedText = await translateText(newEvent.location, 'en');
-                          if (translatedText) {
-                            setNewEvent({ ...newEvent, locationEn: translatedText });
-                            toast.dismiss();
-                            toast.success(language === 'ja' ? '翻訳が完了しました' : 'Translation completed');
-                          }
-                        } catch (error) {
-                          toast.dismiss();
-                          toast.error(language === 'ja' ? '翻訳に失敗しました' : 'Translation failed');
-                        }
-                      }}
-                      disabled={!newEvent.location?.trim()}
-                      className="bg-[#F5F1E8] border-[rgba(61,61,78,0.15)] text-[#3D3D4E] hover:bg-[#E8E4DB] h-7 text-xs"
-                    >
-                      <Languages className="w-3 h-3 mr-1" />
-                      {t.autoTranslate}
-                    </Button>
-                  </div>
-                  <Input
-                    value={newEvent.location}
-                    onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                    placeholder={t.locationNamePlaceholderJa}
-                    className="bg-[#EEEBE3] border-0 mb-2"
-                  />
-                  <Input
-                    value={newEvent.locationEn}
-                    onChange={(e) => setNewEvent({ ...newEvent, locationEn: e.target.value })}
-                    placeholder={t.locationNamePlaceholderEn}
-                    className="bg-[#EEEBE3] border-0"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* ボタン */}
-            <div className="flex gap-2 mt-6 justify-end">
-              <Button
-                onClick={handleDeleteEvent}
-                className="min-w-28 bg-[#D4183D] hover:bg-[#B01535] text-white"
-              >
-                {t.deleteEvent}
-              </Button>
-              <Button
-                onClick={handleSaveEditedEvent}
-                disabled={!hasUnsavedChanges || isSavingEvent || isUploadingImage}
-                className="min-w-28 bg-[#00A63E] hover:bg-[#008C35] text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t.save}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <EventFormModal
+          mode="edit"
+          language={language}
+          t={t}
+          values={newEvent}
+          onChange={setNewEvent}
+          onOpenImageEditor={(source) => imageEditor.open(source, 'preview')}
+          onSelectImageFile={imageEditor.handleFileSelect}
+          onClose={handleCloseForm}
+          onSave={handleSaveEditedEvent}
+          onDelete={handleDeleteEvent}
+          saveDisabled={!hasUnsavedChanges || isSavingEvent || imageEditor.isProcessing}
+        />
       )}
 
       {/* メール送信モダル */}
@@ -2078,286 +376,70 @@ export function AdminEvents({
           isOpen={showEmailModal}
           onClose={() => {
             setShowEmailModal(false);
-            setSelectedParticipants(new Set()); // 閉じたら選択をクリア
+            participants.clearSelection(); // 閉じたら選択をクリア
           }}
           language={language}
-          recipientCount={selectedParticipants.size}
+          recipientCount={participants.selectedIds.size}
           onSend={(subjectJa, subjectEn, messageJa, messageEn, sendInApp, sendEmail) => {
-            // 選択した参加者のUserIDを配列に変換
-            const selectedUserIds = Array.from(selectedParticipants);
+            const selectedUserIds = Array.from(participants.selectedIds);
             if (onSendBulkEmail && selectedUserIds.length > 0) {
               onSendBulkEmail(selectedUserIds, subjectJa, subjectEn, messageJa, messageEn, sendInApp, sendEmail);
             }
-            setSelectedParticipants(new Set()); // 送信後選択をクリア
+            participants.clearSelection(); // 送信後も選択をクリア
           }}
         />
       )}
 
-      {imageEditorOpen && imageEditorSource && (
-        <div
-          className="fixed inset-0 z-90 bg-black/70 flex items-center justify-center p-4"
-          onClick={closeImageEditor}
-        >
-          <div className="relative w-full max-w-[95vw] max-h-[95vh] bg-[#111827] rounded-xl border border-white/10 p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3 gap-3">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  title={language === 'ja' ? '1つ戻す (Cmd/Ctrl+Z)' : 'Undo (Cmd/Ctrl+Z)'}
-                  className="text-lg text-white/60 hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-white/60"
-                  onClick={undoImageEdit}
-                  disabled={!canUndoImageEdit}
-                >
-                  <FontAwesomeIcon icon={faRotateLeft} />
-                </button>
-                <button
-                  type="button"
-                  title={language === 'ja' ? 'プレビュー' : 'Preview'}
-                  className={`text-lg transition-colors ${imageEditorMode === 'preview' ? 'text-white' : 'text-white/60 hover:text-white'}`}
-                  onClick={() => setImageEditorMode('preview')}
-                >
-                  <FontAwesomeIcon icon={faEye} />
-                </button>
-                <button
-                  type="button"
-                  title={language === 'ja' ? 'モザイクブラシ' : 'Mosaic Brush'}
-                  className={`text-lg transition-colors ${imageEditorMode === 'mosaic' ? 'text-white' : 'text-white/60 hover:text-white'}`}
-                  onClick={() => setImageEditorMode('mosaic')}
-                >
-                  <FontAwesomeIcon icon={faWandMagicSparkles} />
-                </button>
-                {imageEditorMode === 'mosaic' && (
-                  <div className="flex items-center gap-2 text-white text-xs">
-                    <span>{language === 'ja' ? 'ブラシ' : 'Brush'}</span>
-                    <input
-                      type="range"
-                      min={6}
-                      max={48}
-                      value={mosaicBrushSize}
-                      onChange={(e) => setMosaicBrushSize(Number(e.target.value))}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <label className="cursor-pointer text-white/60 hover:text-white transition-colors text-lg">
-                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                  <span title={language === 'ja' ? 'アップロード' : 'Upload'}>
-                    <FontAwesomeIcon icon={faUpload} />
-                  </span>
-                </label>
-                <button
-                  type="button"
-                  title={language === 'ja' ? '画像削除' : 'Remove Image'}
-                  className="text-lg text-white/60 hover:text-red-400 transition-colors"
-                  onClick={() => {
-                    setNewEvent((prev) => ({ ...prev, image: null }));
-                    closeImageEditor();
-                  }}
-                >
-                  <FontAwesomeIcon icon={faTrashCan} />
-                </button>
-                <button
-                  type="button"
-                  title={language === 'ja' ? '反映して保存' : 'Apply & Save'}
-                  className="text-lg text-white/60 hover:text-[#49B1E4] transition-colors disabled:opacity-40 disabled:hover:text-white/60"
-                  disabled={isImageProcessing}
-                  onClick={() => {
-                    void saveEditedImage();
-                  }}
-                >
-                  <FontAwesomeIcon icon={faFloppyDisk} className={isImageProcessing ? 'animate-pulse' : ''} />
-                </button>
-              </div>
-            </div>
-            <div className="overflow-auto max-h-[78vh] rounded-lg bg-black/50 flex items-center justify-center">
-              <canvas
-                ref={imageCanvasRef}
-                className={`max-w-full max-h-[78vh] ${imageEditorMode === 'mosaic' ? 'cursor-crosshair' : 'cursor-default'}`}
-                onMouseDown={(e) => {
-                  if (imageEditorMode !== 'mosaic') return;
-                  pushImageHistory();
-                  isDrawingRef.current = true;
-                  handleCanvasPointer(e.clientX, e.clientY);
-                }}
-                onMouseMove={(e) => {
-                  if (!isDrawingRef.current) return;
-                  handleCanvasPointer(e.clientX, e.clientY);
-                }}
-                onMouseUp={() => {
-                  isDrawingRef.current = false;
-                }}
-                onMouseLeave={() => {
-                  isDrawingRef.current = false;
-                }}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={closeImageEditor}
-              className="absolute -top-10 right-0 text-white hover:text-gray-200"
-              aria-label="close-image-preview"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-      )}
+      <ImageEditorModal language={language} editor={imageEditor} />
 
-      {/* 保存確認ダイアログ */}
       {showSaveConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[400px] shadow-xl border border-[rgba(61,61,78,0.15)] relative max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-[rgba(61,61,78,0.15)]">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <h2 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">
-                    {confirmType === 'create' ? t.confirmCreate : t.confirmUpdate}
-                  </h2>
-                  <p className="text-[#6B6B7A] text-sm tracking-[-0.1504px]">
-                    {confirmType === 'create' ? t.confirmCreateMessage : t.confirmUpdateMessage}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowSaveConfirm(false)}
-                  className="text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <div className="flex gap-2">
-                <Button
-                  disabled={isSavingEvent || isUploadingImage}
-                  onClick={async () => {
-                    if (isSavingEvent || isUploadingImage || saveInFlightRef.current) return;
-                    saveInFlightRef.current = true;
-                    setIsSavingEvent(true);
-                    try {
-                      if (confirmType === 'create') {
-                        // Supabaseにイベントを作成
-                        const eventData = {
-                          title: newEvent.titleJa,
-                          titleEn: newEvent.titleEn || undefined,
-                          description: newEvent.descriptionJa,
-                          descriptionEn: newEvent.descriptionEn || undefined,
-                          date: newEvent.date,
-                          time: `${newEvent.startTime}〜${newEvent.endTime}`,
-                          location: newEvent.location,
-                          locationEn: newEvent.locationEn || undefined,
-                          googleMapUrl: newEvent.googleMapUrl || undefined,
-                          participationFee: Math.max(0, parseInt(newEvent.participationFee || '0', 10) || 0),
-                          maxParticipants: parseInt(newEvent.maxParticipants) || 30,
-                          image: newEvent.image || undefined,
-                          eventColor: newEvent.eventColor || '#49B1E4',
-                          eventIconKey: newEvent.eventIconKey || DEFAULT_EVENT_ICON_KEY,
-                          tags: { friendsCanMeet: false, photoContest: false },
-                          status: 'upcoming' as const,
-                          lineGroupLink: newEvent.lineGroupUrl || undefined,
-                        };
-                        console.log('Creating event with data:', eventData);
-                        await onCreateEvent(eventData);
-                        toast.success(language === 'ja' ? 'イベントを作成しました' : 'Event created successfully');
-                      } else {
-                        // Supabaseでイベントを更新
-                        if (selectedEvent) {
-                          const updateData = {
-                            title: newEvent.titleJa,
-                            titleEn: newEvent.titleEn || undefined,
-                            description: newEvent.descriptionJa,
-                            descriptionEn: newEvent.descriptionEn || undefined,
-                            date: newEvent.date,
-                            time: `${newEvent.startTime}〜${newEvent.endTime}`,
-                            location: newEvent.location,
-                            locationEn: newEvent.locationEn || undefined,
-                            googleMapUrl: newEvent.googleMapUrl || undefined,
-                            participationFee: Math.max(0, parseInt(newEvent.participationFee || '0', 10) || 0),
-                            maxParticipants: parseInt(newEvent.maxParticipants) || 30,
-                            image: newEvent.image || undefined,
-                            eventColor: newEvent.eventColor || '#49B1E4',
-                            eventIconKey: newEvent.eventIconKey || DEFAULT_EVENT_ICON_KEY,
-                            lineGroupLink: newEvent.lineGroupUrl || undefined,
-                          };
-                          console.log('Updating event with data:', updateData);
-                          await onUpdateEvent(selectedEvent.id, updateData);
-                        }
-                        toast.success(language === 'ja' ? 'イベントを更新しました' : 'Event updated successfully');
-                        setEditMode(false);
-                      }
-                      setShowSaveConfirm(false);
-                      handleCloseForm();
-                    } finally {
-                      saveInFlightRef.current = false;
-                      setIsSavingEvent(false);
-                    }
-                  }}
-                  className="flex-1 bg-[#00A63E] hover:bg-[#008C35] text-[#F5F1E8] h-9 flex items-center justify-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  <span className="font-medium text-sm tracking-[-0.1504px]">{t.save}</span>
-                </Button>
-                <Button
-                  disabled={isSavingEvent}
-                  onClick={() => setShowSaveConfirm(false)}
-                  className="flex-1 bg-[#D4183D] hover:bg-[#B01432] text-white h-9 flex items-center justify-center gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  <span className="font-medium text-sm tracking-[-0.1504px]">{t.cancel}</span>
-                </Button>
-              </div>
-            </div>
+        <ConfirmDialog
+          title={confirmType === 'create' ? t.confirmCreate : t.confirmUpdate}
+          description={confirmType === 'create' ? t.confirmCreateMessage : t.confirmUpdateMessage}
+          onClose={() => setShowSaveConfirm(false)}
+        >
+          <div className="flex gap-2">
+            <Button
+              disabled={isSavingEvent || imageEditor.isProcessing}
+              onClick={() => void handleConfirmSave()}
+              className="flex-1 bg-[#00A63E] hover:bg-[#008C35] text-[#F5F1E8] h-9 flex items-center justify-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              <span className="font-medium text-sm tracking-[-0.1504px]">{t.save}</span>
+            </Button>
+            <Button
+              disabled={isSavingEvent}
+              onClick={() => setShowSaveConfirm(false)}
+              className="flex-1 bg-[#D4183D] hover:bg-[#B01432] text-white h-9 flex items-center justify-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              <span className="font-medium text-sm tracking-[-0.1504px]">{t.cancel}</span>
+            </Button>
           </div>
-        </div>
+        </ConfirmDialog>
       )}
 
-      {/* 削除確認ダイアログ */}
       {showDeleteConfirm && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-          onClick={() => {
+        <ConfirmDialog
+          title={t.confirmDelete}
+          description={t.confirmDeleteMessage}
+          onClose={() => {
             if (isDeletingEvent) return;
             setShowDeleteConfirm(false);
           }}
+          dismissOnBackdrop
         >
-          <div
-            className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[400px] shadow-xl border border-[rgba(61,61,78,0.15)] relative max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6 border-b border-[rgba(61,61,78,0.15)]">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <h2 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">
-                    {t.confirmDelete}
-                  </h2>
-                  <p className="text-[#6B6B7A] text-sm tracking-[-0.1504px]">
-                    {t.confirmDeleteMessage}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <div className="flex justify-end">
-                <Button
-                  disabled={isDeletingEvent}
-                  onClick={handleConfirmDelete}
-                  className="min-w-28 bg-[#D4183D] hover:bg-[#B01535] text-white h-9 flex items-center justify-center gap-2"
-                >
-                  <FontAwesomeIcon icon={faTrashCan} className="w-4 h-4" />
-                  <span className="font-medium text-sm tracking-[-0.1504px]">{t.delete}</span>
-                </Button>
-              </div>
-            </div>
+          <div className="flex justify-end">
+            <Button
+              disabled={isDeletingEvent}
+              onClick={handleConfirmDelete}
+              className="min-w-28 bg-[#D4183D] hover:bg-[#B01535] text-white h-9 flex items-center justify-center gap-2"
+            >
+              <FontAwesomeIcon icon={faTrashCan} className="w-4 h-4" />
+              <span className="font-medium text-sm tracking-[-0.1504px]">{t.delete}</span>
+            </Button>
           </div>
-        </div>
+        </ConfirmDialog>
       )}
     </div>
   );

@@ -27,12 +27,11 @@ const NUM_COLUMNS = 2;
 
 export function MemoriesScreen() {
   const { user } = useAuth();
-  const { events, galleryPhotos, uploadGalleryPhoto, likeGalleryPhoto } = useData();
+  const { events, galleryPhotos, uploadGalleryPhoto, toggleGalleryPhotoLike, likedGalleryPhotoIds } = useData();
   const { openEmbassyWithMention } = useEmbassyMention();
   const colors = Colors.light;
   const insets = useSafeAreaInsets();
 
-  const [likedPhotoIds, setLikedPhotoIds] = useState<Set<number>>(new Set());
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState('');
   const [pickedImages, setPickedImages] = useState<PickedGalleryImage[]>([]);
@@ -57,9 +56,7 @@ export function MemoriesScreen() {
   const eventOptions = events.map((e) => ({ label: e.title, value: String(e.id) }));
 
   const handleToggleLike = async (photo: GalleryPhoto) => {
-    if (likedPhotoIds.has(photo.id)) return;
-    setLikedPhotoIds((prev) => new Set(prev).add(photo.id));
-    await likeGalleryPhoto(photo.id);
+    await toggleGalleryPhotoLike(photo.id);
   };
 
   const handleConsultAboutPhoto = (photo: GalleryPhoto) => {
@@ -147,7 +144,7 @@ export function MemoriesScreen() {
             </ThemedText>
           }
           renderItem={({ item }) => {
-            const isLiked = likedPhotoIds.has(item.id);
+            const isLiked = likedGalleryPhotoIds.has(item.id);
             const imageUri = typeof item.image === 'string' ? item.image : item.image.src;
             return (
               <View style={styles.photoCard}>
@@ -162,7 +159,7 @@ export function MemoriesScreen() {
                   onPress={() => void handleToggleLike(item)}
                 >
                   <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={16} color="#E0607E" />
-                  <ThemedText type="small">{item.likes + (isLiked ? 1 : 0)}</ThemedText>
+                  <ThemedText type="small">{item.likes}</ThemedText>
                 </Pressable>
                 <Pressable
                   style={[styles.shareButton, { backgroundColor: colors.backgroundElement }]}

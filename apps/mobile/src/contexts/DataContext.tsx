@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { ChatThreadMetadata, Event, EventParticipant, GalleryPhoto, MessageCategory, MessageMention, MessageThread, UploadGalleryPhotoInput } from '@truss/core';
 import {
   confirmEventAttendance as confirmEventAttendanceRow,
-  likeGalleryPhotoRow,
   markAllMessagesAsReadForUserRow,
   queryEventParticipantsGrouped,
   queryEvents,
@@ -12,6 +11,8 @@ import {
   registerEventParticipant,
   sendMessageRow,
   toggleEventLikeForUser,
+  toggleGalleryPhotoLikeForUser,
+  queryLikedGalleryPhotoIds,
   unregisterEventParticipant,
   uploadChatAttachment as uploadChatAttachmentToStorage,
   uploadGalleryPhotoRow,
@@ -46,7 +47,8 @@ interface DataContextType {
   uploadChatAttachment: (blob: Blob, meta: { fileExt: string; contentType: string }) => Promise<{ path: string | null; error: unknown }>;
   galleryPhotos: GalleryPhoto[];
   uploadGalleryPhoto: (input: UploadGalleryPhotoInput) => Promise<void>;
-  likeGalleryPhoto: (photoId: number) => Promise<void>;
+  likedGalleryPhotoIds: Set<number>;
+  toggleGalleryPhotoLike: (photoId: number) => Promise<void>;
   confirmEventAttendance: (eventId: number, userId: string) => Promise<{ error: Error | null }>;
 }
 
@@ -60,6 +62,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [chatThreadMetadata, setChatThreadMetadata] = useState<ChatThreadMetadata>({});
   const [staffInboxUserId, setStaffInboxUserId] = useState<string | null>(null);
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
+  const [likedGalleryPhotoIds, setLikedGalleryPhotoIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
 
   const fetchEvents = async () => {
@@ -98,11 +101,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLikedGalleryPhotoIds(new Set());
+      return;
+    }
     void fetchMessages();
     void queryStaffInboxUserId()
       .then(setStaffInboxUserId)
       .catch((error) => console.error('Failed to load staff inbox user id:', error));
+    // 「自分がいいね済みか」は端末のメモリではなくDBを真実にする（再起動しても残る）
+    void queryLikedGalleryPhotoIds(user.id)
+      .then((ids) => setLikedGalleryPhotoIds(new Set(ids)))
+      .catch((error) => console.error('Failed to load liked gallery photo ids:', error));
   }, [user]);
 
   useEffect(() => {
@@ -219,13 +229,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const likeGalleryPhoto = async (photoId: number) => {
+  /**
+   * ギャラリー写真のいいねを付け外しする。
+   * 反応を待たせないよう先に画面を書き換え、失敗したら元に戻す（全件の取り直しはしない）。
+   */
+  const toggleGalleryPhotoLike = async (photoId: number) => {
+    if (!user) return;
+    const wasLiked = likedGalleryPhotoIds.has(photoId);
+    const delta = wasLiked ? -1 : 1;
+
+    const applyLocally = (liked: boolean, countDelta: number) => {
+      setLikedGalleryPhotoIds((prev) => {
+        const next = new Set(prev);
+        if (liked) next.add(photoId);
+        else next.delete(photoId);
+        return next;
+      });
+      setGalleryPhotos((prev) =>
+        prev.map((photo) =>
+          photo.id === photoId ? { ...photo, likes: Math.max(0, photo.likes + countDelta) } : photo
+        )
+      );
+    };
+
+    applyLocally(!wasLiked, delta);
     try {
-      const { error } = await likeGalleryPhotoRow(photoId);
+      const { error } = await toggleGalleryPhotoLikeForUser(photoId, user.id);
       if (error) throw error;
-      await fetchGalleryPhotos();
     } catch (error) {
-      console.error('Error liking gallery photo:', error);
+      console.error('Error toggling gallery photo like:', error);
+      applyLocally(wasLiked, -delta);
     }
   };
 
@@ -253,7 +286,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         uploadChatAttachment,
         galleryPhotos,
         uploadGalleryPhoto,
-        likeGalleryPhoto,
+        likedGalleryPhotoIds,
+        toggleGalleryPhotoLike,
         confirmEventAttendance,
       }}
     >

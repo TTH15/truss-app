@@ -495,3 +495,107 @@
 - 方式は3案（A: LINE 式 / B: WhatsApp 式（アイコンなし・とんがり下） / C: Instagram 式（とんがりなし））を描画して比較し、**A 案を採用**。
 - 検証: `tsc --noEmit`・`next build` 通過。ブラウザ拡張経由のスクリーンショットが CDP タイムアウトで使えなかったため、**headless Chrome で HTML を直接描画して目視確認**した（`--headless --screenshot`）。同じ問題が起きたらこの方法が使える。
 - 残課題: 運営チャットにも会員のアイコンを出すか（出せば会員向けと完全に同じ見え方に揃う）。実画面での最終確認。
+
+## 2026-08-05 02:45 運営チャットに会員アイコンを追加
+
+- 会員向けチャットと同じ見え方に揃えるため、運営チャットのメッセージにも会員のアイコン（`UserAvatarImage`）を出すようにした。
+- まとまりの先頭にだけ出し、2通目以降は同じ幅の空白で位置を揃える。アイコンは `self-start` で吹き出しの上端に合わせる（行の基準は時刻に合わせた `items-end` のため）。
+- この行は `flex-row-reverse`（会員側）なので、**DOM の最後に置いたものが一番左に来る**。アイコンは吹き出しの後ろに書いている。
+- 併せて間隔を `gap-1.5` → `gap-2`（会員向けと同値）。
+- 検証: `tsc --noEmit`・`next build` 通過。
+
+## 2026-08-05 02:45 AdminEvents の分割（第1段階: フォームの重複解消）
+
+**2364行 → 1450行**（新規モジュール 675行を含めても合計はほぼ同じだが、二重定義が消えた）。動作は変えていない。
+
+新規: `components/legacy/admin-events/`
+- `types.ts` — `AdminEvent` / `AdminEventParticipant` / フォーム値の型 `EventFormValues`
+- `translations.ts` — 翻訳辞書
+- `event-form.ts` — `getEventText` / `parseEventTime` / `getEmptyEventForm` / `eventToFormValues` / `importedEventToFormValues` / `toCreatePayload` / `toUpdatePayload`
+- `EventFormFields.tsx` — 入力欄一式（**新規作成と編集で共通**）
+- `EventFormModal.tsx` — モーダルの外枠。`mode` で見出しとボタン（新規=保存のみ中央 / 編集=削除+保存を右）を出し分ける
+
+解消した重複:
+- **フォームの JSX が新規用・編集用に約240行ずつ二重にあった**。片方だけ直す事故が起きやすく、実際に翻訳ボタンの `type="button"` 有無など細部がずれていた。
+- **イベント → フォーム値の変換が3か所**（詳細を開く・編集する・下書きを復元する）にコピーされていた → `eventToFormValues()` に集約。
+- **保存用ペイロードの組み立てが3か所**（作成・更新・ドラッグ複製）にあった → `toCreatePayload` / `toUpdatePayload` に集約。
+- 翻訳ボタンのハンドラが「タイトル/説明用の共通関数」と「場所名用のインライン実装」に分かれていた → `EventFormFields` 内の1つに統合。
+
+その他:
+- 完全に未使用だった `handleImportEventToDate`（定義のみで呼び出しなし）を削除。
+- **元から残っているデッドコード**（今回は手を付けていない）: `isImportingEvent` は値が未使用、`setIsUploadingImage` が呼ばれないため `isUploadingImage` は常に false（保存ボタンの「アップロード中は押せない」条件が実質効いていない）。未完成の機能の痕跡なので、意図ごと消すか実装するかは別途判断が要る。
+- 検証: `tsc --noEmit`・`next build` 通過。新規 lint エラー 0（残る warning / error はすべてリファクタ前から存在するもの: 上記デッドコード2件と、下書き復元・月の自動ジャンプの effect 内 setState）。
+- 残課題: カレンダー表示・イベント詳細モーダル・参加者一覧・画像エディタ・確認ダイアログの分離と、下書き保存／画像編集／ドラッグ月送りの hook 化。実画面での動作確認（新規作成・編集・複製・下書き復元）。
+
+## 2026-08-05 02:55 AdminEvents の分割（第2段階: 画像エディタ）
+
+- **1450行 → 1216行**。イベント画像のプレビュー／モザイク加工を切り出した。
+  - `admin-events/useEventImageEditor.ts` — 開閉・モード・ブラシ・取り消し履歴・キャンバスへの描画・アップロードをまとめて持つ。キャンバスに渡すハンドラ一式を `canvasProps` として返すので、表示側は描き込みの開始/終了を知らなくてよい。
+  - `admin-events/ImageEditorModal.tsx` — 表示のみ。状態は一切持たない。
+- AdminEvents から state 9個・ref 3個・関数7個・effect 2個・JSX 110行が消えた。
+- **既存バグを1件修正**: ファイル選択後の入力欄クリアが `e.currentTarget.value = ''` を `FileReader` の完了コールバック内で行っており、その時点では合成イベントの `currentTarget` が失われているため機能していなかった（**同じ画像を選び直しても何も起きない**）。要素をハンドラ冒頭で控えてからクリアするようにした。
+- 検証: `tsc --noEmit`・`next build` 通過。新規 lint エラー 0（残る5件はすべてリファクタ前から存在）。
+- 残る分割: カレンダー表示、イベント詳細モーダル＋参加者一覧、保存/削除の確認ダイアログ、下書き保存の hook 化。
+
+## 2026-08-06 03:20 ギャラリーの Masonry 化と、画像のキャッシュ保持
+
+### ギャラリーが Masonry になっていなかった（`GalleryPage.tsx`）
+- **原因**: `react-responsive-masonry` は使っていたが、各カードに `height: 200px` 固定 + `object-cover` を当てていたため、全カードが同じ高さに切り揃えられていた。段差が付く条件を自分で潰しており、実質ただの等高グリッド。
+- 高さは画像の比率に任せる（`w-full h-auto`）ように変更。読み込み前に白い隙間が出ないよう下地の色を敷いた。
+- **列数がリサイズに追従していなかった**のも修正。描画時に一度だけ `window.innerWidth` を読む実装で、ウィンドウを変えても列数が変わらず、SSR では常に4列扱いになっていた。`ResponsiveMasonry` の `columnsCountBreakPoints`（0:2 / 768:3 / 1024:4）に置き換えた。
+
+### 画像のキャッシュ（`packages/core/src/supabase.ts`）
+- **Storage へのアップロードに `cacheControl` を一切指定していなかった**ため、Supabase の既定（1時間）で切れ、開き直すたびに取り直していた。ファイル名にタイムスタンプとランダム文字列が入っていて中身が変わらないもの — **ギャラリー写真・掲示板の画像・チャット添付** — に1年のキャッシュを指定した。
+  - イベント画像とアバターは `upsert` で同じ名前に上書きするため、**あえて付けていない**（差し替えても古い画像を掴み続けるため）。
+  - **効くのは新規アップロードのみ**。既存ファイルのヘッダーは変わらない。
+- **チャット添付の署名付きURLにキャッシュが無かった**。アバターには既にあった仕組み（発行中の Promise ごと共有し、有効期限の8割で捨てる）をバケット単位に一般化し、チャット添付にも適用。チャットを開くたびに添付の数だけ `createSignedUrl` が飛んでいたのが1回で済む。URL が毎回変われば**ブラウザキャッシュも効かない**ので、使い回すこと自体に転送量の意味もある。
+
+## 2026-08-06 03:20 AdminEvents の分割（第3段階: カレンダー・詳細・参加者・下書き・確認ダイアログ）
+
+**2364行 → 446行**（分割先を含む合計 2463行）。動作は変えていない。
+
+追加したモジュール（`components/legacy/admin-events/`）:
+- `useCalendarMonth.ts` / `calendar-utils.ts` / `EventCalendar.tsx` — 表示月・カレンダーのマス目・イベントの日付別グループ化・**ドラッグ中に画面端へ寄せると月が送られる操作**。タイマー越しに月を変えるので、最新の月を ref に写す必要がある部分もここに閉じた。
+- `useEventParticipants.ts` / `participants.ts` / `ParticipantList.tsx` — 並び替え・名前での絞り込み・メール宛先の選択・当日の出席/支払いの保存（**楽観更新と失敗時の巻き戻し**を含む）。
+- `EventDetailModal.tsx` — 詳細モーダル。表示用の派生値（タイトル・時間・満席判定など）はコンポーネント内で計算するようにし、本体から6つの派生変数が消えた。
+- `useEventDraft.ts` — 下書きの保存と復元。復元後の画面状態は `onRestore` で呼び出し側に委ねる形にした。
+- `ConfirmDialog.tsx` — 保存確認と削除確認で二重に書かれていた枠・見出しを共通化（ボタンだけ差し替える）。
+- 確認ダイアログの中に直接書かれていた**約60行の保存処理**を `handleConfirmSave` として外に出した。
+
+副次的な整理:
+- `getParticipantStatusValue` の定義位置に依存した TDZ の注意書きが不要になった（純関数として切り出したため、順序を気にせず書ける）。
+- 未使用になった import を削除。
+
+検証:
+- `tsc --noEmit`・`next build` 通過。
+- lint: AdminEvents に残るのは**リファクタ前から存在する** 2件（`setIsUploadingImage` が呼ばれず `isUploadingImage` が常に false、`isImportingEvent` の値が未使用）のみ。effect 内 setState の error は 2件 → 1件（`useCalendarMonth` の月自動ジャンプ）に減った。
+- `apps/mobile` の型検査でエラー1件（`likeGalleryPhotoRow` が `@truss/core` に存在しない）。**HEAD 時点でも同じエラーが出るため今回の変更とは無関係**だが、モバイル側は現状ビルドが通らない状態。
+
+残課題:
+- 実画面での確認（新規作成・編集・ドラッグ複製・下書き復元・参加者のチェック・画像のモザイク）。
+- `isUploadingImage` を `imageEditor.isProcessing` に繋ぐか、条件ごと消すかの判断（現状は意図だけが残って機能していない）。
+- `apps/mobile` の `likeGalleryPhotoRow` 欠落（別件）。
+
+## 2026-08-06 モバイルのギャラリーいいねを修正し、死んでいた保存ガードを繋いだ
+
+### 1. `apps/mobile` の型エラー（`likeGalleryPhotoRow` が無い）
+- **原因は追従漏れ**。コミット 99c59a4「いいねが増える一方だったのを直す」で core の `likeGalleryPhotoRow(photoId)`（無条件に +1）を `toggleGalleryPhotoLikeForUser(photoId, userId)`（`gallery_photo_likes` を真実とするトグル）へ置き換えた際、web だけ追従してモバイルが取り残されていた。
+- 関数の差し替えだけでは中途半端になるため、web と同じ形に揃えた。モバイル側のいいね状態は `MemoriesScreen` のローカル `useState` だけで持っており、
+  - **画面を開き直すと「いいね済み」が消える**（DBから読んでいない）
+  - `if (likedPhotoIds.has(photo.id)) return;` で**解除できない**
+  - 表示が `item.likes + (isLiked ? 1 : 0)` とローカルで +1 して見せている
+  という状態だった。DB を真実にすると「解除できないのに DB 側では解除される」ズレが出る。
+- 対応:
+  - `DataContext` に `likedGalleryPhotoIds` を追加し、ログイン時に `queryLikedGalleryPhotoIds(user.id)` で読む（core に既にあった）。ログアウト時は空に戻す。
+  - `likeGalleryPhoto` → `toggleGalleryPhotoLike` に変更。**先に画面を書き換えて失敗したら戻す**方式にし、全件の取り直し（`fetchGalleryPhotos()`）をやめた。反応が即座になり、通信も減る。
+  - `MemoriesScreen` はローカル state を捨てて DataContext を参照。件数は DataContext 側で増減済みなので、表示での +1 を外した（残すと二重に数える）。
+- **イベントのいいねにも同じ課題が残っている**（`toggleEventLike` はトグルだが `likedEventIds` を持たないので、どれをいいね済みか画面が知らない）。今回は対象外。
+
+### 2. `isUploadingImage` が常に false だった件
+- setter がどこからも呼ばれず、**5箇所の「画像アップロード中は保存させない」条件がすべて無効**だった。
+- 防ぎたかった事故（アップロード完了前にイベントを保存し、古い画像URLのまま DB に書かれる）は、実際には画像エディタが `z-90` の全画面オーバーレイでフォーム（`z-50`）を覆っているため起きない。つまり**重なりという暗黙の前提**に守られていた。
+- 専用 state を消し、`imageEditor.isProcessing` を直接見るようにした。見た目の変化は無いが、意図が動く形で残り、z-index の前提に依存しなくなる。
+- 併せて `isImportingEvent`（値が未使用だった）を、カレンダーへの**連続ドロップによる二重作成を防ぐガード**として使うようにした。
+
+- 検証: web `tsc --noEmit`・`next build` 通過、**`apps/mobile` の `tsc --noEmit` も通過**（これまでエラー1件で通らなかった）。lint の指摘は `useCalendarMonth` の effect 内 setState（元からある月の自動ジャンプ）1件のみになり、デッドコード由来の warning は消えた。
+- 残課題: 実画面での確認（運営のイベント管理6項目、モバイルのギャラリーいいね）。イベントいいねの `likedEventIds` 対応。

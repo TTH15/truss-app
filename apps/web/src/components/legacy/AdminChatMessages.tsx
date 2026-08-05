@@ -232,7 +232,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
           {/* 既読/時刻はLINE同様、吹き出し横に2行・小さめで表示。メンション・吹き出し・リンクプレビューは
               同じflex-colにまとめ、items-end/startで揃えることで左端(または右端)を必ず一致させる。
               ホバー行(pin/flag)はopacity-0でも高さを占有するため、items-endの基準に含めず外に出す */}
-          <div className={`flex items-end gap-1.5 ${message.isAdmin ? 'flex-row' : 'flex-row-reverse'}`}>
+          <div className={`flex items-end gap-2 ${message.isAdmin ? 'flex-row' : 'flex-row-reverse'}`}>
             <div className={`flex flex-col shrink-0 pb-0.5 ${message.isAdmin ? 'items-end' : 'items-start'}`}>
               {showRead && <span className="text-[11px] leading-[14px] text-gray-400">{language === 'ja' ? '既読' : 'Read'}</span>}
               <span className="text-[11px] leading-[14px] text-gray-400">{formatMessageTime(message.time)}</span>
@@ -323,6 +323,19 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
               )}
               {firstLinkUrl && <LinkPreviewCard url={firstLinkUrl} />}
             </div>
+            {/* 会員側はアイコンを出す。この行は flex-row-reverse なので、DOM の最後が一番左に来る。
+                まとまりの2通目以降は幅だけ空けて位置を揃える。アイコンは吹き出しの上端に合わせる
+                （行の基準は時刻に合わせた items-end のため、self-start が要る） */}
+            {!message.isAdmin && (startsGroup ? (
+              <UserAvatarImage
+                avatarPath={selectedUser?.avatarPath}
+                name={selectedUser?.userName ?? ''}
+                className="w-8 h-8 shrink-0 self-start text-xs"
+                fallbackClassName="bg-[#49B1E4] text-white"
+              />
+            ) : (
+              <div className="w-8 shrink-0" aria-hidden />
+            ))}
           </div>
           {/* ピン/フラグは吹き出しの外側の横に重ねる。行の中に置くと、隠れている間も高さを取り続けて
               メッセージ同士が離れてしまう（同時刻のまとまりを詰めても効かなくなる） */}

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { toast } from 'sonner';
-import Masonry from 'react-responsive-masonry';
+import Masonry, { ResponsiveMasonry } from 'react-responsive-masonry';
 import type { Language, User } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { ReactionCount } from './ReactionCount';
@@ -97,7 +97,6 @@ export function GalleryPage({ language, currentUser }: GalleryPageProps) {
     }
   };
 
-  const columns = typeof window !== 'undefined' ? (window.innerWidth < 768 ? 2 : window.innerWidth < 1024 ? 3 : 4) : 4;
   if (galleryPhotosLoading && photos.length === 0) {
     return (
       <div className="space-y-4 relative">
@@ -119,20 +118,34 @@ export function GalleryPage({ language, currentUser }: GalleryPageProps) {
           }
         />
       )}
-      <Masonry columnsCount={columns} gutter="16px">
-        {photos.map((photo) => {
-          const isLiked = likedGalleryPhotoIds.has(photo.id);
-          return (
-            <div key={photo.id} className="w-full overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer break-inside-avoid rounded-lg">
-              <div className="relative w-full" style={{ height: `${photo.height}px` }}>
-                <img src={typeof photo.image === 'string' ? photo.image : photo.image.src} alt={photo.eventName} loading="lazy" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"><div className="absolute bottom-0 left-0 right-0 p-3 text-white"><p className="text-sm truncate">{photo.eventName}</p><div className="flex items-center gap-1 text-xs mt-1"><Calendar className="w-3 h-3" />{photo.eventDate}</div></div></div>
-                <button onClick={(e) => { e.stopPropagation(); toggleLike(photo.id); }} className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/90 backdrop-blur-sm text-pink-600 hover:text-pink-700 rounded-full px-2 py-1 shadow-lg active:scale-90 transition-transform"><Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''} ${poppingPhotoId === photo.id ? 'animate-truss-pop' : ''}`} onAnimationEnd={() => setPoppingPhotoId(null)} /><ReactionCount value={photo.likes} className="text-sm" /></button>
+      {/* 列数はウィンドウ幅に追従させる。以前は描画時に一度 window.innerWidth を読むだけで、
+          リサイズしても列数が変わらなかった（SSR では常に4列扱いになる問題もあった） */}
+      <ResponsiveMasonry columnsCountBreakPoints={{ 0: 2, 768: 3, 1024: 4 }}>
+        <Masonry gutter="16px">
+          {photos.map((photo) => {
+            const isLiked = likedGalleryPhotoIds.has(photo.id);
+            return (
+              <div key={photo.id} className="w-full overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer break-inside-avoid rounded-lg">
+                {/* 高さは画像の比率に任せる（これが Pinterest 風に段差が付く条件）。
+                    以前は全カードを固定 200px + object-cover で切り抜いており、
+                    Masonry を使っていても実質ただの等高グリッドになっていた。
+                    読み込み前に真っ白な隙間ができないよう、背景に下地の色を敷いておく */}
+                <div className="relative w-full bg-[#EEEBE3]">
+                  <img
+                    src={typeof photo.image === 'string' ? photo.image : photo.image.src}
+                    alt={photo.eventName}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-auto block"
+                  />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"><div className="absolute bottom-0 left-0 right-0 p-3 text-white"><p className="text-sm truncate">{photo.eventName}</p><div className="flex items-center gap-1 text-xs mt-1"><Calendar className="w-3 h-3" />{photo.eventDate}</div></div></div>
+                  <button onClick={(e) => { e.stopPropagation(); toggleLike(photo.id); }} className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/90 backdrop-blur-sm text-pink-600 hover:text-pink-700 rounded-full px-2 py-1 shadow-lg active:scale-90 transition-transform"><Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''} ${poppingPhotoId === photo.id ? 'animate-truss-pop' : ''}`} onAnimationEnd={() => setPoppingPhotoId(null)} /><ReactionCount value={photo.likes} className="text-sm" /></button>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </Masonry>
+            );
+          })}
+        </Masonry>
+      </ResponsiveMasonry>
 
       <button onClick={() => setIsAddPhotoOpen(true)} className="fixed right-6 bottom-24 bg-[#49B1E4] hover:bg-[#3A9FD3] text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl z-40" aria-label={t.addPhoto}><Plus className="w-6 h-6" /></button>
       <Dialog open={isAddPhotoOpen} onOpenChange={setIsAddPhotoOpen}>

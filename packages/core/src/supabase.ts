@@ -101,6 +101,14 @@ export async function getStudentIdSignedUrl(path: string, expiresIn = 3600) {
   return { url: data?.signedUrl ?? null, error };
 }
 
+/**
+ * ファイル名にタイムスタンプとランダム文字列が入っていて二度と中身が変わらないものは、
+ * ブラウザに長くキャッシュさせてよい（既定は1時間で、画面を開き直すたびに取り直していた）。
+ * 逆に upsert で同じ名前に上書きするもの（イベント画像・アバター）には付けないこと。
+ * 差し替えても古い画像を掴み続けてしまう。
+ */
+const IMMUTABLE_CACHE_CONTROL = '31536000';
+
 export async function uploadEventImage(eventId: number, file: File) {
   const fileExt = file.name.split('.').pop();
   const fileName = `event-${eventId}.${fileExt}`;
@@ -141,6 +149,7 @@ export async function uploadGalleryPhoto(
   const { error } = await supabase.storage.from(BUCKETS.GALLERY_PHOTOS).upload(fileName, blob, {
     contentType: meta.contentType,
     upsert: false,
+    cacheControl: IMMUTABLE_CACHE_CONTROL,
   });
 
   if (error) return { url: null, error };
@@ -171,6 +180,7 @@ export async function uploadBoardPostImage(userId: string, file: File) {
   const { error } = await supabase.storage.from(BUCKETS.BOARD_POST_IMAGES).upload(fileName, file, {
     contentType: file.type || 'image/jpeg',
     upsert: false,
+    cacheControl: IMMUTABLE_CACHE_CONTROL,
   });
 
   if (error) return { url: null, error };
@@ -207,43 +217,52 @@ export async function uploadUserAvatar(userId: string, file: File) {
 
 /**
  * 署名付きURLのプロセス内キャッシュ。
- * アバターは一覧の各行が個別に発行を要求するため、素のままだとメンバー数だけ
- * createSignedUrl が並列に飛ぶ(239人なら239本、画面を往復するたびに再発行)。
- * path 単位で発行中の Promise ごと共有し、有効期限より手前で捨てる。
+ * 非公開バケットの画像は、一覧の各行や各メッセージが個別に発行を要求するため、
+ * 素のままだと件数だけ createSignedUrl が並列に飛ぶ(239人なら239本、画面を往復するたびに再発行)。
+ * バケットとパスの組ごとに、発行中の Promise ごと共有し、有効期限より手前で捨てる。
+ *
+ * URL が毎回変わるとブラウザのキャッシュも効かない（同じ画像を別物として読み直す）ため、
+ * 使い回すこと自体に転送量の意味もある。
  */
 const signedUrlCache = new Map<string, { url: string | null; expiresAt: number }>();
 const signedUrlInFlight = new Map<string, Promise<{ url: string | null; error: unknown }>>();
 
-export async function getAvatarSignedUrl(path: string, expiresIn = 3600) {
-  const cached = signedUrlCache.get(path);
+const signedUrlCacheKey = (bucket: string, path: string) => `${bucket}:${path}`;
+
+async function getSignedUrlCached(bucket: string, path: string, expiresIn: number) {
+  const key = signedUrlCacheKey(bucket, path);
+  const cached = signedUrlCache.get(key);
   if (cached && cached.expiresAt > Date.now()) {
     return { url: cached.url, error: null };
   }
-  const inFlight = signedUrlInFlight.get(path);
+  const inFlight = signedUrlInFlight.get(key);
   if (inFlight) return inFlight;
 
   const request = (async () => {
-    const { data, error } = await supabase.storage
-      .from(BUCKETS.USER_AVATARS)
-      .createSignedUrl(path, expiresIn);
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expiresIn);
     const url = data?.signedUrl ?? null;
     if (url) {
       // 有効期限の8割で切って、期限切れURLを掴み続けないようにする
-      signedUrlCache.set(path, { url, expiresAt: Date.now() + expiresIn * 800 });
+      signedUrlCache.set(key, { url, expiresAt: Date.now() + expiresIn * 800 });
     }
-    signedUrlInFlight.delete(path);
+    signedUrlInFlight.delete(key);
     return { url, error };
   })();
 
-  signedUrlInFlight.set(path, request);
+  signedUrlInFlight.set(key, request);
   return request;
+}
+
+export async function getAvatarSignedUrl(path: string, expiresIn = 3600) {
+  return getSignedUrlCached(BUCKETS.USER_AVATARS, path, expiresIn);
 }
 
 /** アバター差し替え後に古い署名付きURLを掴み続けないようにする */
 export function clearAvatarSignedUrlCache(path?: string) {
   if (path) {
-    signedUrlCache.delete(path);
-    signedUrlInFlight.delete(path);
+    const key = signedUrlCacheKey(BUCKETS.USER_AVATARS, path);
+    signedUrlCache.delete(key);
+    signedUrlInFlight.delete(key);
     return;
   }
   signedUrlCache.clear();
@@ -266,6 +285,7 @@ export async function uploadChatAttachment(
   const { error } = await supabase.storage.from(BUCKETS.CHAT_ATTACHMENTS).upload(fileName, blob, {
     contentType: meta.contentType,
     upsert: false,
+    cacheControl: IMMUTABLE_CACHE_CONTROL,
   });
 
   if (error) return { path: null as string | null, error };
@@ -273,10 +293,7 @@ export async function uploadChatAttachment(
 }
 
 export async function getChatAttachmentSignedUrl(path: string, expiresIn = 3600) {
-  const { data, error } = await supabase.storage
-    .from(BUCKETS.CHAT_ATTACHMENTS)
-    .createSignedUrl(path, expiresIn);
-  return { url: data?.signedUrl ?? null, error };
+  return getSignedUrlCached(BUCKETS.CHAT_ATTACHMENTS, path, expiresIn);
 }
 
 export default supabase;
