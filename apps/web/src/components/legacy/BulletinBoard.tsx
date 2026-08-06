@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { BoardPostWithReplies } from './BoardPostWithReplies';
 import { ImageDropUpload } from './ImageDropUpload';
 import type { Language, User, BoardPost, BoardPostReply, CreateBoardPostInput } from '@truss/core';
-import { normalizeBoardContent } from '@truss/core';
+import { normalizeBoardContent, isExpiredBoardPost, isExpiredStoryPost, toLocalDateKey } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { toast } from 'sonner';
 import { EmptyState } from './EmptyState';
@@ -35,25 +35,13 @@ const translations = {
 };
 const presetTags = { ja: ['English', '日本語', '中国語', '韓国語'], en: ['English', 'Japanese', 'Chinese', 'Korean'] };
 
-/** 掲載期限を過ぎた掲示板の投稿（期限日いっぱいは表示する） */
-const isExpiredBoardPost = (post: BoardPost) => {
-  if (!post.expiryDate) return false;
-  const today = new Date().toISOString().split('T')[0];
-  return post.expiryDate < today;
-};
-
 export function BulletinBoard({ language, user, onInterested, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onAddReply, onToggleInterest, onDeleteBoardPost }: BulletinBoardProps) {
   const t = translations[language];
   const { interestedPostIds, boardPostsLoading } = useData();
   const [submitting, setSubmitting] = useState(false);
   const visiblePosts = boardPosts.filter((post) => !post.isHidden && !post.isDeleted);
   // ストーリーは「1日のみ表示」。投稿から24時間で自動的に見えなくなる（以前は残り続けていた）
-  const storyPosts = visiblePosts.filter((p) => {
-    if (p.displayType !== 'story') return false;
-    const posted = new Date(p.time).getTime();
-    if (Number.isNaN(posted)) return true;
-    return Date.now() - posted < 24 * 60 * 60 * 1000;
-  });
+  const storyPosts = visiblePosts.filter((p) => p.displayType === 'story' && !isExpiredStoryPost(p));
   const canWrite = user.approved === true;
   const [selectedStory, setSelectedStory] = useState<number | null>(null);
   const [storyProgress, setStoryProgress] = useState(0);
@@ -227,7 +215,7 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
                   </div>
                 </RadioGroup>
               </div>
-              {newPost.displayType === 'board' && <div className="space-y-2"><Label htmlFor="expiry-date">{t.expiryDate}</Label><Input id="expiry-date" type="date" value={newPost.expiryDate} onChange={(e) => setNewPost({ ...newPost, expiryDate: e.target.value })} min={new Date().toISOString().split('T')[0]} /></div>}
+              {newPost.displayType === 'board' && <div className="space-y-2"><Label htmlFor="expiry-date">{t.expiryDate}</Label><Input id="expiry-date" type="date" value={newPost.expiryDate} onChange={(e) => setNewPost({ ...newPost, expiryDate: e.target.value })} min={toLocalDateKey()} /></div>}
               <div className="flex gap-2">
                 <Button
                   disabled={submitting}

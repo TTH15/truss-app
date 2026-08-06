@@ -48,6 +48,8 @@ export * from "./supabase";
 export * from "./profile-completion";
 export * from "./event-icons";
 export * from "./board-content";
+export * from "./board-visibility";
+export * from "./date-key";
 export * from "./event-map-link";
 export * from "./faculties";
 export * from "./chat-time";

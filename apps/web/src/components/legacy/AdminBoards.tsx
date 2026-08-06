@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { EyeOff, User, MessageSquare, Trash2, Plus, Pin, GripVertical } from 'lucide-react';
+import { EyeOff, User, MessageSquare, Trash2, Plus, Pin, GripVertical, CalendarOff, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import type { Language, BoardPost, CreateBoardPostInput } from '@truss/core';
-import { normalizeBoardContent } from '@truss/core';
+import { normalizeBoardContent, getBoardPostEndedReason, formatEventDateNoHyphen } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
 import { ImageDropUpload } from './ImageDropUpload';
 
@@ -25,8 +25,8 @@ interface AdminBoardsProps {
 }
 
 const translations = {
-  ja: { title: '掲示板管理', allPosts: 'すべての投稿', pinnedSection: 'ピン留め', pinnedEmpty: 'ピン留めされた投稿はありません', pinnedHint: 'ドラッグで表示順を入れ替えられます', hidden: '非表示', delete: '削除する', pin: 'ピン留め', unpin: 'ピン解除', deleteReason: '削除する理由', reasonInappropriate: '内容が不適切だと判断されたため。', reasonDuplicate: '同じ内容の掲示板が存在するため。', createPost: '運営投稿', postTitle: 'タイトル', postContent: '内容', uploadImage: '画像をアップロード（任意）', uploadImageHint: '画像をドラッグ&ドロップ、またはクリックして選択', submit: '投稿する', cancel: 'キャンセル' },
-  en: { title: 'Board Management', allPosts: 'All Posts', pinnedSection: 'Pinned', pinnedEmpty: 'No pinned posts yet', pinnedHint: 'Drag to reorder', hidden: 'Hidden', delete: 'Delete', pin: 'Pin', unpin: 'Unpin', deleteReason: 'Reason for deletion', reasonInappropriate: 'Judged as inappropriate content.', reasonDuplicate: 'Duplicate post exists.', createPost: 'Admin Post', postTitle: 'Title', postContent: 'Content', uploadImage: 'Upload Image (optional)', uploadImageHint: 'Drag & drop an image, or click to select', submit: 'Submit', cancel: 'Cancel' }
+  ja: { title: '掲示板管理', allPosts: 'すべての投稿', pinnedSection: 'ピン留め', pinnedEmpty: 'ピン留めされた投稿はありません', pinnedHint: 'ドラッグで表示順を入れ替えられます', hidden: '非表示', ended: '掲載終了', storyEnded: '公開終了', expiresOn: '掲載期限', delete: '削除する', pin: 'ピン留め', unpin: 'ピン解除', deleteReason: '削除する理由', reasonInappropriate: '内容が不適切だと判断されたため。', reasonDuplicate: '同じ内容の掲示板が存在するため。', createPost: '運営投稿', postTitle: 'タイトル', postContent: '内容', uploadImage: '画像をアップロード（任意）', uploadImageHint: '画像をドラッグ&ドロップ、またはクリックして選択', submit: '投稿する', cancel: 'キャンセル' },
+  en: { title: 'Board Management', allPosts: 'All Posts', pinnedSection: 'Pinned', pinnedEmpty: 'No pinned posts yet', pinnedHint: 'Drag to reorder', hidden: 'Hidden', ended: 'Ended', storyEnded: 'Story ended', expiresOn: 'Until', delete: 'Delete', pin: 'Pin', unpin: 'Unpin', deleteReason: 'Reason for deletion', reasonInappropriate: 'Judged as inappropriate content.', reasonDuplicate: 'Duplicate post exists.', createPost: 'Admin Post', postTitle: 'Title', postContent: 'Content', uploadImage: 'Upload Image (optional)', uploadImageHint: 'Drag & drop an image, or click to select', submit: 'Submit', cancel: 'Cancel' }
 };
 
 export function AdminBoards({ language, adminUserId = 'admin', adminName, boardPosts = [], onUpdateBoardPosts = () => {}, onCreateBoardPost, onDeleteBoardPost, onTogglePinBoardPost, onReorderPinnedBoardPosts }: AdminBoardsProps) {
@@ -113,6 +113,8 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
   const getCategoryColor = (category: string) => category === 'japanese' ? 'bg-blue-100 text-blue-800' : category === 'regular-international' ? 'bg-purple-100 text-purple-800' : category === 'exchange' ? 'bg-pink-100 text-pink-800' : 'bg-gray-100 text-gray-800';
   const getCategoryLabel = (category: string) => category === 'japanese' ? (language === 'ja' ? '日本人学生・国内学生' : 'Japanese') : category === 'regular-international' ? (language === 'ja' ? '正規留学生' : 'Regular') : category === 'exchange' ? (language === 'ja' ? '交換留学生' : 'Exchange') : '';
   const isAnnouncementPost = (post: BoardPost) => post.tag === 'event' && post.peopleNeeded === 0;
+  /** 会員の画面から消えている投稿。運営には残るので、見た目で区別できるようにする */
+  const endedReasonOf = (post: BoardPost) => getBoardPostEndedReason(post);
   const getPostTimeValue = (post: BoardPost) => {
     const parsed = new Date(post.time).getTime();
     return Number.isNaN(parsed) ? 0 : parsed;
@@ -126,6 +128,9 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
   const unpinnedPosts = useMemo(() => visiblePosts
     .filter((p) => !p.isPinned)
     .sort((a, b) => {
+      // 会員から見えなくなったものは末尾へ。日々の確認で目に入る順にする
+      const endedDiff = Number(Boolean(endedReasonOf(a))) - Number(Boolean(endedReasonOf(b)));
+      if (endedDiff !== 0) return endedDiff;
       const announcementDiff = Number(isAnnouncementPost(b)) - Number(isAnnouncementPost(a));
       if (announcementDiff !== 0) return announcementDiff;
       return getPostTimeValue(b) - getPostTimeValue(a);
@@ -261,17 +266,30 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
 
       <div className="grid md:grid-cols-2 gap-4">
         {[...pinnedPosts, ...unpinnedPosts].map((post) => (
-          <Card key={post.id} className={`min-w-0 hover:shadow-lg transition-shadow ${post.isHidden ? 'bg-gray-50 border-gray-300' : ''} ${post.tag === 'event' && post.peopleNeeded === 0 ? 'bg-amber-50 border-amber-200' : ''}`}>
+          <Card key={post.id} className={`min-w-0 hover:shadow-lg transition-shadow ${post.isHidden || endedReasonOf(post) ? 'bg-gray-50 border-gray-300' : ''} ${post.tag === 'event' && post.peopleNeeded === 0 ? 'bg-amber-50 border-amber-200' : ''}`}>
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 min-w-0">
-                    <CardTitle className={`min-w-0 break-words [overflow-wrap:anywhere] ${post.isHidden ? 'text-gray-500' : ''}`}>{post.title}</CardTitle>
+                    <CardTitle className={`min-w-0 break-words [overflow-wrap:anywhere] ${post.isHidden || endedReasonOf(post) ? 'text-gray-500' : ''}`}>{post.title}</CardTitle>
                     {post.isPinned && <Pin className="w-4 h-4 text-[#3D3D4E] fill-[#3D3D4E]" />}
                     {post.tag === 'event' && post.peopleNeeded === 0 && <Badge className="bg-amber-500 text-white">{language === 'ja' ? 'お知らせ' : 'Announcement'}</Badge>}
                     {post.isHidden && <Badge variant="secondary" className="bg-gray-200 text-gray-700"><EyeOff className="w-3 h-3 mr-1" />{t.hidden}</Badge>}
+                    {/* 掲載が終わった投稿は会員の一覧から消えている。運営には残るので理由まで出す */}
+                    {!post.isHidden && endedReasonOf(post) === 'expired' && (
+                      <Badge variant="secondary" className="bg-gray-200 text-gray-700">
+                        <CalendarOff className="w-3 h-3 mr-1" />
+                        {t.ended}{post.expiryDate ? ` ${formatEventDateNoHyphen(post.expiryDate)}` : ''}
+                      </Badge>
+                    )}
+                    {!post.isHidden && endedReasonOf(post) === 'storyFinished' && (
+                      <Badge variant="secondary" className="bg-gray-200 text-gray-700">
+                        <CalendarOff className="w-3 h-3 mr-1" />
+                        {t.storyEnded}
+                      </Badge>
+                    )}
                   </div>
-                  <CardDescription className={`whitespace-pre-line break-words [overflow-wrap:anywhere] ${post.isHidden ? 'line-through' : ''}`}>{linkifyText(normalizeBoardContent(post.content))}</CardDescription>
+                  <CardDescription className={`whitespace-pre-line break-words [overflow-wrap:anywhere] ${post.isHidden || endedReasonOf(post) ? 'line-through' : ''}`}>{linkifyText(normalizeBoardContent(post.content))}</CardDescription>
                 </div>
                 <div className="ml-2 shrink-0">
                   <Button variant="outline" size="sm" onClick={() => openDialog(post.id)} className="border-[#A5D8F3] text-[#49B1E4] hover:bg-[#E8F6FC]"><Trash2 className="w-4 h-4" /></Button>
@@ -283,6 +301,9 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
                 <div className="flex items-center gap-1"><User className="w-4 h-4" />{post.author}</div>
                 <Badge className={getCategoryColor(post.category ?? 'other')}>{getCategoryLabel(post.category ?? 'other')}</Badge>
                 <div className="flex items-center gap-1"><MessageSquare className="w-4 h-4" />{post.date}</div>
+                {post.expiryDate && !endedReasonOf(post) && (
+                  <div className="flex items-center gap-1 text-[#49B1E4]"><Calendar className="w-4 h-4" />{t.expiresOn} {formatEventDateNoHyphen(post.expiryDate)}</div>
+                )}
               </div>
               <Button
                 type="button"
