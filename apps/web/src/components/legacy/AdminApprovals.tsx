@@ -12,6 +12,7 @@ import { EditableApplicantDialog } from './EditableApplicantDialog';
 import { StudentIdImage } from './StudentIdImage';
 import { toast } from 'sonner';
 import type { Language, User } from '@truss/core';
+import { toLocalDateKey } from '@truss/core';
 
 interface AdminApprovalsProps {
   language: Language;
@@ -58,7 +59,7 @@ export function AdminApprovals({ language, pendingUsers = [], onApproveUser = ()
                     <p className="text-gray-600 text-sm mb-2">{application.furigana}</p>
                     <div className="flex flex-wrap gap-2 mb-3">
                       <Badge className={getCategoryColor(application.category)}>{getCategoryLabel(application.category)}</Badge>
-                      <Badge variant="outline" className="text-xs"><Calendar className="w-3 h-3 mr-1" />{t.applicationDate}: {application.requestedAt || new Date().toISOString().split('T')[0]}</Badge>
+                      <Badge variant="outline" className="text-xs"><Calendar className="w-3 h-3 mr-1" />{t.applicationDate}: {application.requestedAt || toLocalDateKey()}</Badge>
                       {application.studentIdReuploadRequested && <Badge style={{ backgroundColor: '#E0F3FB', color: '#49B1E4' }} className="text-xs"><RefreshCw className="w-3 h-3 mr-1" />{t.reuploadRequested}</Badge>}
                     </div>
                     <Dialog><DialogTrigger asChild><Button className="bg-[#49B1E4] hover:bg-[#3A9BD4] text-white w-full md:w-auto" size="sm"><Eye className="w-4 h-4 mr-2" />{t.viewDetails}</Button></DialogTrigger><EditableApplicantDialog language={language} application={application} onApprove={handleApprove} onReject={handleReject} onRequestReupload={onRequestReupload} /></Dialog>

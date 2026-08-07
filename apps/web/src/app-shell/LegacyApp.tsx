@@ -19,7 +19,7 @@ import { AuthCompleteScreen } from '../components/legacy/AuthCompleteScreen';
 import { Toaster, toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import { supabase, uploadStudentIdImage } from '@truss/core';
+import { supabase, uploadStudentIdImage, toLocalDateKey } from '@truss/core';
 import {
   buildInitialRegistrationUserInsert,
   buildInitialRegistrationUserUpdate,
@@ -528,7 +528,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
         return;
       }
 
-      const requestedAt = new Date().toISOString().split('T')[0];
+      const requestedAt = toLocalDateKey();
       const { data: existingUser } = await supabase
         .from('users')
         .select('id')

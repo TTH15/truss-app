@@ -12,7 +12,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faWallet } from '@fortawesome/free-solid-svg-icons';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { toast } from 'sonner';
-import { queryFeeSettings } from '@truss/core';
+import { queryFeeSettings, toLocalDateKey } from '@truss/core';
 import { upsertFeeSettingsRow } from '@truss/core';
 import { BulkEmailModal } from './BulkEmailModal';
 import { ReuploadRequestModal } from './ReuploadRequestModal';
@@ -290,7 +290,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `members_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `members_${toLocalDateKey()}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -325,7 +325,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     );
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Members');
-    XLSX.writeFile(workbook, `members_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(workbook, `members_${toLocalDateKey()}.xlsx`);
     toast.success(t.xlsxDownloaded);
   };
   const handleBulkDownloadTemplate = async () => {
@@ -373,7 +373,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `部員名簿_${now.toISOString().slice(0, 10)}.xlsx`;
+      a.download = `部員名簿_${toLocalDateKey(now)}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();

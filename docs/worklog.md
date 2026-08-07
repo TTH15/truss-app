@@ -638,3 +638,15 @@
 - `AdminApprovals.tsx` / `EditableApplicantDialog.tsx` — 申請日が空のときの表示フォールバック。
 - `AdminGallery.tsx:284` — イベント日が空のときのフォールバック。
 いずれも `toLocalDateKey()` に置き換えれば直る。
+
+## 2026-08-06 UTC 日付を使っていた残り6箇所を `toLocalDateKey()` に統一
+
+深夜（日本時間 0:00〜9:00）に日付が一日ずれる箇所をまとめて置き換えた。
+
+- `app-shell/LegacyApp.tsx` — 入会申請の `requestedAt`。**DB に保存する値**なので、深夜の申請が前日の日付で記録されていた（今回の中で唯一、実データに残るズレ）。
+- `AdminMembers.tsx`（3箇所）— 名簿の書き出しファイル名（CSV / Excel / 部員名簿）。
+- `AdminApprovals.tsx` / `EditableApplicantDialog.tsx` — 申請日が空のときの表示フォールバック。
+- `AdminGallery.tsx` — イベント日が空のときのフォールバック。
+
+- リポジトリ内に `toISOString().split('T')[0]` / `.slice(0, 10)` で日付を作る箇所は**残っていない**（`date-key.ts` のコメント内の説明を除く）。
+- 検証: `tsc --noEmit`・`next build`・モバイルの `tsc --noEmit` 通過。新規 lint 指摘 0。

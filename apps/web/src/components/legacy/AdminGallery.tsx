@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import type { Language } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { GALLERY_PHOTO_ACCEPT, isGalleryPhotoMimeAllowed } from '@truss/core';
+import { GALLERY_PHOTO_ACCEPT, isGalleryPhotoMimeAllowed, toLocalDateKey } from '@truss/core';
 import { applyMosaicAtPoint } from '../../lib/mosaicCanvas';
 import { AdminGalleryApprovals } from './AdminGalleryApprovals';
 
@@ -281,7 +281,7 @@ export function AdminGallery({ language }: AdminGalleryProps) {
         await uploadGalleryPhoto({
           eventId: eventIdNum,
           eventName: language === 'ja' ? (event?.titleJa || '') : (event?.titleEn || ''),
-          eventDate: event?.date || new Date().toISOString().split('T')[0],
+          eventDate: event?.date || toLocalDateKey(),
           imageFile: { blob: file, fileName: file.name, contentType: file.type },
           height: 200,
           userId: authUser.id,

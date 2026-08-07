@@ -9,6 +9,7 @@ import { CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { Checkbox } from '../ui/checkbox';
 import { toast } from 'sonner';
 import type { Language, User } from '@truss/core';
+import { toLocalDateKey } from '@truss/core';
 import { ConfirmDialog } from './ConfirmDialog';
 import { StudentIdImage } from './StudentIdImage';
 
@@ -38,7 +39,7 @@ export function EditableApplicantDialog({ language, application, onApprove, onRe
   return (
     <>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{t.applicantDetails}</DialogTitle><DialogDescription>{t.applicationDate}: {application.requestedAt || new Date().toISOString().split('T')[0]}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{t.applicantDetails}</DialogTitle><DialogDescription>{t.applicationDate}: {application.requestedAt || toLocalDateKey()}</DialogDescription></DialogHeader>
         <div className="space-y-6">
           <div><h4 className="text-gray-900 mb-2">{t.studentId}</h4><div className="border rounded-lg overflow-hidden" style={{ aspectRatio: '3/2' }}><StudentIdImage value={application.studentIdImage} language={language} alt="Student ID" className="w-full h-full object-contain" /></div></div>
           <div>
