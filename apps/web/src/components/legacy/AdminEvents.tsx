@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { withLineEscapeParam } from '../../lib/in-app-browser';
 import { Button } from '../ui/button';
 import { X, Save } from 'lucide-react';
 import { toast } from 'sonner';
@@ -187,7 +188,8 @@ export function AdminEvents({
 
   const selectedEventShareUrl = useMemo(() => {
     if (!selectedEvent?.shareToken || typeof window === 'undefined') return null;
-    return `${window.location.origin}/event/${selectedEvent.shareToken}`;
+    // LINE のトークに貼られても外部ブラウザで開くようにする（Google ログインが WebView で失敗するため）
+    return withLineEscapeParam(`${window.location.origin}/event/${selectedEvent.shareToken}`);
   }, [selectedEvent]);
   const handleShareEventLink = async () => {
     if (!selectedEventShareUrl || !selectedEvent) return;

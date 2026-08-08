@@ -41,3 +41,16 @@ export function isFeeDerivedRole(role: UserRole | undefined): boolean {
 export function isPrivilegedRole(role: UserRole | undefined): boolean {
   return !!role && role !== "member" && role !== "non_member";
 }
+
+/**
+ * 名簿で役職者を上に出すときの序列（小さいほど先頭）。
+ * 代表 → 副代表 → 役職者 → 顧問教員 の順。部員・非会員は同列で、通常の並び替えに従う。
+ */
+export const ROLE_LIST_PRIORITY: Record<UserRole, number> = {
+  president: 0,
+  vice_president: 1,
+  officer: 2,
+  advisor: 3,
+  member: 10,
+  non_member: 10,
+};

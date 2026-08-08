@@ -8,6 +8,7 @@ import type { Language, Event, User } from '@truss/core';
 import { getMissingProfileFields, describeMissingProfileFields } from '@truss/core';
 import { googleMapsHrefForEvent } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
+import { withLineEscapeParam } from '../../lib/in-app-browser';
 import { ReactionCount } from './ReactionCount';
 import { toast } from 'sonner';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -288,7 +289,8 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
   const detailMapsHref = detailEvent ? googleMapsHrefForEvent(detailEvent, language) : null;
   const detailShareUrl = useMemo(() => {
     if (!detailEvent?.shareToken || typeof window === 'undefined') return null;
-    return `${window.location.origin}/event/${detailEvent.shareToken}`;
+    // LINE のトークに貼られても外部ブラウザで開くようにする（Google ログインが WebView で失敗するため）
+    return withLineEscapeParam(`${window.location.origin}/event/${detailEvent.shareToken}`);
   }, [detailEvent]);
 
   const handleShareEvent = async () => {

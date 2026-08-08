@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Language } from "@truss/core";
-import { Shield } from "lucide-react";
+import { Shield, ExternalLink, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
+import { isInAppBrowser, isLineInAppBrowser, getLineEscapeUrl } from "../../lib/in-app-browser";
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -22,11 +23,21 @@ export function LoginScreen({
 }: LoginScreenProps) {
   const [acceptedAgreement, setAcceptedAgreement] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // LINE 等のアプリ内ブラウザでは Google ログインが必ず失敗する（Google が WebView を拒否する）。
+  // UA 判定はサーバーでは出来ないため、マウント後に判定して案内を出す
+  const [inAppBrowser, setInAppBrowser] = useState<'line' | 'other' | null>(null);
+  useEffect(() => {
+    if (!isInAppBrowser()) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 外部環境（UA）の判定はマウント後にしか出来ない
+    setInAppBrowser(isLineInAppBrowser() ? 'line' : 'other');
+  }, []);
 
   const privacyHref = "/privacy-policy";
   const termsHref = "/terms-of-service";
 
   const handleStart = () => {
+    // アプリ内ブラウザでは Google の同意画面自体が開けないので、開始させずに案内する
+    if (inAppBrowser) return;
     if (!acceptedAgreement) {
       setError(language === "ja" ? "上記に同意してから開始してください。" : "Please agree to the terms of service and privacy policy to continue.");
       return;
@@ -59,6 +70,39 @@ export function LoginScreen({
           className="w-[320px] h-auto select-none"
           draggable={false}
         />
+
+        {inAppBrowser && (
+          <div
+            className="w-full max-w-md rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
+              <p className="text-sm leading-relaxed text-[#3D3D4E]">
+                {language === "ja"
+                  ? "アプリ内ブラウザでは Google ログインをご利用いただけません。Safari や Chrome などのブラウザで開いてください。"
+                  : "Google sign-in is not available in in-app browsers. Please open this page in Safari or Chrome."}
+              </p>
+            </div>
+            {inAppBrowser === 'line' ? (
+              <Button
+                className="w-full bg-[#49B1E4] hover:bg-[#3A9FD3] text-white"
+                onClick={() => {
+                  window.location.href = getLineEscapeUrl();
+                }}
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                {language === "ja" ? "ブラウザで開き直す" : "Open in browser"}
+              </Button>
+            ) : (
+              <p className="text-xs text-[#6B6B7A] leading-relaxed">
+                {language === "ja"
+                  ? "画面右上（または右下）のメニューから「ブラウザで開く」を選んでください。"
+                  : "Use the menu (usually top-right) and choose “Open in browser”."}
+              </p>
+            )}
+          </div>
+        )}
 
         <div
           className="w-full max-w-md pb-6"

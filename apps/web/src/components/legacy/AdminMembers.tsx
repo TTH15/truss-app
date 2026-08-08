@@ -19,7 +19,7 @@ import { FeeUnpaidWalletIcon } from './FeeUnpaidWalletIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { AdminApprovals } from './AdminApprovals';
 import type { Language, User, UserRole } from '@truss/core';
-import { isSystemUser, isPrivilegedRole } from '@truss/core';
+import { isSystemUser, isPrivilegedRole, ROLE_LIST_PRIORITY } from '@truss/core';
 
 interface AdminMembersProps {
   language: Language;
@@ -208,7 +208,11 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
       return aTime - bTime;
     });
     if (sortOrder === 'desc') members.reverse();
-    return members;
+    // 役職者（代表 → 副代表 → 役職者 → 顧問教員）は並び替えの指定に関わらず先頭へ。
+    // 安定ソートなので、同役職どうし・一般部員どうしは上の並びを保つ
+    return members.sort(
+      (a, b) => ROLE_LIST_PRIORITY[a.role ?? 'member'] - ROLE_LIST_PRIORITY[b.role ?? 'member']
+    );
   }, [filteredMembers, sortBy, sortOrder]);
   const selectedCount = selectedMembers.size;
   const allFilteredSelected = sortedMembers.length > 0 && sortedMembers.every((member) => selectedMembers.has(member.id));
@@ -470,12 +474,13 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                 </SelectContent>
               </Select>
             </div>
-            {/* 区分の絞り込みはトグルチップで（チェックボックスのカードは場所を取りすぎた） */}
+            {/* 区分の絞り込みはトグルチップで（チェックボックスのカードは場所を取りすぎた）。
+                人数はこのタブに何人いるか（選ぶ前に分かるよう、検索や他チップは加味しない） */}
             <div className="flex flex-wrap items-center gap-1.5">
               {([
-                { key: 'japanese' as const, label: t.japanese },
-                { key: 'regularInternational' as const, label: t.regularInternational },
-                { key: 'exchange' as const, label: t.exchange },
+                { key: 'japanese' as const, label: `${t.japanese}（${displayedMembers.filter((m) => m.category === 'japanese').length}）` },
+                { key: 'regularInternational' as const, label: `${t.regularInternational}（${displayedMembers.filter((m) => m.category === 'regular-international').length}）` },
+                { key: 'exchange' as const, label: `${t.exchange}（${displayedMembers.filter((m) => m.category === 'exchange').length}）` },
               ]).map(({ key, label }) => (
                 <button
                   key={key}
