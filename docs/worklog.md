@@ -650,3 +650,53 @@
 
 - リポジトリ内に `toISOString().split('T')[0]` / `.slice(0, 10)` で日付を作る箇所は**残っていない**（`date-key.ts` のコメント内の説明を除く）。
 - 検証: `tsc --noEmit`・`next build`・モバイルの `tsc --noEmit` 通過。新規 lint 指摘 0。
+
+## 2026-08-07 未払いのまま作り直して逃げられる穴を塞いだ
+
+- `find_withdrawn_record`（migration 036）も `queryWithdrawnRecord` も出来ていたが、**呼び出し側が一箇所も無かった**。退会 → 作り直しで会費の記録が消える状態だった。
+- 036 を読み直すと、退会時に **`auth_id = NULL`** にしている（同じ Google アカウントでも新規登録として扱う設計）。したがって**再登録は必ず insert パスを通る**。塞ぐべきはそこ1点。
+- `buildInitialRegistrationUserInsert` に `withdrawnRecord` を受け取る引数を追加し、`fee_paid` / `membership_year` / `is_renewal` を引き継ぐようにした。渡さなければ従来どおり（既存の呼び出しは壊れない）。
+- 呼び出しは2箇所とも対応:
+  - Web: `app-shell/LegacyApp.tsx` の初期登録
+  - モバイル: `packages/core` の `completeInitialRegistrationRow`
+- **同じ初期登録の書き込みが Web（画面側で直接 supabase を叩く）とモバイル（core の関数）に二重にある**。今回はどちらも直したが、本来は Web も core の関数に寄せたい（Web 側は学生証アップロードの前処理が絡むため今回は見送り）。
+
+### 前回の UTC 日付の掃討に漏れがあった
+- `packages/core/src/db/mutations/users.ts:148` に `toISOString().split("T")[0]` が残っていた。**core はダブルクォートで書かれており、前回の検索（シングルクォート）から漏れていた**。`toLocalDateKey()` に修正。
+- 両方の引用符で再検索し、残っていないことを確認済み。
+- 検証: web `tsc --noEmit`・`next build`、モバイル `tsc --noEmit` 通過。新規 lint 指摘 0。
+
+## 2026-08-07 一斉送信・イベント案内をプッシュ通知に接続（C-2）
+
+- これまでプッシュが飛ぶのは個別メッセージ（`sendMessage` の `isAdmin` 時、category 'message'）だけだった。一斉送信系を接続:
+  - **AdminChat の一斉送信**（`sendBulkMessages`）→ 送信成功後に **'announcement'** で受信者全員分を**1回のAPI呼び出し**にまとめて送る。タイトルは件名（無ければ「運営からのお知らせ」）。
+  - **イベント案内 / 会員への一斉連絡**（BulkEmailModal → `handleSendBulkEmail`）→ AdminEvents からは **'event'**、AdminMembers からは既定の **'announcement'**。
+- **接続前から実は飛んでいた**: `handleSendBulkEmail` は `sendMessage(..., true)` のループなので、'message' カテゴリのプッシュが1人ずつ飛んでいた。問題は2つ: (1) カテゴリが違う（「メッセージ」をオフ・「イベント」をオンにしている人にイベント案内が届かない）、(2) 人数分の API 呼び出し。`sendMessage` に `suppressPush` を追加してループ内の個別プッシュを止め、最後に正しいカテゴリで1回にまとめた。
+- `DataContext` に `notifyMembersByPush(userIds, { title, body, category, tag })` を公開。本文80文字の切り詰め・失敗の握りつぶし（プッシュの失敗を送信の失敗にしない）はここに集約し、既存の `notifyByPush` はこれの1人版のラッパーにした。
+- category での絞り込み（`users.notify_*`）はサーバー側（`/api/push/send`）が対応済みなのを確認。
+- 変更: `DataContext.tsx` / `LegacyApp.tsx` / `AdminPage.tsx`・`AdminEvents.tsx`（`onSendBulkEmail` に optional 第8引数 `pushCategory`。AdminMembers 系は既定でよいので未変更）。
+- 検証: `tsc --noEmit`・`next build` 通過。新規コード由来の lint 指摘 0。
+- 残: 実際の配信確認は VAPID 鍵の設定後（C-4）。
+
+## 2026-08-07 チャット履歴のスレッドごとのページング（C-3）
+
+- 初期表示は従来どおり全体で直近1000件（`queryMessageThreadsAndMetadata`）。そこに含まれない古い履歴を、**遡りたいスレッドだけ**追加で読めるようにした。
+- core: `queryOlderThreadMessages(threadUserId, before, limit=100)` を追加。スレッドに属する行（会員が送った行 / 運営がその会員へ送った行・個別配信 / 全員向け一斉送信）を `time < before` で新しい順に100件取り、反転して返す。`limit` ちょうど返ったときだけ `hasMore: true`。
+- web `DataContext.loadOlderThreadMessages(threadUserId)`: スレッド先頭（最古）の time を基準に取得し、先頭に prepend。**全体再取得（fetchMessages）と競合しても二重に並ばないよう id で重複除去**。失敗時は true を返してボタンを残す（再試行可能に）。
+- `AdminChatMessages`: メッセージ欄の上端に「以前のメッセージを読み込む」ボタン。
+  - 読み込み前の `scrollHeight` / `scrollTop` を控え、描画後に差分を足して**見ていた位置がずれない**ようにした（`ScrollFade` の `scrollRef` を利用）。
+  - 最下部への自動スクロール（`messageThreads` 変化で発火）が prepend でも走ってしまうため、**読み込み直後の1回だけ抑制する** ref を追加。
+  - 遡り終えたスレッド（hasMore=false）はボタンを消す。
+  - props チェーンを伸ばさず `useData()` を直接使った（AdminEvents の furigana と同じ前例）。
+- 対象は運営チャットのみ。**会員側（MessagesPage / モバイル）は見送り**: 会員は自分のスレッドしか持たず、1000件枠を実質使い切ることがないため。core の関数は共通なので、必要になればボタンを足すだけ。
+- 検証: `tsc --noEmit`・`next build`・モバイル `tsc --noEmit` 通過。新規コード由来の lint 指摘 0。
+
+## 2026-08-07 tasks.md の引き継ぎセクションを現状に更新
+
+- 「次セッションへの引き継ぎ」を 2026-08-05 時点 → 2026-08-07 時点に更新。
+  - 本番 DB への適用（035/036/037/031）を完了扱いに（適用・確認済みの旨をユーザーから確認済み）。
+  - 実装項目3件（プッシュ接続・退会記録の引き継ぎ・チャットのページング）を完了に変更し、実装日と要点を追記。
+  - 残りは VAPID 鍵の Vercel 設定と Web Push の実機確認のみ。
+  - 保留に2件追記: モバイルのイベントいいね（`likedEventIds` 未対応）、Web 初期登録の書き込みが core と二重にある件。
+- ドキュメントのみの変更。直前のコード変更（C-2/C-3）は `tsc --noEmit`・`next build`・モバイル `tsc --noEmit` 通過済み。
+- 残課題: VAPID 鍵の設定（ユーザー作業）→ 実機確認。コミットは未実施（ユーザーの判断待ち）。

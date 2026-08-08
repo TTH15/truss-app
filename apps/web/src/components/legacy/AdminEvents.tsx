@@ -35,7 +35,7 @@ interface AdminEventsProps {
   onCreateEvent?: (eventData: AdminEventFormData) => Promise<void>;
   onUpdateEvent?: (eventId: number, eventData: AdminEventFormData) => Promise<void>;
   onDeleteEvent?: (eventId: number) => Promise<void>;
-  onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
+  onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean, pushCategory?: 'event' | 'announcement') => void;
   /** チャットのメンション等、外部から特定イベントの詳細を開きたい場合に指定する */
   focusEventId?: number;
   onFocusEventHandled?: () => void;
@@ -383,7 +383,8 @@ export function AdminEvents({
           onSend={(subjectJa, subjectEn, messageJa, messageEn, sendInApp, sendEmail) => {
             const selectedUserIds = Array.from(participants.selectedIds);
             if (onSendBulkEmail && selectedUserIds.length > 0) {
-              onSendBulkEmail(selectedUserIds, subjectJa, subjectEn, messageJa, messageEn, sendInApp, sendEmail);
+              // イベント参加者への案内なので、受信設定は「イベント」で絞る
+              onSendBulkEmail(selectedUserIds, subjectJa, subjectEn, messageJa, messageEn, sendInApp, sendEmail, 'event');
             }
             participants.clearSelection(); // 送信後も選択をクリア
           }}

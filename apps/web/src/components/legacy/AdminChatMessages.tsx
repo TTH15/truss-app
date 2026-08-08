@@ -3,6 +3,7 @@ import { UserAvatarImage } from './UserAvatarImage';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollFade } from './ScrollFade';
+import { useData } from '../../contexts/DataContext';
 import { MessageCircle, Send, Pin, Flag, ArrowLeft, Image as ImageIcon, Images, Calendar, Clock, MapPin, X, FileText } from 'lucide-react';
 import type { Language, MessageThread, User as UserType, Message, ChatThreadMetadata } from '@truss/core';
 import { formatDateLabel, formatMessageTime, formatRelativeListTime, getChatAttachmentSignedUrl, getMessageCategoryLabel, parseMessageDate, splitTextWithUrls, toDateKey, updateMessageFlagsRow } from '@truss/core';
@@ -45,7 +46,40 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [selectedUserId, messageThreads]);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const { loadOlderThreadMessages } = useData();
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  /** 遡り終えたスレッド。「以前のメッセージ」ボタンを出さない */
+  const [olderExhausted, setOlderExhausted] = useState<Record<string, boolean>>({});
+  /** 過去分を先頭に足した直後は、最下部への自動スクロールを1回だけ止める */
+  const suppressAutoScrollRef = useRef(false);
+  useEffect(() => {
+    if (suppressAutoScrollRef.current) {
+      suppressAutoScrollRef.current = false;
+      return;
+    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [selectedUserId, messageThreads]);
+
+  /** 過去のメッセージを読み込み、読み込み前に見ていた位置がずれないようスクロールを補正する */
+  const handleLoadOlder = async () => {
+    if (!selectedUserId || loadingOlder) return;
+    setLoadingOlder(true);
+    const el = messagesScrollRef.current;
+    const prevHeight = el?.scrollHeight ?? 0;
+    const prevTop = el?.scrollTop ?? 0;
+    suppressAutoScrollRef.current = true;
+    try {
+      const hasMore = await loadOlderThreadMessages(selectedUserId);
+      if (!hasMore) setOlderExhausted((prev) => ({ ...prev, [selectedUserId]: true }));
+      requestAnimationFrame(() => {
+        const el2 = messagesScrollRef.current;
+        if (el2) el2.scrollTop = prevTop + (el2.scrollHeight - prevHeight);
+      });
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
 
   // 通知等からの遷移でselectedChatUserIdが指定された場合、選択状態に反映する
   // （既読処理自体は下のselectedUserId用effectがmessageThreadsの変化にも反応して行う）
@@ -421,10 +455,26 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
             )}
             <div className="flex-1 overflow-hidden">
               {/* ぼかしの色は実際の背景（白）に合わせる。クリーム色を重ねると端が変色して見える */}
-              <ScrollFade fadeColor="#ffffff">
+              <ScrollFade fadeColor="#ffffff" scrollRef={messagesScrollRef}>
                 {/* 間隔は space-y ではなく各行の mt で付ける。まとまりの2通目以降だけ詰めたいので、
                     space-y の一律指定だと打ち消せない（詳細度が高く負マージンが効かない） */}
                 <div className="p-4">
+                  {/* 初期表示は全体で直近1000件のため、古い履歴はスレッドに含まれないことがある。
+                      遡りたいスレッドだけここから追加で読み込む */}
+                  {currentMessages.length > 0 && !olderExhausted[selectedUserId ?? ''] && (
+                    <div className="flex justify-center mb-2">
+                      <button
+                        type="button"
+                        onClick={() => void handleLoadOlder()}
+                        disabled={loadingOlder}
+                        className="text-xs text-[#49B1E4] hover:text-[#3A9FD3] hover:underline disabled:opacity-50 disabled:no-underline px-3 py-1"
+                      >
+                        {loadingOlder
+                          ? (language === 'ja' ? '読み込み中...' : 'Loading...')
+                          : (language === 'ja' ? '以前のメッセージを読み込む' : 'Load earlier messages')}
+                      </button>
+                    </div>
+                  )}
                   {currentMessages.map((message, index) => {
                     const currentDate = parseMessageDate(message.time);
                     const previous = index > 0 ? currentMessages[index - 1] : null;

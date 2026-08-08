@@ -8,6 +8,7 @@ import {
   type InitialRegistrationPayload,
 } from "../initial-registration";
 import type { UserRole } from "../../roles";
+import { toLocalDateKey } from "../../date-key";
 
 function toErrorOrNull(error: { message: string } | null) {
   return error ? new Error(error.message) : null;
@@ -145,7 +146,7 @@ export async function completeInitialRegistrationRow(
   email: string,
   data: InitialRegistrationPayload
 ): Promise<{ error: Error | null }> {
-  const requestedAt = new Date().toISOString().split("T")[0];
+  const requestedAt = toLocalDateKey();
   const { data: existing, error: checkError } = await supabase
     .from("users")
     .select("id")
@@ -161,9 +162,13 @@ export async function completeInitialRegistrationRow(
     return { error: toErrorOrNull(error) };
   }
 
+  // 退会時に auth_id を切り離すため、作り直しは必ずこの insert を通る。
+  // 学籍番号で退会済みの記録を引き当て、会費の状況を引き継ぐ
+  // （引き継がないと、未払いのまま退会して作り直せば記録が消えてしまう）
+  const withdrawnRecord = await queryWithdrawnRecord(data.studentNumber);
   const { error } = await supabase
     .from("users")
-    .insert(buildInitialRegistrationUserInsert(authId, email, data, requestedAt));
+    .insert(buildInitialRegistrationUserInsert(authId, email, data, requestedAt, withdrawnRecord));
   return { error: toErrorOrNull(error) };
 }
 
@@ -178,12 +183,19 @@ export async function withdrawOwnAccount(): Promise<{ error: Error | null }> {
   return { error: toErrorOrNull(error) };
 }
 
-/** 学籍番号から退会済みの記録を引く（初期登録時に会費状況を引き継ぐため） */
-export async function queryWithdrawnRecord(studentNumber: string): Promise<{
+/**
+ * 退会した人の、再登録時に引き継ぐ情報。個人情報は含まない。
+ * 退会時に `auth_id` を切り離すため、同じ Google アカウントでも再登録は新規 insert になる。
+ * そのままだと未払いの記録が消えて「作り直せば踏み倒せる」ので、学籍番号で引き当てて引き継ぐ。
+ */
+export type WithdrawnRecord = {
   feePaid: boolean;
   membershipYear: number | null;
   isRenewal: boolean;
-} | null> {
+};
+
+/** 学籍番号から退会済みの記録を引く（初期登録時に会費状況を引き継ぐため） */
+export async function queryWithdrawnRecord(studentNumber: string): Promise<WithdrawnRecord | null> {
   const { data, error } = await supabase.rpc("find_withdrawn_record", {
     p_student_number: studentNumber,
   });

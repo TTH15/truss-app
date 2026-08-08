@@ -52,7 +52,7 @@ interface AdminPageProps {
   onDeleteBoardPost?: (postId: number) => Promise<void>;
   onTogglePinBoardPost?: (postId: number, pinned: boolean) => Promise<void>;
   onReorderPinnedBoardPosts?: (orderedPostIds: number[]) => Promise<void>;
-  onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
+  onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean, pushCategory?: 'event' | 'announcement') => void;
   onSendBulkMessages?: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; broadcastId?: number | null }>) => Promise<void>;
   onCancelBroadcast?: (broadcastId: number) => Promise<void>;
 }

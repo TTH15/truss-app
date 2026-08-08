@@ -21,6 +21,43 @@ function compareMessagesByTimeThenId(a: Message, b: Message): number {
   return a.id - b.id;
 }
 
+/** 過去分を一度に読む件数。スレッドを遡るたびにこの単位で増える */
+const OLDER_MESSAGES_PAGE_SIZE = 100;
+
+/**
+ * 特定スレッドの `before` より古いメッセージを取得する（過去へのページング用）。
+ *
+ * 初期表示は `queryMessageThreadsAndMetadata` が全体の直近 1000 件をまとめて読むため、
+ * やりとりの多い環境では古い履歴がスレッドに含まれない。遡りたいスレッドだけ
+ * これで追加取得する。スレッドに属する行は次の3種:
+ * - 会員が送った行（sender_id = 会員）
+ * - 運営がその会員へ送った行・個別配信（receiver_id = 会員）
+ * - 全員向けの一斉送信（is_broadcast かつ receiver_id が NULL）
+ */
+export async function queryOlderThreadMessages(
+  threadUserId: string,
+  before: string,
+  limit: number = OLDER_MESSAGES_PAGE_SIZE
+): Promise<{ messages: Message[]; hasMore: boolean }> {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("*")
+    .is("cancelled_at", null)
+    .or(
+      `sender_id.eq.${threadUserId},receiver_id.eq.${threadUserId},and(is_broadcast.eq.true,receiver_id.is.null)`
+    )
+    .lt("time", before)
+    .order("time", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  const rows = (data ?? []).slice().reverse();
+  return {
+    messages: rows.map((r) => mapDbMessageRowToMessage(r as Parameters<typeof mapDbMessageRowToMessage>[0])),
+    // limit ちょうど返ってきたときだけ「まだある」と見なす（1件も欠けずに終端まで来たら消える）
+    hasMore: rows.length === limit,
+  };
+}
+
 export async function queryMessageThreadsAndMetadata(): Promise<{
   threads: MessageThread;
   metadata: ChatThreadMetadata;

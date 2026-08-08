@@ -23,6 +23,7 @@ import { supabase, uploadStudentIdImage, toLocalDateKey } from '@truss/core';
 import {
   buildInitialRegistrationUserInsert,
   buildInitialRegistrationUserUpdate,
+  queryWithdrawnRecord,
 } from '@truss/core';
 import { dataUrlToJpegFile } from '../lib/student-id-image';
 import '../styles/globals.css';
@@ -110,6 +111,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     uploadChatAttachment,
     sendBulkMessages,
     cancelBroadcast,
+    notifyMembersByPush,
     markNotificationAsRead,
     dismissNotification,
     createBoardPost,
@@ -535,6 +537,10 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
         .eq('auth_id', authData.user.id)
         .maybeSingle();
       const email = tempEmail || authData.user.email || '';
+      // 退会時に auth_id を切り離すため、作り直しは必ずこの insert を通る。
+      // 学籍番号で退会済みの記録を引き当て、会費の状況を引き継ぐ
+      // （引き継がないと、未払いのまま退会して作り直せば記録が消えてしまう）
+      const withdrawnRecord = existingUser ? null : await queryWithdrawnRecord(payload.studentNumber);
       const { error: saveError } = existingUser
         ? await supabase
             .from('users')
@@ -542,7 +548,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
             .eq('auth_id', authData.user.id)
         : await supabase
             .from('users')
-            .insert(buildInitialRegistrationUserInsert(authData.user.id, email, payload, requestedAt));
+            .insert(buildInitialRegistrationUserInsert(authData.user.id, email, payload, requestedAt, withdrawnRecord));
       if (saveError) {
         console.error('Error saving user:', saveError);
         toast.error(language === 'ja' ? 'ユーザー登録エラー' : 'User registration error');
@@ -686,12 +692,30 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     if (!user) return;
     await registerForEvent(eventId, photoRefusal);
   };
-  const handleSendBulkEmail = async (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => {
+  const handleSendBulkEmail = async (
+    userIds: string[],
+    subjectJa: string,
+    subjectEn: string,
+    messageJa: string,
+    messageEn: string,
+    sendInApp: boolean,
+    sendEmail: boolean,
+    // イベント参加者への案内は 'event'、それ以外の一斉連絡は 'announcement'。
+    // 会員ごとの受信設定（users.notify_*）のどれで絞るかが変わる
+    pushCategory: 'event' | 'announcement' = 'announcement',
+  ) => {
     try {
       if (sendInApp) {
         for (const userId of userIds) {
-          await sendMessage(userId, language === 'ja' ? messageJa : messageEn, true);
+          // プッシュはループ内で1人ずつ送らず、最後に全員分を1回にまとめる
+          await sendMessage(userId, language === 'ja' ? messageJa : messageEn, true, { suppressPush: true });
         }
+        void notifyMembersByPush(userIds, {
+          title: subjectJa || subjectEn || '運営からのお知らせ',
+          body: messageJa || messageEn,
+          tag: pushCategory === 'event' ? 'truss-event' : 'truss-broadcast',
+          category: pushCategory,
+        });
       }
       // メール送信は未実装。実装するまで「送信した」と表示しない
       if (sendEmail) {

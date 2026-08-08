@@ -11,7 +11,7 @@ import {
   queryPendingAndApprovedUsers,
   queryStaffInboxUserId,
 } from '@truss/core';
-import { queryMessageThreadsAndMetadata } from '@truss/core';
+import { queryMessageThreadsAndMetadata, queryOlderThreadMessages } from '@truss/core';
 import { queryNotificationsForUser } from '@truss/core';
 import { queryBoardPostsWithReplies } from '@truss/core';
 import { queryGalleryPhotos, queryLikedGalleryPhotoIds, queryInterestedBoardPostIds, queryLikedEventIds } from '@truss/core';
@@ -108,8 +108,12 @@ interface DataContextType {
     receiverId: string,
     text: string,
     isAdmin?: boolean,
-    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention }
+    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention; suppressPush?: boolean }
   ) => Promise<void>;
+  /** 複数人へのプッシュ通知を1回で送る（種類ごとの受信設定はサーバー側で絞り込み） */
+  notifyMembersByPush: (userIds: string[], input: { title: string; body?: string; category: 'message' | 'event' | 'announcement'; tag?: string }) => Promise<void>;
+  /** スレッドの過去メッセージを追加読み込みし、まだ残っていそうかを返す */
+  loadOlderThreadMessages: (threadUserId: string) => Promise<boolean>;
   sendBulkMessages: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; broadcastId?: number | null }>) => Promise<void>;
   cancelBroadcast: (broadcastId: number) => Promise<void>;
   sendBroadcast: (text: string, subjectJa: string, subjectEn: string) => Promise<void>;
@@ -664,7 +668,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     receiverId: string,
     text: string,
     isAdmin: boolean = false,
-    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention }
+    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention; suppressPush?: boolean }
   ) => {
     if (!user) return;
     try {
@@ -683,35 +687,80 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await fetchMessages();
       // 運営からの返信は、相手がアプリを閉じていても届くようにプッシュも送る。
       // 失敗しても送信自体は成功しているので、ここでは例外にしない。
-      if (isAdmin) void notifyByPush(receiverId, text);
+      // 一斉送信のループから呼ばれる場合は suppressPush で止め、呼び出し側が1回にまとめて送る
+      if (isAdmin && !options?.suppressPush) void notifyByPush(receiverId, text);
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;
     }
   };
 
-  /** 運営からのメッセージをプッシュ通知でも知らせる（受信設定はサーバー側で絞り込む） */
-  const notifyByPush = async (receiverId: string, text: string) => {
+  /**
+   * 複数人へのプッシュ通知を1回のAPI呼び出しで送る。
+   * 種類ごとの受信設定（users.notify_*）での絞り込みはサーバー側が行う。
+   * プッシュの失敗を本文の送信の失敗にしないため、例外はここで握りつぶす。
+   */
+  const notifyMembersByPush = async (
+    userIds: string[],
+    input: { title: string; body?: string; category: 'message' | 'event' | 'announcement'; tag?: string }
+  ) => {
+    if (userIds.length === 0) return;
     try {
       const { data } = await supabase.auth.getSession();
       const accessToken = data.session?.access_token;
       if (!accessToken) return;
       await sendPushNotification(accessToken, {
-        userIds: [receiverId],
-        title: '運営からメッセージが届きました',
-        body: text.length > 80 ? `${text.slice(0, 79)}…` : text,
+        userIds,
+        title: input.title,
+        body: input.body && input.body.length > 80 ? `${input.body.slice(0, 79)}…` : input.body,
         url: '/dashboard',
-        tag: 'truss-message',
-        category: 'message',
+        tag: input.tag,
+        category: input.category,
       });
     } catch (error) {
       console.error('Push notification failed (message was sent):', error);
     }
   };
 
+  /** 運営からのメッセージをプッシュ通知でも知らせる */
+  const notifyByPush = (receiverId: string, text: string) =>
+    notifyMembersByPush([receiverId], {
+      title: '運営からメッセージが届きました',
+      body: text,
+      tag: 'truss-message',
+      category: 'message',
+    });
+
   const uploadChatAttachment = async (blob: Blob, meta: { fileExt: string; contentType: string }) => {
     if (!user) return { path: null, error: new Error('Not signed in') };
     return uploadChatAttachmentToStorage(user.id, blob, meta);
+  };
+
+  /**
+   * スレッドの過去のメッセージを追加で読み込む（先頭に足す）。
+   * 戻り値は「まだ古い履歴が残っていそうか」。false になったら遡り終わり。
+   */
+  const loadOlderThreadMessages = async (threadUserId: string): Promise<boolean> => {
+    const current = messageThreads[threadUserId];
+    if (!current || current.length === 0) return false;
+    const oldest = current[0];
+    try {
+      const { messages: older, hasMore } = await queryOlderThreadMessages(threadUserId, oldest.time);
+      if (older.length > 0) {
+        setMessageThreads((prev) => {
+          const cur = prev[threadUserId] ?? [];
+          // 全体再取得（fetchMessages）と競合しても二重に並ばないよう、id で重複を除く
+          const seen = new Set(cur.map((m) => m.id));
+          const add = older.filter((m) => !seen.has(m.id));
+          if (add.length === 0) return prev;
+          return { ...prev, [threadUserId]: [...add, ...cur] };
+        });
+      }
+      return hasMore;
+    } catch (error) {
+      console.error('Error loading older thread messages:', error);
+      return true; // 失敗時はボタンを残す（再試行できるように）
+    }
   };
 
   const sendBulkMessages = async (
@@ -735,6 +784,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
       if (error) throw error;
       await fetchMessages();
+      // 一斉送信は「お知らせ」種別のプッシュを全員分まとめて1回で送る
+      const adminRecipients = messages.filter((m) => m.isAdmin ?? false).map((m) => m.receiverId);
+      const subject = messages.find((m) => m.broadcastSubject)?.broadcastSubject;
+      void notifyMembersByPush(adminRecipients, {
+        title: subject || '運営からのお知らせ',
+        body: messages[0]?.text,
+        tag: 'truss-broadcast',
+        category: 'announcement',
+      });
     } catch (error) {
       console.error('Error sending bulk messages:', error);
       throw error;
@@ -1016,7 +1074,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading, boardPostsLoading, galleryPhotosLoading,
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
     approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, setUserRole, resetMembershipForNewYear, deleteUser,
-    sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, markMessageAsRead, markAllMessagesAsReadForUser, markMemberMessagesAsRead, uploadChatAttachment, updateChatMetadata,
+    sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, notifyMembersByPush, loadOlderThreadMessages, markMessageAsRead, markAllMessagesAsReadForUser, markMemberMessagesAsRead, uploadChatAttachment, updateChatMetadata,
     markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost, togglePinBoardPost, reorderPinnedBoardPosts,
     uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, toggleGalleryPhotoLike, likedGalleryPhotoIds, interestedPostIds, likedEventIds,
     refreshEvents: () => fetchEvents(true), refreshUsers: () => fetchUsers(true), refreshMessages: fetchMessages, refreshNotifications: fetchNotifications,

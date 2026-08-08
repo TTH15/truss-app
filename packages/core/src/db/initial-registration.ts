@@ -3,6 +3,7 @@
  */
 import type { DbUserInsert, DbUserUpdate } from "../types/database.types";
 import { normalizePhone } from "../phone";
+import type { WithdrawnRecord } from "./mutations/users";
 
 export type InitialRegistrationPayload = {
   name: string;
@@ -40,12 +41,18 @@ export function buildInitialRegistrationUserUpdate(
   };
 }
 
-/** 新規 users 行（初回 insert） */
+/**
+ * 新規 users 行（初回 insert）。
+ *
+ * 退会した人が作り直した場合は `withdrawnRecord` を渡すこと。会費の支払い状況・会員年度・
+ * 継続かどうかを引き継ぐ。渡さないと**未払いのまま退会して作り直せば記録が消える**。
+ */
 export function buildInitialRegistrationUserInsert(
   authId: string,
   email: string,
   data: InitialRegistrationPayload,
-  requestedAt: string
+  requestedAt: string,
+  withdrawnRecord?: WithdrawnRecord | null
 ): DbUserInsert {
   const base = buildInitialRegistrationUserUpdate(data, requestedAt);
   return {
@@ -71,9 +78,9 @@ export function buildInitialRegistrationUserInsert(
     email_verified: base.email_verified!,
     initial_registered: base.initial_registered!,
     profile_completed: base.profile_completed!,
-    fee_paid: base.fee_paid!,
-    membership_year: null,
-    is_renewal: false,
+    fee_paid: withdrawnRecord?.feePaid ?? base.fee_paid!,
+    membership_year: withdrawnRecord?.membershipYear ?? null,
+    is_renewal: withdrawnRecord?.isRenewal ?? false,
     student_id_reupload_requested: false,
     reupload_reason: null,
     requested_at: base.requested_at ?? null,
