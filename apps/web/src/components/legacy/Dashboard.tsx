@@ -17,7 +17,7 @@ import { ImageWithFallback } from '../figma/ImageWithFallback';
 import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
 import type { User as UserType, Language, Event, MessageThread, ChatThreadMetadata, Notification, BoardPost, BoardPostReply } from '@truss/core';
 import type { Dispatch, SetStateAction } from 'react';
-import { isProfileCompleteForParticipation } from '@truss/core';
+import { isProfileCompleteForParticipation, isSystemUser, isPrivilegedRole } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { toast } from 'sonner';
 import { uploadStudentIdImage } from '@truss/core';
@@ -723,7 +723,9 @@ export function Dashboard({
 
         {currentPage === 'home' && <HomePage language={language} user={user} events={events} onNavigateToEvent={handleNavigateToEvent} onOpenProfile={onOpenProfile} onReopenInitialRegistration={onReopenInitialRegistration} onDismissReuploadNotification={onDismissReuploadNotification} onOpenFeePayment={() => setFeePaymentDialogOpen(true)} />}
         {currentPage === 'events' && <EventsPage language={language} events={events} attendingEvents={attendingEvents} likedEvents={likedEvents} onToggleAttending={onToggleAttending} onToggleLike={onToggleLike} highlightEventId={highlightEventId} openEventId={pendingOpenEventId} onOpenEventHandled={() => setPendingOpenEventId(undefined)} onAddEventParticipant={onAddEventParticipant} user={user} />}
-        {currentPage === 'members' && <MembersPage language={language} members={approvedMembers.filter((member) => !member.isAdmin)} />}
+        {/* 運営メンバーも会員なので名簿に出す（2026-08-08 方針決定）。
+            隠すのはシステム行（運営受信箱）と、役職を持たない is_admin = 移行前の専用アカウントだけ */}
+        {currentPage === 'members' && <MembersPage language={language} members={approvedMembers.filter((member) => !isSystemUser(member) && (!member.isAdmin || isPrivilegedRole(member.role)))} />}
         {currentPage === 'bulletin' && <BulletinBoard language={language} user={user} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onAddReply={onAddReply} onToggleInterest={onToggleInterest} onDeleteBoardPost={onDeleteBoardPost} />}
         {currentPage === 'gallery' && <GalleryPage language={language} currentUser={user} />}
         {currentPage === 'profile' && (

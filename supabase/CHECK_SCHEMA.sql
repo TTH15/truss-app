@@ -40,7 +40,9 @@ WITH expected(migration, kind, object_name, detail) AS (
     -- 037: 通知種別の受信設定
     ('037', 'column', 'users', 'notify_message'),
     -- 038: is_admin の自己昇格防止
-    ('038', 'function', 'enforce_admin_flag_change_by_admin', null)
+    ('038', 'function', 'enforce_admin_flag_change_by_admin', null),
+    -- 039: 運営権限を役職に連動
+    ('039', 'function', 'sync_admin_flag_with_role', null)
 )
 SELECT
   e.migration,

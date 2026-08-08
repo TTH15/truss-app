@@ -34,7 +34,6 @@ import {
   resetMembershipForNewYearRow,
   deleteUserRow,
   updateUserRoleRow,
-  updateUserAdminFlagRow,
   type UserRole,
 } from '@truss/core';
 import {
@@ -103,8 +102,6 @@ interface DataContextType {
   confirmRenewal: (userId: string) => Promise<void>;
   setRenewalStatus: (userId: string, isRenewal: boolean) => Promise<void>;
   setUserRole: (userId: string, role: UserRole) => Promise<void>;
-  /** 運営権限（is_admin）の付与・剥奪。管理者のみ実行できる */
-  setUserAdminFlag: (userId: string, isAdmin: boolean) => Promise<void>;
   resetMembershipForNewYear: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   sendMessage: (
@@ -644,18 +641,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  /** 運営権限の付与・剥奪。自己昇格は DB 側のトリガー（migration 038）が拒否する */
-  const setUserAdminFlag = async (userId: string, isAdmin: boolean) => {
-    try {
-      const { error } = await updateUserAdminFlagRow(userId, isAdmin);
-      if (error) throw error;
-      await fetchUsers(true);
-    } catch (error) {
-      console.error('Error setting admin flag:', error);
-      throw error;
-    }
-  };
-
   const resetMembershipForNewYear = async () => {
     try {
       const currentYear = new Date().getFullYear();
@@ -1105,7 +1090,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const value: DataContextType = {
     events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading, boardPostsLoading, galleryPhotosLoading,
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
-    approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, setUserRole, setUserAdminFlag, resetMembershipForNewYear, deleteUser,
+    approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, setUserRole, resetMembershipForNewYear, deleteUser,
     sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, notifyMembersByPush, loadOlderThreadMessages, markMessageAsRead, markAllMessagesAsReadForUser, markMemberMessagesAsRead, uploadChatAttachment, updateChatMetadata,
     markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost, togglePinBoardPost, reorderPinnedBoardPosts,
     uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, toggleGalleryPhotoLike, likedGalleryPhotoIds, interestedPostIds, likedEventIds,

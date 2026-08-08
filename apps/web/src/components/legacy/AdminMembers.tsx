@@ -7,7 +7,7 @@ import { Checkbox } from '../ui/checkbox';
 import { Skeleton } from '../ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Search, Download, Mail, MessageCircle, MoreVertical, Pencil, Plus, ShieldCheck } from 'lucide-react';
+import { Search, Download, Mail, MessageCircle, MoreVertical, Users2, UserMinus, UserCheck, ListChecks } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faWallet } from '@fortawesome/free-solid-svg-icons';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -17,12 +17,11 @@ import { upsertFeeSettingsRow } from '@truss/core';
 import { BulkEmailModal } from './BulkEmailModal';
 import { ReuploadRequestModal } from './ReuploadRequestModal';
 import { MemberDetailModal } from './MemberDetailModal';
-import { useData } from '../../contexts/DataContext';
+import { RoleBadge } from './RoleBadge';
 import { useAuth } from '../../contexts/AuthContext';
 import { AdminApprovals } from './AdminApprovals';
-import svgPaths from '../../imports/svg-u7k8r9dq17';
-import svgPaths2 from '../../imports/svg-40vpfbujgn';
 import type { Language, User, UserRole } from '@truss/core';
+import { isSystemUser, isPrivilegedRole } from '@truss/core';
 
 interface AdminMembersProps {
   language: Language;
@@ -43,7 +42,7 @@ interface AdminMembersProps {
 const translations = {
   ja: {
     title: 'メンバー管理',
-    membersTab: 'メンバー',
+    membersTab: '部員', nonMembersTab: '非会員',
     pendingTab: '承認待ち',
     search: 'メンバーを検索...',
     japanese: '日本人学生・国内学生',
@@ -60,7 +59,7 @@ const translations = {
     sortOrderDesc: '降順',
     exportData: 'データをエクスポート',
     sendBulkEmail: 'メールを一斉送信',
-    bulkAction: '編集',
+    bulkAction: '一括操作',
     bulkActionTitle: '一括操作',
     feePriceSetting: '年会費・入会費の価格設定',
     annualFee: '年会費',
@@ -94,7 +93,7 @@ const translations = {
   },
   en: {
     title: 'Member Management',
-    membersTab: 'Members',
+    membersTab: 'Members', nonMembersTab: 'Non-members',
     pendingTab: 'Pending',
     search: 'Search members...',
     japanese: 'Japanese Student',
@@ -161,12 +160,11 @@ function FeeUnpaidWalletIcon({ tooltip }: { tooltip: string }) {
 }
 
 export function AdminMembers({ language, approvedMembers, pendingUsers, isLoading = false, onApproveUser, onRejectUser, onRequestReupload, onOpenChat, onSendBulkEmail, onConfirmFeePayment, onSetRenewalStatus, onSetUserRole, onDeleteUser }: AdminMembersProps) {
-  const { setUserAdminFlag } = useData();
   const { user: currentAdmin } = useAuth();
   const t = translations[language];
   const toKatakana = (value: string) =>
     value.replace(/[\u3041-\u3096]/g, (m) => String.fromCharCode(m.charCodeAt(0) + 0x60));
-  const [activeTab, setActiveTab] = useState<'approved' | 'pending'>('approved');
+  const [activeTab, setActiveTab] = useState<'members' | 'nonMembers' | 'pending'>('members');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -176,15 +174,22 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
   const [reuploadUserName, setReuploadUserName] = useState<string>('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [filters, setFilters] = useState({ feePaid: false, feeUnpaid: false, japanese: false, exchange: false, regularInternational: false });
+  const [filters, setFilters] = useState({ japanese: false, exchange: false, regularInternational: false });
   const [sortBy, setSortBy] = useState<'furigana' | 'createdAt'>('furigana');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [annualFeeAmount, setAnnualFeeAmount] = useState('2000');
   const [admissionFeeAmount, setAdmissionFeeAmount] = useState('2500');
-  // 以前は運営（is_admin）を名簿から除外していたが、運営権限の付与・剥奪を
-  // この画面で行うようにしたため、運営も表示する（「運営」バッジで区別）
-  const approvedMembersList = approvedMembers;
-  const displayedMembers = activeTab === 'approved' ? approvedMembersList : pendingUsers;
+  // 実在の人だけを名簿に出す。システム行（運営受信箱）と、役職を持たない is_admin
+  // （= 移行前の専用アカウント。Truss Admin 等）は除外する。
+  // 運営メンバー（役職持ち）は部員タブに並び、役職バッジで区別される
+  const humanMembers = useMemo(
+    () => approvedMembers.filter((m) => !isSystemUser(m) && (!m.isAdmin || isPrivilegedRole(m.role))),
+    [approvedMembers]
+  );
+  // 「部員」と「非会員（未払い）」は役職で分ける。数字が「会費を払った部員の数」を指すようにする
+  const memberList = useMemo(() => humanMembers.filter((m) => m.role !== 'non_member'), [humanMembers]);
+  const nonMemberList = useMemo(() => humanMembers.filter((m) => m.role === 'non_member'), [humanMembers]);
+  const displayedMembers = activeTab === 'members' ? memberList : activeTab === 'nonMembers' ? nonMemberList : pendingUsers;
 
   const filteredMembers = displayedMembers.filter(member => {
     const q = searchQuery.toLowerCase();
@@ -202,12 +207,6 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     if (anyCategorySelected) {
       const matchesCategory = (filters.japanese && member.category === 'japanese') || (filters.regularInternational && member.category === 'regular-international') || (filters.exchange && member.category === 'exchange');
       if (!matchesCategory) return false;
-    }
-    const paymentFilters = [filters.feePaid, filters.feeUnpaid];
-    const anyPaymentSelected = paymentFilters.some(f => f);
-    if (anyPaymentSelected) {
-      const matchesPayment = (filters.feePaid && member.feePaid) || (filters.feeUnpaid && !member.feePaid);
-      if (!matchesPayment) return false;
     }
     return true;
   });
@@ -434,105 +433,92 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     <div className="space-y-6">
       <div className="space-y-6">
         <div className="relative">
-          <div className="flex items-start gap-2">
-            <button onClick={() => setActiveTab('approved')} className="h-[50px] relative">
-              <div className={`flex items-center gap-2 px-4 h-full border-b-2 ${activeTab === 'approved' ? 'border-[#3D3D4E]' : 'border-transparent'}`}>
-                <div className="relative shrink-0 size-[20px]">
-                  <svg className="block size-full" fill="none" viewBox="0 0 20 20">
-                    <path d={svgPaths.p25397b80} stroke={activeTab === 'approved' ? '#3D3D4E' : '#6B6B7A'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-                    <path d={svgPaths.p2c4f400} stroke={activeTab === 'approved' ? '#3D3D4E' : '#6B6B7A'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-                    <path d={svgPaths.p2241fff0} stroke={activeTab === 'approved' ? '#3D3D4E' : '#6B6B7A'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-                    <path d={svgPaths.pc9c280} stroke={activeTab === 'approved' ? '#3D3D4E' : '#6B6B7A'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-                  </svg>
+          <div className="flex items-start gap-2 overflow-x-auto">
+            {([
+              { key: 'members' as const, icon: Users2, label: `${t.membersTab}（${memberList.length}）` },
+              { key: 'nonMembers' as const, icon: UserMinus, label: `${t.nonMembersTab}（${nonMemberList.length}）` },
+              { key: 'pending' as const, icon: UserCheck, label: t.pendingTab },
+            ]).map(({ key, icon: TabIcon, label }) => (
+              <button key={key} onClick={() => setActiveTab(key)} className="h-[50px] relative shrink-0">
+                <div className={`flex items-center gap-2 px-4 h-full border-b-2 ${activeTab === key ? 'border-[#3D3D4E]' : 'border-transparent'}`}>
+                  <TabIcon className={`w-5 h-5 ${activeTab === key ? 'text-[#3D3D4E]' : 'text-[#6B6B7A]'}`} />
+                  <span className={`font-normal leading-[24px] text-[16px] tracking-[-0.3125px] whitespace-nowrap ${activeTab === key ? 'text-[#3D3D4E]' : 'text-[#6B6B7A]'}`}>{label}</span>
+                  {key === 'pending' && pendingUsers.length > 0 && (
+                    <div className="min-w-[20px] h-[20px] bg-[#D4183D] rounded-full flex items-center justify-center px-1.5">
+                      <span className="text-white text-xs font-semibold leading-none">{pendingUsers.length}</span>
+                    </div>
+                  )}
                 </div>
-                <span className={`font-normal leading-[24px] text-[16px] tracking-[-0.3125px] ${activeTab === 'approved' ? 'text-[#3D3D4E]' : 'text-[#6B6B7A]'}`}>{t.membersTab}（{approvedMembersList.length}）</span>
-              </div>
-            </button>
-            <button onClick={() => setActiveTab('pending')} className="h-[50px] relative">
-              <div className={`flex items-center gap-2 px-4 h-full border-b-2 ${activeTab === 'pending' ? 'border-[#3D3D4E]' : 'border-transparent'}`}>
-                <div className="relative shrink-0 size-[20px]">
-                  <svg className="block size-full" fill="none" viewBox="0 0 20 20">
-                    <g clipPath="url(#clip-pending)">
-                      <path d={svgPaths.p29da0700} stroke={activeTab === 'pending' ? '#3D3D4E' : '#6B6B7A'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-                      <path d={svgPaths.p3fe63d80} stroke={activeTab === 'pending' ? '#3D3D4E' : '#6B6B7A'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-                    </g>
-                    <defs><clipPath id="clip-pending"><rect fill="white" height="20" width="20" /></clipPath></defs>
-                  </svg>
-                </div>
-                <span className={`font-normal leading-[24px] text-[16px] tracking-[-0.3125px] ${activeTab === 'pending' ? 'text-[#3D3D4E]' : 'text-[#6B6B7A]'}`}>{t.pendingTab}</span>
-                {pendingUsers.length > 0 && <div className="min-w-[20px] h-[20px] bg-[#D4183D] rounded-full flex items-center justify-center px-1.5"><span className="text-white text-xs font-semibold leading-none">{pendingUsers.length}</span></div>}
-              </div>
-            </button>
+              </button>
+            ))}
           </div>
           <div className="absolute bottom-0 left-0 right-0 border-b border-[#E5E7EB]" />
         </div>
 
-        {activeTab === 'approved' && (
+        {activeTab !== 'pending' && (
           <div className="space-y-3 max-w-2xl mx-auto">
-            <div className="rounded-xl border border-[rgba(61,61,78,0.12)] bg-white p-3 space-y-3">
-              <div className="space-y-2">
-                <span className="text-sm font-semibold text-[#3D3D4E] block">{t.feeFilterGroup}</span>
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="flex items-center gap-2"><Checkbox id="filter-fee-paid" checked={filters.feePaid} onCheckedChange={() => handleToggleFilter('feePaid')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-fee-paid" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.feePaid}</label></div>
-                  <div className="flex items-center gap-2"><Checkbox id="filter-fee-unpaid" checked={filters.feeUnpaid} onCheckedChange={() => handleToggleFilter('feeUnpaid')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-fee-unpaid" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.feeUnpaid}</label></div>
-                </div>
-              </div>
-              <div className="border-t border-[rgba(61,61,78,0.12)]" />
-              <div className="space-y-2">
-                <span className="text-sm font-semibold text-[#3D3D4E] block">{t.categoryFilterGroup}</span>
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="flex items-center gap-2"><Checkbox id="filter-japanese" checked={filters.japanese} onCheckedChange={() => handleToggleFilter('japanese')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-japanese" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.japanese}</label></div>
-                  <div className="flex items-center gap-2"><Checkbox id="filter-regular-international" checked={filters.regularInternational} onCheckedChange={() => handleToggleFilter('regularInternational')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-regular-international" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.regularInternational}</label></div>
-                  <div className="flex items-center gap-2"><Checkbox id="filter-exchange" checked={filters.exchange} onCheckedChange={() => handleToggleFilter('exchange')} className="size-4 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:text-white" /><label htmlFor="filter-exchange" className="text-sm text-[#3D3D4E] cursor-pointer select-none">{t.exchange}</label></div>
-                </div>
-              </div>
-            </div>
-            <div className="relative w-full max-w-xl"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#99A1AF]" /><Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t.search} className="pl-10 bg-[#EEEBE3] border-0 text-[#6B6B7A]" /></div>
+            {/* 検索と並び替えを1行に。年会費のフィルタはタブ（部員/非会員）が代替するため廃止 */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-[#3D3D4E]">{t.sortBy}</span>
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#99A1AF]" />
+                <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t.search} className="pl-10 bg-[#EEEBE3] border-0 text-[#6B6B7A]" />
+              </div>
               <Select value={sortBy} onValueChange={(value: 'furigana' | 'createdAt') => setSortBy(value)}>
-                <SelectTrigger className="w-[210px] bg-[#EEEBE3] border-0 text-[#3D3D4E]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-[180px] bg-[#EEEBE3] border-0 text-[#3D3D4E]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="furigana">{t.sortByFurigana}</SelectItem>
                   <SelectItem value="createdAt">{t.sortByRegisteredAt}</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
-                <SelectTrigger className="w-[130px] bg-[#EEEBE3] border-0 text-[#3D3D4E]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-[110px] bg-[#EEEBE3] border-0 text-[#3D3D4E]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="asc">{t.sortOrderAsc}</SelectItem>
                   <SelectItem value="desc">{t.sortOrderDesc}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {/* 区分の絞り込みはトグルチップで（チェックボックスのカードは場所を取りすぎた） */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {([
+                { key: 'japanese' as const, label: t.japanese },
+                { key: 'regularInternational' as const, label: t.regularInternational },
+                { key: 'exchange' as const, label: t.exchange },
+              ]).map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleToggleFilter(key)}
+                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                    filters[key]
+                      ? 'border-[#49B1E4] bg-[#49B1E4] text-white'
+                      : 'border-[rgba(61,61,78,0.2)] bg-white text-[#3D3D4E] hover:bg-[#EEEBE3]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
       <div className="space-y-3 max-w-2xl mx-auto">
-        {activeTab === 'approved' && (
+        {activeTab !== 'pending' && (
           <>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
-                <button onClick={handleToggleAll} className={`w-[18px] h-[17px] rounded border flex items-center justify-center ${allFilteredSelected ? 'bg-[#49B1E4] border-[#49B1E4]' : 'bg-white border-[#49B1E4]'}`}>
-                  {allFilteredSelected && (
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 14 14">
-                      <path
-                        d={(svgPaths2 as Record<string, string>)["p3de7e600"]}
-                        stroke="#F5F1E8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.16667"
-                      />
-                    </svg>
-                  )}
-                </button>
+                <Checkbox
+                  checked={allFilteredSelected}
+                  onCheckedChange={handleToggleAll}
+                  className="size-[18px] border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]"
+                />
                 <span className="text-xs text-[#6B6B7A]">
                   {t.selectedCount}: {selectedCount}
                 </span>
               </div>
               <div className="flex items-center gap-2 flex-wrap justify-end">
-                <Button onClick={() => void openBulkActionsModal()} disabled={selectedCount === 0} size="sm" className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1.5"><Plus className="w-4 h-4" /><Pencil className="w-4 h-4" />{t.bulkAction}</Button>
+                <Button onClick={() => void openBulkActionsModal()} disabled={selectedCount === 0} size="sm" title={language === 'ja' ? '選択したメンバーへの一括操作（メール送信・会費確認・名簿出力など）' : 'Bulk actions for selected members'} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1.5"><ListChecks className="w-4 h-4" />{t.bulkAction}</Button>
               </div>
             </div>
 
@@ -577,7 +563,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
             {!isLoading && sortedMembers.map((member) => (
               <div key={member.id} className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-4">
                 <div className="hidden md:flex items-center gap-4">
-                  <button onClick={() => handleToggleMember(member.id)} className="shrink-0"><div className={`w-5 h-5 rounded border-2 border-[#49B1E4] flex items-center justify-center ${selectedMembers.has(member.id) ? 'bg-[#49B1E4]' : 'bg-white'}`}>{selectedMembers.has(member.id) && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 20 20"><path d="M4 10L8 14L16 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div></button>
+                  <Checkbox checked={selectedMembers.has(member.id)} onCheckedChange={() => handleToggleMember(member.id)} className="size-5 shrink-0 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]" />
                   <UserAvatarImage
                     avatarPath={member.avatarPath}
                     name={member.name}
@@ -588,22 +574,22 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                   <div className="flex-1 min-w-0">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <h3 className="truncate text-base font-normal text-[#101828]">{member.name}</h3>
-                      {member.isAdmin && <Badge className="shrink-0 bg-[#3D3D4E] text-white border-0 text-[10px] px-1.5 py-0"><ShieldCheck className="w-3 h-3 mr-0.5" />{language === 'ja' ? '運営' : 'Admin'}</Badge>}
-                      {!member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
+                      {/* 役職バッジ = 運営権限あり（役職連動）。運営の盾バッジは役職バッジに置き換えた */}
+                      {isPrivilegedRole(member.role) && <RoleBadge role={member.role} language={language} className="shrink-0" />}
+                      {/* 部員タブで未払いは役職と会費の不整合なので目立たせる（非会員タブでは全員未払いのため出さない） */}
+                      {activeTab === 'members' && !member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
                     </div>
                     <p className="truncate text-sm text-[#4A5565]">{member.email}</p>
                     {member.studentNumber && <p className="text-xs text-[#6A7282]">{t.studentNumberLabel}: {member.studentNumber}</p>}
                   </div>
-                  <div className="flex shrink-0 flex-col items-end gap-2">
-                    <Badge className={`${getCategoryColor(member.category)} flex h-8 shrink-0 items-center border-0 px-2 py-1 text-xs font-medium`}>{getCategoryLabel(member.category)}</Badge>
-                    <Button onClick={() => onOpenChat && onOpenChat(member.id)} variant="outline" size="sm" className="h-8 shrink-0 gap-2 border-[rgba(61,61,78,0.15)] bg-[#F5F1E8] text-[#3D3D4E] hover:bg-[#E8E4DB]"><MessageCircle className="w-4 h-4" />{t.chat}</Button>
-                  </div>
+                  <Badge className={`${getCategoryColor(member.category)} shrink-0 border-0 px-2 py-0.5 text-xs font-medium`}>{getCategoryLabel(member.category)}</Badge>
+                  <Button onClick={() => onOpenChat && onOpenChat(member.id)} variant="outline" size="icon" title={t.chat} className="h-8 w-8 shrink-0 border-[rgba(61,61,78,0.15)] bg-[#F5F1E8] text-[#3D3D4E] hover:bg-[#E8E4DB]"><MessageCircle className="w-4 h-4" /></Button>
                   <button type="button" onClick={() => { setSelectedUser(member); setShowDetailModal(true); }} className="shrink-0 rounded p-1 text-[#3D3D4E] transition-colors hover:bg-[#F5F1E8]"><MoreVertical className="w-5 h-5" /></button>
                 </div>
 
                 <div className="md:hidden space-y-3">
                   <div className="flex items-start gap-3">
-                    <button onClick={() => handleToggleMember(member.id)} className="shrink-0 mt-1"><div className={`w-4 h-4 rounded border border-[#49B1E4] flex items-center justify-center ${selectedMembers.has(member.id) ? 'bg-[#49B1E4]' : 'bg-white'}`}>{selectedMembers.has(member.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 20 20"><path d="M4 10L8 14L16 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div></button>
+                    <Checkbox checked={selectedMembers.has(member.id)} onCheckedChange={() => handleToggleMember(member.id)} className="mt-1 size-4 shrink-0 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]" />
                     <UserAvatarImage
                       avatarPath={member.avatarPath}
                       name={member.name}
@@ -615,8 +601,8 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex min-w-0 flex-1 items-center gap-1.5">
                           <h3 className="truncate text-sm font-normal text-[#101828]">{member.name}</h3>
-                          {member.isAdmin && <Badge className="shrink-0 bg-[#3D3D4E] text-white border-0 text-[10px] px-1.5 py-0"><ShieldCheck className="w-3 h-3 mr-0.5" />{language === 'ja' ? '運営' : 'Admin'}</Badge>}
-                          {!member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
+                          {isPrivilegedRole(member.role) && <RoleBadge role={member.role} language={language} className="shrink-0" />}
+                          {activeTab === 'members' && !member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
                         </div>
                         <button type="button" onClick={() => { setSelectedUser(member); setShowDetailModal(true); }} className="shrink-0 rounded p-0.5 text-[#3D3D4E] transition-colors hover:bg-[#F5F1E8]"><MoreVertical className="w-4 h-4" /></button>
                       </div>
@@ -624,9 +610,9 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                       {member.studentNumber && <p className="text-xs text-[#6A7282]">{t.studentNumberLabel}: {member.studentNumber}</p>}
                     </div>
                   </div>
-                  <div className="ml-9 flex flex-col items-start gap-2">
-                    <Badge className={`${getCategoryColor(member.category)} border-0 px-2 py-1 text-xs font-medium`}>{getCategoryLabel(member.category)}</Badge>
-                    <Button onClick={() => onOpenChat && onOpenChat(member.id)} variant="outline" size="sm" className="h-8 gap-1.5 border-[rgba(61,61,78,0.15)] bg-[#F5F1E8] text-xs text-[#3D3D4E] hover:bg-[#E8E4DB]"><MessageCircle className="h-3.5 w-3.5" />{t.chat}</Button>
+                  <div className="ml-9 flex items-center gap-2">
+                    <Badge className={`${getCategoryColor(member.category)} border-0 px-2 py-0.5 text-xs font-medium`}>{getCategoryLabel(member.category)}</Badge>
+                    <Button onClick={() => onOpenChat && onOpenChat(member.id)} variant="outline" size="icon" title={t.chat} className="h-7 w-7 border-[rgba(61,61,78,0.15)] bg-[#F5F1E8] text-[#3D3D4E] hover:bg-[#E8E4DB]"><MessageCircle className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               </div>
@@ -759,25 +745,12 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
           }}
           onSetRole={onSetUserRole ? (role) => {
             void onSetUserRole(selectedUser.id, role);
-            setSelectedUser({ ...selectedUser, role });
+            // is_admin は DB トリガー（migration 039）が役職に連動して切り替える。
+            // 再取得を待たずに表示へ反映する
+            setSelectedUser({ ...selectedUser, role, isAdmin: isPrivilegedRole(role) });
             toast.success(language === 'ja' ? '役職を変更しました' : 'Role updated');
           } : undefined}
           isSelf={currentAdmin?.id === selectedUser.id}
-          onSetAdminFlag={(isAdmin) => {
-            void (async () => {
-              try {
-                await setUserAdminFlag(selectedUser.id, isAdmin);
-                setSelectedUser({ ...selectedUser, isAdmin });
-                toast.success(
-                  isAdmin
-                    ? (language === 'ja' ? '運営権限を付与しました' : 'Admin access granted')
-                    : (language === 'ja' ? '運営権限を外しました' : 'Admin access revoked')
-                );
-              } catch {
-                toast.error(language === 'ja' ? '権限の変更に失敗しました' : 'Failed to change admin access');
-              }
-            })();
-          }}
         />
       )}
     </div>

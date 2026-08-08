@@ -18,18 +18,16 @@ interface MemberDetailModalProps {
   onDelete?: () => void;
   onConfirmFeePayment?: (isRenewal: boolean) => void;
   onSetRole?: (role: UserRole) => void;
-  /** 運営権限の付与・剥奪。自分自身の権限は外せないよう呼び出し側で制御する */
-  onSetAdminFlag?: (isAdmin: boolean) => void;
-  /** 自分自身の詳細を開いている場合 true（自分の運営権限は外せない） */
+  /** 自分自身の詳細を開いている場合 true（役職の自己変更 = 運営権限の自己剥奪を防ぐ） */
   isSelf?: boolean;
 }
 
 const translations = {
-  ja: { applicationDate: '申請日', nickname: 'ニックネーム', id: 'ID', email: 'メールアドレス', phone: '電話番号', studentNumber: '学生番号', major: '学部学科', category: '区分', grade: '学年', birthCountry: '生まれた国', languages: '話せる言語', approve: '承認する', reject: '拒否する', delete: '削除', confirmDelete: '本当にこのメンバーを削除しますか？', confirmDeleteMessage: 'この操作は取り消せません。', cancel: 'キャンセル', japanese: '日本人学生・国内学生', regularInternational: '正規留学生', exchange: '交換留学生', feeStatus: '会費状況', feePaid: '支払い済み', feeUnpaid: '未払い', confirmFeePayment: '支払い確認', renewal: '継続会員', newMember: '新規会員', renewalFee: '¥2,000（年会費のみ）', newMemberFee: '¥2,500（入会金+年会費）', membershipYear: '会員年度', confirmAsRenewal: '継続として確認（¥2,000）', confirmAsNew: '新規として確認（¥2,500）', setAsRenewal: '継続会員に設定', setAsNew: '新規会員に設定', memberTypeHint: '※3/31までに登録完了した会員は「継続」扱い', adminFlag: '運営権限', adminFlagOn: '運営権限あり', adminFlagOff: '運営権限なし', adminFlagHint: '運営画面へのアクセス・会員の承認・通知の送信ができるようになります。付与は慎重に。', adminFlagSelfHint: '自分の運営権限は外せません（誤操作で全員が入れなくなるのを防ぐため）', grantAdmin: '運営権限を付与', revokeAdmin: '運営権限を外す', confirmGrantAdmin: 'この会員に運営権限を付与しますか？', confirmRevokeAdmin: 'この会員の運営権限を外しますか？', role: '役職', roleHint: '役職はプロフィールや名簿にバッジとして表示されます。「非会員／部員」は年会費の支払い状況に連動して自動で切り替わります' },
-  en: { applicationDate: 'Application Date', nickname: 'Nickname', id: 'ID', email: 'Email', phone: 'Phone Number', studentNumber: 'Student Number', major: 'Major', category: 'Category', grade: 'Grade', birthCountry: 'Birth Country', languages: 'Languages', approve: 'Approve', reject: 'Reject', delete: 'Delete', confirmDelete: 'Are you sure you want to delete this member?', confirmDeleteMessage: 'This action cannot be undone.', cancel: 'Cancel', japanese: 'Japanese Student', regularInternational: 'Regular International', exchange: 'Exchange Student', feeStatus: 'Fee Status', feePaid: 'Paid', feeUnpaid: 'Unpaid', confirmFeePayment: 'Confirm Payment', renewal: 'Renewal', newMember: 'New Member', renewalFee: '¥2,000 (Annual fee only)', newMemberFee: '¥2,500 (Entry + Annual)', membershipYear: 'Membership Year', confirmAsRenewal: 'Confirm as Renewal (¥2,000)', confirmAsNew: 'Confirm as New (¥2,500)', setAsRenewal: 'Set as Renewal', setAsNew: 'Set as New Member', memberTypeHint: '* Members registered by 3/31 are treated as "Renewal"', adminFlag: 'Admin access', adminFlagOn: 'Has admin access', adminFlagOff: 'No admin access', adminFlagHint: 'Grants access to the admin panel, member approval, and notifications. Grant with care.', adminFlagSelfHint: 'You cannot remove your own admin access (prevents locking everyone out).', grantAdmin: 'Grant admin access', revokeAdmin: 'Revoke admin access', confirmGrantAdmin: 'Grant admin access to this member?', confirmRevokeAdmin: 'Revoke admin access from this member?', role: 'Role', roleHint: 'Shown as a badge on profiles and the member list. Non-member and Member follow the annual fee status automatically' }
+  ja: { applicationDate: '申請日', nickname: 'ニックネーム', id: 'ID', email: 'メールアドレス', phone: '電話番号', studentNumber: '学生番号', major: '学部学科', category: '区分', grade: '学年', birthCountry: '生まれた国', languages: '話せる言語', approve: '承認する', reject: '拒否する', delete: '削除', confirmDelete: '本当にこのメンバーを削除しますか？', confirmDeleteMessage: 'この操作は取り消せません。', cancel: 'キャンセル', japanese: '日本人学生・国内学生', regularInternational: '正規留学生', exchange: '交換留学生', feeStatus: '会費状況', feePaid: '支払い済み', feeUnpaid: '未払い', confirmFeePayment: '支払い確認', renewal: '継続会員', newMember: '新規会員', renewalFee: '¥2,000（年会費のみ）', newMemberFee: '¥2,500（入会金+年会費）', membershipYear: '会員年度', confirmAsRenewal: '継続として確認（¥2,000）', confirmAsNew: '新規として確認（¥2,500）', setAsRenewal: '継続会員に設定', setAsNew: '新規会員に設定', memberTypeHint: '※3/31までに登録完了した会員は「継続」扱い', adminFlag: '運営権限', adminFlagOn: '運営権限あり', adminFlagOff: '運営権限なし', adminFlagHint: '運営権限は役職に連動します。「部員」「非会員」以外の役職にすると、運営画面へのアクセス・会員の承認・通知の送信ができるようになります', roleSelfHint: '自分の役職は変更できません（誤って自分の運営権限を外してしまうのを防ぐため）', role: '役職', roleHint: '役職はプロフィールや名簿にバッジとして表示されます。「非会員／部員」は年会費の支払い状況に連動して自動で切り替わります。部員・非会員以外の役職には運営権限が付きます' },
+  en: { applicationDate: 'Application Date', nickname: 'Nickname', id: 'ID', email: 'Email', phone: 'Phone Number', studentNumber: 'Student Number', major: 'Major', category: 'Category', grade: 'Grade', birthCountry: 'Birth Country', languages: 'Languages', approve: 'Approve', reject: 'Reject', delete: 'Delete', confirmDelete: 'Are you sure you want to delete this member?', confirmDeleteMessage: 'This action cannot be undone.', cancel: 'Cancel', japanese: 'Japanese Student', regularInternational: 'Regular International', exchange: 'Exchange Student', feeStatus: 'Fee Status', feePaid: 'Paid', feeUnpaid: 'Unpaid', confirmFeePayment: 'Confirm Payment', renewal: 'Renewal', newMember: 'New Member', renewalFee: '¥2,000 (Annual fee only)', newMemberFee: '¥2,500 (Entry + Annual)', membershipYear: 'Membership Year', confirmAsRenewal: 'Confirm as Renewal (¥2,000)', confirmAsNew: 'Confirm as New (¥2,500)', setAsRenewal: 'Set as Renewal', setAsNew: 'Set as New Member', memberTypeHint: '* Members registered by 3/31 are treated as "Renewal"', adminFlag: 'Admin access', adminFlagOn: 'Has admin access', adminFlagOff: 'No admin access', adminFlagHint: 'Admin access follows the role. Any role other than Member / Non-member grants access to the admin panel, member approval, and notifications.', roleSelfHint: 'You cannot change your own role (prevents accidentally removing your own admin access).', role: 'Role', roleHint: 'Shown as a badge on profiles and the member list. Non-member and Member follow the annual fee status automatically. Roles above Member also grant admin access' }
 };
 
-export function MemberDetailModal({ isOpen, onClose, user, language, isPending = false, onApprove, onReject, onDelete, onConfirmFeePayment, onSetRole, onSetAdminFlag, isSelf = false }: MemberDetailModalProps) {
+export function MemberDetailModal({ isOpen, onClose, user, language, isPending = false, onApprove, onReject, onDelete, onConfirmFeePayment, onSetRole, isSelf = false }: MemberDetailModalProps) {
   const t = translations[language];
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   if (!isOpen) return null;
@@ -73,6 +71,7 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
               <Select
                 value={user.role ?? 'member'}
                 onValueChange={(value) => onSetRole(value as UserRole)}
+                disabled={isSelf}
               >
                 <SelectTrigger className="w-full bg-white">
                   <SelectValue />
@@ -91,11 +90,11 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-[#6B6B7A]">{t.roleHint}</p>
+              <p className="text-xs text-[#6B6B7A]">{isSelf ? t.roleSelfHint : t.roleHint}</p>
             </div>
           )}
 
-          {!isPending && onSetAdminFlag && (
+          {!isPending && (
             <div className="mt-8 pt-6 border-t border-[rgba(61,61,78,0.15)] space-y-2">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="font-semibold text-[#3D3D4E] tracking-[-0.1504px]">{t.adminFlag}</div>
@@ -103,25 +102,8 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
                   {user.isAdmin ? t.adminFlagOn : t.adminFlagOff}
                 </Badge>
               </div>
-              {isSelf ? (
-                <p className="text-xs text-[#6B6B7A]">{t.adminFlagSelfHint}</p>
-              ) : (
-                <>
-                  <Button
-                    variant="outline"
-                    className={user.isAdmin
-                      ? 'w-full border-[#D4183D] text-[#D4183D] hover:bg-[#FDECEF]'
-                      : 'w-full border-[#3D3D4E] text-[#3D3D4E] hover:bg-[#EEEBE3]'}
-                    onClick={() => {
-                      const ok = window.confirm(user.isAdmin ? t.confirmRevokeAdmin : t.confirmGrantAdmin);
-                      if (ok) onSetAdminFlag(!user.isAdmin);
-                    }}
-                  >
-                    {user.isAdmin ? t.revokeAdmin : t.grantAdmin}
-                  </Button>
-                  <p className="text-xs text-[#6B6B7A]">{t.adminFlagHint}</p>
-                </>
-              )}
+              {/* 手動での付与・剥奪は無し。役職（上のセレクト）を変えると DB トリガーが連動して切り替える */}
+              <p className="text-xs text-[#6B6B7A]">{t.adminFlagHint}</p>
             </div>
           )}
 

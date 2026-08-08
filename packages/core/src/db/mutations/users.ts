@@ -52,18 +52,6 @@ export async function updateUserRoleRow(
   return { error: toErrorOrNull(error) };
 }
 
-/**
- * 運営権限（is_admin）の付与・剥奪。
- * DB 側のトリガー（migration 038）により、変更できるのは管理者のみ（自己昇格は DB が拒否する）。
- */
-export async function updateUserAdminFlagRow(
-  userId: string,
-  isAdmin: boolean
-): Promise<{ error: Error | null }> {
-  const { error } = await supabase.from("users").update({ is_admin: isAdmin }).eq("id", userId);
-  return { error: toErrorOrNull(error) };
-}
-
 export async function rejectUserRow(
   userId: string
 ): Promise<{ error: Error | null }> {
