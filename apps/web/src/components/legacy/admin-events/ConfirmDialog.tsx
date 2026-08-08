@@ -5,14 +5,14 @@ interface ConfirmDialogProps {
   title: string;
   description: string;
   onClose: () => void;
-  /** 背景を押して閉じられるか。処理中に閉じられると困る場面では false にする */
+  /** 背景を押して閉じられるか（既定で閉じる）。処理中に閉じられると困る場面だけ false にする */
   dismissOnBackdrop?: boolean;
   /** 下部のボタン。押したときの見た目や数がダイアログごとに違うため、丸ごと受け取る */
   children: ReactNode;
 }
 
 /** 保存・削除の確認に使う小さなダイアログ（枠と見出しは共通、ボタンだけ差し替える） */
-export function ConfirmDialog({ title, description, onClose, dismissOnBackdrop = false, children }: ConfirmDialogProps) {
+export function ConfirmDialog({ title, description, onClose, dismissOnBackdrop = true, children }: ConfirmDialogProps) {
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"

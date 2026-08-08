@@ -414,7 +414,10 @@ export function AdminEvents({
         <ConfirmDialog
           title={confirmType === 'create' ? t.confirmCreate : t.confirmUpdate}
           description={confirmType === 'create' ? t.confirmCreateMessage : t.confirmUpdateMessage}
-          onClose={() => setShowSaveConfirm(false)}
+          onClose={() => {
+            if (isSavingEvent) return; // 保存中は閉じない（背景クリックを含む）
+            setShowSaveConfirm(false);
+          }}
         >
           <div className="flex gap-2">
             <Button

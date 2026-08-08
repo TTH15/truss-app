@@ -40,8 +40,8 @@ export function ReuploadRequestModal({ isOpen, onClose, onSend, language, userNa
   const handleClose = () => { setSelectedReasons(new Set()); onClose(); };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-[20px] w-full max-w-md shadow-xl">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={handleClose}>
+      <div className="bg-white rounded-[20px] w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-[#E5E7EB]">
           <div><h2 className="text-[#101828] text-lg font-semibold">{t.title}</h2><p className="text-[#6B6B7A] text-sm mt-1">{userName}</p></div>
           <button onClick={handleClose} className="text-[#6B6B7A] hover:text-[#3D3D4E] transition-colors"><X className="w-5 h-5" /></button>

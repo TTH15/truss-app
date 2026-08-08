@@ -843,3 +843,13 @@ admin_accounts の共有パスワードログインから、個人 Google アカ
 - **「一括で支払い済みにする」に確認ダイアログを追加**（会費の記録を書き換える破壊的操作なのに、削除と違って確認が無かった）。
 - 検証: `tsc --noEmit`・`next build` 通過。新規 lint 指摘 0。
 - 残課題: 実画面確認。インサイト（040）と合わせて migration 038/039/040 の適用。
+
+## 2026-08-09 モーダルの背景クリックで閉じる挙動を全画面に統一
+
+- Radix Dialog 系（EventsPage・Dashboard・BulletinBoard の投稿作成・一括操作・会費設定など）は元々背景クリックで閉じる。手組みオーバーレイ（`fixed inset-0`）で未対応だったものに追加:
+  - `ReuploadRequestModal`（背景クリック = キャンセルボタンと同じく選択リセットして閉じる）
+  - `MemberDetailModal`（本体 + 内部の削除確認。確認側は外側クリックが本体の onClose に伝播しないよう stopPropagation してから閉じる）
+  - `admin-events/ConfirmDialog` の既定を**背景クリックで閉じる**に変更（従来は既定 false）。AdminEvents の保存確認は**保存中だけ閉じない**ガードを onClose に追加。
+- 対応済みだったもの: admin-events の各モーダル（フォーム・詳細・画像エディタ）、AdminGallery の画像エディタ、保存/削除確認。
+- **対象外**: BulletinBoard のストーリービューア（全画面 UI で左右タップ操作のため、背景クリック閉じは誤操作になる。閉じるは×ボタンのまま）。
+- 検証: `tsc --noEmit`・`next build` 通過。lint 指摘 0。

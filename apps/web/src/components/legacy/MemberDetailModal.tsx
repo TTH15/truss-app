@@ -42,9 +42,9 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
     : 'bg-[#fee2e2] text-[#991b1b]';
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       {/* PC ではスクロール無しで全体が見えるよう横長 2 カラム、スマホでは従来どおり縦積み */}
-      <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[510px] lg:max-w-[980px] shadow-xl border border-[rgba(61,61,78,0.15)] relative max-h-[90vh] overflow-y-auto">
+      <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[510px] lg:max-w-[980px] shadow-xl border border-[rgba(61,61,78,0.15)] relative max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="p-6 border-b border-[rgba(61,61,78,0.15)]">
           <div className="flex items-start justify-between">
             <div className="space-y-2"><div className="flex items-center gap-2 flex-wrap"><h2 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">{user.name}</h2><RoleBadge role={user.role} language={language} /></div><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.furigana}</p><p className="text-[#6B6B7A] text-sm tracking-[-0.1504px]">{t.applicationDate}: 2026-01-13</p></div>
@@ -159,8 +159,8 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
         </div>
 
         {showDeleteConfirm && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[400px] shadow-xl border border-[rgba(61,61,78,0.15)] relative max-h-[90vh] overflow-y-auto">
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(false); }}>
+            <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[400px] shadow-xl border border-[rgba(61,61,78,0.15)] relative max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <div className="p-6 border-b border-[rgba(61,61,78,0.15)]"><div className="flex items-start justify-between"><div className="space-y-2"><h2 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">{t.confirmDelete}</h2><p className="text-[#6B6B7A] text-sm tracking-[-0.1504px]">{t.confirmDeleteMessage}</p></div><button onClick={() => setShowDeleteConfirm(false)} className="text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"><X className="w-4 h-4" /></button></div></div>
               <div className="p-6"><div className="flex gap-2 mt-8"><Button onClick={() => { onDelete?.(); setShowDeleteConfirm(false); onClose(); }} className="w-full bg-[#D4183D] hover:bg-[#B01432] text-white h-9 flex items-center justify-center gap-2"><Trash2 className="w-4 h-4" /><span className="font-medium text-sm tracking-[-0.1504px]">{t.delete}</span></Button></div></div>
             </div>
