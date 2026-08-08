@@ -799,3 +799,13 @@ admin_accounts の共有パスワードログインから、個人 Google アカ
 
 - 検証: `tsc --noEmit`・`next build` 通過。残る lint warning 4件はすべて変更前から存在するもの。
 - 残課題: 実画面確認（3タブの人数・チップの絞り込み・行の見え方・一括操作）。migration 038/039 の本番適用（適用前は role と is_admin が連動しないため、部員タブに旧 is_admin の会員が混ざって見える可能性がある）。
+
+## 2026-08-08 運営チャットに未払いアイコンと会員詳細（会費確認）への導線を追加
+
+- 要望: チャットにも未払いアイコンを出しつつ、一覧から会員/非会員の切り替え（= 会費確認）ができるように。
+- **スレッド一覧**: 名前の横に赤い財布アイコン（未払いのみ）。会員情報が引けないスレッドは未払い扱いにしない。
+- **チャットヘッダー**: 相手の名前の横にも同じアイコン + **IDカードのボタンで `MemberDetailModal` を開ける**ようにした。「振り込みました」とチャットで来たら、画面を移動せずその場で会費確認（→ 035 のトリガーで非会員→部員に自動昇格）・役職変更ができる。
+- モーダルへの配線は `useData()` の `confirmFeePayment` / `setUserRole` を直接使用（props チェーンは伸ばさない）。確認後は再取得を待たずにモーダル表示へ反映（feePaid: true、role: non_member なら member に）。
+- `FeeUnpaidWalletIcon` を AdminMembers のローカル定義から `legacy/FeeUnpaidWalletIcon.tsx` に切り出して共用。
+- 検証: `tsc --noEmit`・`next build` 通過。新規 lint 指摘 0（残る error 1件はリファクタ前からある selectedChatUserId 反映 effect のもの）。
+- 残課題: 実画面確認（未払い会員のスレッド表示・ヘッダーから会費確認 → アイコンが消えるか）。

@@ -4,7 +4,10 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollFade } from './ScrollFade';
 import { useData } from '../../contexts/DataContext';
-import { MessageCircle, Send, Pin, Flag, ArrowLeft, Image as ImageIcon, Images, Calendar, Clock, MapPin, X, FileText } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { FeeUnpaidWalletIcon } from './FeeUnpaidWalletIcon';
+import { MemberDetailModal } from './MemberDetailModal';
+import { MessageCircle, Send, Pin, Flag, ArrowLeft, Image as ImageIcon, Images, Calendar, Clock, MapPin, X, FileText, IdCard } from 'lucide-react';
 import type { Language, MessageThread, User as UserType, Message, ChatThreadMetadata } from '@truss/core';
 import { formatDateLabel, formatMessageTime, formatRelativeListTime, getChatAttachmentSignedUrl, getMessageCategoryLabel, parseMessageDate, splitTextWithUrls, toDateKey, updateMessageFlagsRow } from '@truss/core';
 import { toast } from 'sonner';
@@ -47,7 +50,10 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
-  const { loadOlderThreadMessages } = useData();
+  const { loadOlderThreadMessages, confirmFeePayment, setUserRole } = useData();
+  const { user: currentAdmin } = useAuth();
+  /** チャットから開くメンバー詳細（会費確認・役職変更ができる） */
+  const [detailMember, setDetailMember] = useState<UserType | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   /** 遡り終えたスレッド。「以前のメッセージ」ボタンを出さない */
   const [olderExhausted, setOlderExhausted] = useState<Record<string, boolean>>({});
@@ -125,6 +131,10 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
       userAvatar: user?.nickname ? user.nickname.charAt(0).toUpperCase() : 'U',
       // 設定済みのプロフィール画像を出す（従来は常にイニシャルだった）
       avatarPath: user?.avatarPath,
+      // チャット対応中に会費の状態が分かるように。会員情報が引けない場合は未払い扱いにしない
+      feeUnpaid: user ? !user.feePaid : false,
+      // 「詳細」からメンバー詳細（会費確認・役職変更）を開くための元データ
+      member: user,
       lastMessage: lastMessage?.text || '',
       lastMessageTime: rawTime ? formatRelativeListTime(rawTime, language) : '',
       unreadCount: messages.filter((m) => !m.isAdmin && !m.read).length,
@@ -406,6 +416,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-2">
                           <p className="font-medium text-gray-900 truncate">{user.userName}</p>
+                          {user.feeUnpaid && <FeeUnpaidWalletIcon tooltip={language === 'ja' ? '会費が未払いです' : 'Membership fee unpaid'} />}
                           <p className="ml-auto shrink-0 text-xs text-gray-400">{user.lastMessageTime}</p>
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
@@ -438,7 +449,21 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                 className="w-10 h-10"
                 fallbackClassName="bg-[#49B1E4] text-white"
               />
-              <div><h3 className="font-medium text-gray-900">{selectedUser.userName}</h3></div>
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <h3 className="font-medium text-gray-900 truncate">{selectedUser.userName}</h3>
+                {selectedUser.feeUnpaid && <FeeUnpaidWalletIcon tooltip={language === 'ja' ? '会費が未払いです' : 'Membership fee unpaid'} />}
+              </div>
+              {/* チャットで「振り込みました」と来たら、その場で詳細を開いて会費確認できるようにする */}
+              {selectedUser.member && (
+                <button
+                  type="button"
+                  onClick={() => setDetailMember(selectedUser.member ?? null)}
+                  className="shrink-0 rounded p-1.5 text-[#3D3D4E] transition-colors hover:bg-gray-100"
+                  title={language === 'ja' ? '会員の詳細（会費確認・役職）' : 'Member details (fee / role)'}
+                >
+                  <IdCard className="w-5 h-5" />
+                </button>
+              )}
             </div>
             {pinnedMessages.length > 0 && (
               <div className="border-b border-gray-200 bg-yellow-50 px-4 py-2 max-h-32 overflow-y-auto shrink-0">
@@ -525,6 +550,24 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
           <div className="flex-1 flex items-center justify-center text-gray-400"><div className="text-center"><MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-50" /><p>{t.selectUser}</p></div></div>
         )}
       </div>
+      {detailMember && (
+        <MemberDetailModal
+          isOpen
+          onClose={() => setDetailMember(null)}
+          language={language}
+          user={detailMember}
+          isSelf={currentAdmin?.id === detailMember.id}
+          onConfirmFeePayment={(isRenewal) => {
+            void confirmFeePayment(detailMember.id, isRenewal);
+            // 一覧の再取得を待たずに表示へ反映する（役職も 035 のトリガーで member に上がる）
+            setDetailMember({ ...detailMember, feePaid: true, role: detailMember.role === 'non_member' ? 'member' : detailMember.role });
+          }}
+          onSetRole={(role) => {
+            void setUserRole(detailMember.id, role);
+            setDetailMember({ ...detailMember, role });
+          }}
+        />
+      )}
     </div>
   );
 }
