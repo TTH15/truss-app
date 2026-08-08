@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import { LandingPage } from '../components/legacy/LandingPage';
@@ -26,6 +26,7 @@ import {
   queryWithdrawnRecord,
 } from '@truss/core';
 import { dataUrlToJpegFile } from '../lib/student-id-image';
+import { notifyAdminsByPush } from '../lib/web-push';
 import '../styles/globals.css';
 import type { Event, Language, User } from '@truss/core';
 
@@ -254,6 +255,11 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
            search.includes('error=');
   };
 
+  const currentPageRef = useRef(currentPage);
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
   useEffect(() => {
     // 管理者専用画面は、ユーザー認証フローと分離しているため
     // ここでは「セッションが復元されている場合は admin に戻す」だけ行う。
@@ -304,7 +310,12 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
         window.history.replaceState({}, document.title, window.location.pathname);
       }
       if (authUser.isAdmin) {
-        navigateTo('admin');
+        // ログイン直後（認証フロー系の画面にいるとき）だけ運営画面へ振り分ける。
+        // 運営も会員画面（dashboard / profile）を使えるようにするため、
+        // すでに実画面を見ている場合はここでは動かさない
+        const page = currentPageRef.current;
+        const isOnContentPage = page === 'dashboard' || page === 'profile' || page === 'admin';
+        if (!isOnContentPage) navigateTo('admin');
       } else if (!authUser.initialRegistered) {
         setTempEmail(authUser.email);
         showAuthFlowPage('initial-registration');
@@ -556,6 +567,12 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       }
       await refreshUser();
       await refreshUsers();
+      // 承認待ちが来たことを運営に知らせる（失敗しても申請自体は成功している）
+      void (async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (token) await notifyAdminsByPush(token, { kind: 'new_application', detail: payload.name });
+      })();
       toast.success(language === 'ja' ? '登録申請を送信しました' : 'Registration submitted');
       navigateTo('dashboard');
     } catch (error) {
@@ -782,7 +799,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
         <Dashboard
           user={user} onLogout={handleLogout} language={language} onLanguageChange={setLanguage} onUpdateProfile={updateAuthUser} events={events}
           attendingEvents={attendingEvents} likedEvents={likedEventIds} onToggleAttending={toggleAttending} onToggleLike={toggleLike}
-          onAddEventParticipant={addEventParticipant} onOpenProfile={handleOpenProfile} onReopenInitialRegistration={handleReopenInitialRegistration}
+          onAddEventParticipant={addEventParticipant} onOpenProfile={handleOpenProfile} onOpenAdmin={user.isAdmin ? () => navigateTo('admin') : undefined} onReopenInitialRegistration={handleReopenInitialRegistration}
           onDismissReuploadNotification={handleDismissReuploadNotification} messageThreads={messageThreads}
           onUpdateMessageThreads={setMessageThreads} onSendMessage={sendMessage} chatThreadMetadata={chatThreadMetadata}
           onUpdateChatThreadMetadata={setChatThreadMetadata} notifications={notifications} onDismissNotification={handleDismissNotification}
@@ -805,6 +822,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
           onOpenMemberChat={handleOpenMemberChat} onUpdateNotifications={setNotifications} boardPosts={boardPosts}
           onUpdateBoardPosts={setBoardPosts} onCreateBoardPost={createBoardPost} onDeleteBoardPost={deleteBoardPost} onTogglePinBoardPost={togglePinBoardPost} onReorderPinnedBoardPosts={reorderPinnedBoardPosts} onSendBulkEmail={handleSendBulkEmail}
           onSendBulkMessages={handleSendBulkMessages} onCancelBroadcast={cancelBroadcast}
+          onSwitchToMemberView={() => navigateTo('dashboard')}
         />
       )}
       {currentPage === 'admin-login' && (

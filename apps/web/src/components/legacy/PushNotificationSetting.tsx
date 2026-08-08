@@ -50,7 +50,16 @@ const translations = {
  * この端末でプッシュ通知を受け取るかどうかの設定。
  * 購読は端末ごとなので「アカウントの設定」ではなく「この端末の設定」として見せる。
  */
-export function PushNotificationSetting({ user, language }: { user: User; language: Language }) {
+export function PushNotificationSetting({
+  user,
+  language,
+  variant = 'member',
+}: {
+  user: User;
+  language: Language;
+  /** admin: 運営画面用。説明文を運営向けにし、種類ごとの受信設定を隠す（運営向け通知は種類で絞らないため） */
+  variant?: 'member' | 'admin';
+}) {
   const t = translations[language];
   const [busy, setBusy] = useState(false);
   const [enabled, setEnabled] = useState(false);
@@ -122,10 +131,17 @@ export function PushNotificationSetting({ user, language }: { user: User; langua
         <CardTitle>{t.title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-[#6B6B7A]">{t.description}</p>
+        <p className="text-sm text-[#6B6B7A]">
+          {variant === 'admin'
+            ? (language === 'ja'
+                ? '入会申請や会員からのメッセージを、この端末で受け取れます。'
+                : 'Get notified on this device about new applications and member messages.')
+            : t.description}
+        </p>
 
         {/* 種類ごとの受信設定。ブラウザの許可は「全部か無しか」しか持てないので、
             細かい制御はアプリ側で持ち、送信時に絞り込む */}
+        {variant === 'member' && (
         <div className="space-y-2 border-t border-[#E8E4DB] pt-3">
           {([
             { key: 'notifyMessage' as const, label: language === 'ja' ? '運営からのメッセージ' : 'Messages from staff' },
@@ -142,6 +158,7 @@ export function PushNotificationSetting({ user, language }: { user: User; langua
             </label>
           ))}
         </div>
+        )}
 
         {enabled ? (
           <Button variant="outline" onClick={handleDisable} disabled={busy}>

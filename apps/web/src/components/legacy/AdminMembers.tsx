@@ -7,7 +7,7 @@ import { Checkbox } from '../ui/checkbox';
 import { Skeleton } from '../ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Search, Download, Mail, MessageCircle, MoreVertical, Pencil, Plus } from 'lucide-react';
+import { Search, Download, Mail, MessageCircle, MoreVertical, Pencil, Plus, ShieldCheck } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faWallet } from '@fortawesome/free-solid-svg-icons';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -17,6 +17,8 @@ import { upsertFeeSettingsRow } from '@truss/core';
 import { BulkEmailModal } from './BulkEmailModal';
 import { ReuploadRequestModal } from './ReuploadRequestModal';
 import { MemberDetailModal } from './MemberDetailModal';
+import { useData } from '../../contexts/DataContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { AdminApprovals } from './AdminApprovals';
 import svgPaths from '../../imports/svg-u7k8r9dq17';
 import svgPaths2 from '../../imports/svg-40vpfbujgn';
@@ -159,6 +161,8 @@ function FeeUnpaidWalletIcon({ tooltip }: { tooltip: string }) {
 }
 
 export function AdminMembers({ language, approvedMembers, pendingUsers, isLoading = false, onApproveUser, onRejectUser, onRequestReupload, onOpenChat, onSendBulkEmail, onConfirmFeePayment, onSetRenewalStatus, onSetUserRole, onDeleteUser }: AdminMembersProps) {
+  const { setUserAdminFlag } = useData();
+  const { user: currentAdmin } = useAuth();
   const t = translations[language];
   const toKatakana = (value: string) =>
     value.replace(/[\u3041-\u3096]/g, (m) => String.fromCharCode(m.charCodeAt(0) + 0x60));
@@ -177,10 +181,9 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [annualFeeAmount, setAnnualFeeAmount] = useState('2000');
   const [admissionFeeAmount, setAdmissionFeeAmount] = useState('2500');
-  const approvedMembersList = useMemo(
-    () => approvedMembers.filter((m) => !m.isAdmin),
-    [approvedMembers]
-  );
+  // 以前は運営（is_admin）を名簿から除外していたが、運営権限の付与・剥奪を
+  // この画面で行うようにしたため、運営も表示する（「運営」バッジで区別）
+  const approvedMembersList = approvedMembers;
   const displayedMembers = activeTab === 'approved' ? approvedMembersList : pendingUsers;
 
   const filteredMembers = displayedMembers.filter(member => {
@@ -585,6 +588,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                   <div className="flex-1 min-w-0">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <h3 className="truncate text-base font-normal text-[#101828]">{member.name}</h3>
+                      {member.isAdmin && <Badge className="shrink-0 bg-[#3D3D4E] text-white border-0 text-[10px] px-1.5 py-0"><ShieldCheck className="w-3 h-3 mr-0.5" />{language === 'ja' ? '運営' : 'Admin'}</Badge>}
                       {!member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
                     </div>
                     <p className="truncate text-sm text-[#4A5565]">{member.email}</p>
@@ -611,6 +615,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex min-w-0 flex-1 items-center gap-1.5">
                           <h3 className="truncate text-sm font-normal text-[#101828]">{member.name}</h3>
+                          {member.isAdmin && <Badge className="shrink-0 bg-[#3D3D4E] text-white border-0 text-[10px] px-1.5 py-0"><ShieldCheck className="w-3 h-3 mr-0.5" />{language === 'ja' ? '運営' : 'Admin'}</Badge>}
                           {!member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
                         </div>
                         <button type="button" onClick={() => { setSelectedUser(member); setShowDetailModal(true); }} className="shrink-0 rounded p-0.5 text-[#3D3D4E] transition-colors hover:bg-[#F5F1E8]"><MoreVertical className="w-4 h-4" /></button>
@@ -757,6 +762,22 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
             setSelectedUser({ ...selectedUser, role });
             toast.success(language === 'ja' ? '役職を変更しました' : 'Role updated');
           } : undefined}
+          isSelf={currentAdmin?.id === selectedUser.id}
+          onSetAdminFlag={(isAdmin) => {
+            void (async () => {
+              try {
+                await setUserAdminFlag(selectedUser.id, isAdmin);
+                setSelectedUser({ ...selectedUser, isAdmin });
+                toast.success(
+                  isAdmin
+                    ? (language === 'ja' ? '運営権限を付与しました' : 'Admin access granted')
+                    : (language === 'ja' ? '運営権限を外しました' : 'Admin access revoked')
+                );
+              } catch {
+                toast.error(language === 'ja' ? '権限の変更に失敗しました' : 'Failed to change admin access');
+              }
+            })();
+          }}
         />
       )}
     </div>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Users, Calendar, FileText, MessageCircle, LogOut, Image } from 'lucide-react';
+import { Users, Calendar, FileText, MessageCircle, LogOut, Image, Bell, Home } from 'lucide-react';
 import { Button } from '../ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { PushNotificationSetting } from './PushNotificationSetting';
 import { AdminMembersManagement } from './AdminMembersManagement';
 import { AdminEvents } from './AdminEvents';
 import { AdminBoards } from './AdminBoards';
@@ -55,6 +57,8 @@ interface AdminPageProps {
   onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean, pushCategory?: 'event' | 'announcement') => void;
   onSendBulkMessages?: (messages: Array<{ receiverId: string; text: string; isAdmin?: boolean; isBroadcast?: boolean; broadcastSubject?: string; broadcastSubjectEn?: string; broadcastId?: number | null }>) => Promise<void>;
   onCancelBroadcast?: (broadcastId: number) => Promise<void>;
+  /** 会員画面（dashboard）へ切り替える。運営も会員として通常画面を使えるようにする */
+  onSwitchToMemberView?: () => void;
 }
 
 type AdminTab = 'members' | 'events' | 'gallery' | 'boards' | 'chat';
@@ -82,7 +86,7 @@ const translations = {
   }
 };
 
-export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, membersLoading = false, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onSetUserRole, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, onMarkMemberMessagesAsRead, onUploadChatAttachment, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onDeleteBoardPost, onTogglePinBoardPost, onReorderPinnedBoardPosts, onSendBulkEmail, onSendBulkMessages, onCancelBroadcast }: AdminPageProps) {
+export function AdminPage({ user, onLogout, language, onLanguageChange, events, eventParticipants, onCreateEvent, onUpdateEvent, onDeleteEvent, pendingUsers, approvedMembers, membersLoading = false, onApproveUser, onRejectUser, onRequestReupload, onConfirmFeePayment, onSetRenewalStatus, onSetUserRole, onDeleteUser, messageThreads, onUpdateMessageThreads, onSendMessage, onMarkMemberMessagesAsRead, onUploadChatAttachment, chatThreadMetadata, onUpdateChatThreadMetadata, selectedChatUserId, onOpenMemberChat, onUpdateNotifications, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onDeleteBoardPost, onTogglePinBoardPost, onReorderPinnedBoardPosts, onSendBulkEmail, onSendBulkMessages, onCancelBroadcast, onSwitchToMemberView }: AdminPageProps) {
   const t = translations[language];
   const ADMIN_TAB_STORAGE_KEY = `truss-admin-tab-${user.id}`;
   const [currentTab, setCurrentTab] = useState<AdminTab>('members');
@@ -139,6 +143,34 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                {onSwitchToMemberView && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onSwitchToMemberView}
+                    className="text-[#F5F1E8] hover:bg-[#2D2D3D]"
+                    title={language === 'ja' ? '会員画面へ' : 'Member view'}
+                  >
+                    <Home className="w-5 h-5" />
+                  </Button>
+                )}
+                {/* 運営向けプッシュ通知（入会申請・会員からのメッセージ）の購読設定。
+                    会員はプロフィール画面から購読するが、運営はこの画面しか使わないためここに置く */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-[#F5F1E8] hover:bg-[#2D2D3D]"
+                      title={language === 'ja' ? '通知設定' : 'Notification settings'}
+                    >
+                      <Bell className="w-5 h-5" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-80 p-0 border-0 shadow-xl">
+                    <PushNotificationSetting user={user} language={language} variant="admin" />
+                  </PopoverContent>
+                </Popover>
                 <Button variant="ghost" onClick={onLogout} className="text-[#F5F1E8] hover:bg-[#2D2D3D]">
                   <LogOut className="w-4 h-4 mr-2" />
                   {t.logout}

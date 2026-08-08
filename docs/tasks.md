@@ -301,8 +301,8 @@ Web の改善作業中に、モバイル開発で確実に踏むことになる�
 - [x] 一斉送信・イベント案内から `sendPushNotification()` を呼ぶ — 2026-08-07 接続済み（AdminChat の一斉送信 = 'announcement'、イベント案内 = 'event'、会員への一斉連絡 = 'announcement'。全員分を1回の API 呼び出しにまとめる）
 - [x] 初回登録時の `find_withdrawn_record()` 呼び出し — 2026-08-07 接続済み（Web / モバイル両方。退会 → 作り直しで会費記録が引き継がれる）
 - [x] チャット履歴のスレッドごとのページング — 2026-08-07 実装済み（運営チャットに「以前のメッセージを読み込む」。会員側は履歴が1000件枠を使い切らないため見送り）
-- [ ] **VAPID 鍵を Vercel に設定**（`NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / 任意で `VAPID_SUBJECT`。鍵は生成済み、`npx web-push generate-vapid-keys` で再生成も可）
-- [ ] Web Push の実機確認（iOS はホーム画面に追加してから）
+- [x] VAPID 鍵を Vercel に設定 — 2026-08-08 完了
+- [ ] Web Push の実機確認（iOS はホーム画面に追加してから。鍵の設定が直近デプロイより後なら再デプロイが必要 — `NEXT_PUBLIC_` はビルド時に埋め込まれるため）
 
 ### 保留
 

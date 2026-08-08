@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Home, Calendar, Users, Image, Mail, Bell, LogOut, X, Check, Clock, AlertCircle, Upload, FileText, CreditCard, MessageCircle } from 'lucide-react';
+import { Home, Calendar, Users, Image, Mail, Bell, LogOut, X, Check, Clock, AlertCircle, Upload, FileText, CreditCard, MessageCircle, ShieldCheck } from 'lucide-react';
 import { Button } from '../ui/button';
 import { UserAvatarImage } from './UserAvatarImage';
 import { Badge } from '../ui/badge';
@@ -18,6 +18,7 @@ import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
 import type { User as UserType, Language, Event, MessageThread, ChatThreadMetadata, Notification, BoardPost, BoardPostReply } from '@truss/core';
 import type { Dispatch, SetStateAction } from 'react';
 import { isProfileCompleteForParticipation } from '@truss/core';
+import { useData } from '../../contexts/DataContext';
 import { toast } from 'sonner';
 import { uploadStudentIdImage } from '@truss/core';
 import {
@@ -45,6 +46,8 @@ interface DashboardProps {
   onToggleLike: (eventId: number) => void;
   onAddEventParticipant: (eventId: number, photoRefusal: boolean) => void;
   onOpenProfile: () => void;
+  /** 運営権限を持つ会員が運営画面へ切り替えるための導線（is_admin のときだけ渡される） */
+  onOpenAdmin?: () => void;
   onUpdateProfile?: (updates: Partial<User>) => Promise<{ error: Error | null }>;
   onReopenInitialRegistration: () => void;
   onDismissReuploadNotification?: () => void;
@@ -121,6 +124,7 @@ export function Dashboard({
   onToggleLike,
   onAddEventParticipant,
   onOpenProfile,
+  onOpenAdmin,
   onUpdateProfile,
   onReopenInitialRegistration,
   onDismissReuploadNotification,
@@ -149,6 +153,30 @@ export function Dashboard({
   const [highlightEventId, setHighlightEventId] = useState<number | undefined>(undefined);
   const [messageHistory, setMessageHistory] = useState<MessageHistory>({});
   const [feePaymentDialogOpen, setFeePaymentDialogOpen] = useState(false);
+  const [reportingTransfer, setReportingTransfer] = useState(false);
+  // 振込報告はチャットへの定型文として送る。専用の状態を持たず、運営チャットに記録が残り、
+  // 会員からのメッセージとして運営へのプッシュ通知にも自動で乗る
+  const { sendMessage: sendChatMessage, staffInboxUserId } = useData();
+  const handleReportTransfer = async () => {
+    if (!staffInboxUserId || reportingTransfer) return;
+    setReportingTransfer(true);
+    try {
+      await sendChatMessage(
+        staffInboxUserId,
+        language === 'ja'
+          ? '会費の振込が完了しました。ご確認をお願いします。'
+          : 'I have completed the membership fee transfer. Please confirm.',
+        false,
+        { category: 'membership' },
+      );
+      toast.success(language === 'ja' ? '運営に振込完了を伝えました' : 'The staff has been notified');
+      setFeePaymentDialogOpen(false);
+    } catch {
+      toast.error(language === 'ja' ? '送信に失敗しました。時間をおいて再試行してください。' : 'Failed to send. Please try again.');
+    } finally {
+      setReportingTransfer(false);
+    }
+  };
   const [pendingOpenEventId, setPendingOpenEventId] = useState<number | undefined>(undefined);
   const [uploadingStudentId, setUploadingStudentId] = useState(false);
   const studentIdReuploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -364,6 +392,18 @@ export function Dashboard({
                 >
                   {language === 'ja' ? 'English' : '日本語'}
                 </Button>
+
+                {user.isAdmin && onOpenAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onOpenAdmin}
+                    className="hover:bg-[#E8E4DB] p-2 w-8 h-8 flex items-center justify-center"
+                    title={language === 'ja' ? '運営画面へ' : 'Admin panel'}
+                  >
+                    <ShieldCheck className="w-5 h-5 text-[#3D3D4E]" />
+                  </Button>
+                )}
 
                 <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
                   <PopoverTrigger asChild>
@@ -819,6 +859,19 @@ export function Dashboard({
                 </p>
               </div>
             </div>
+
+            {staffInboxUserId && (
+              <Button
+                className="w-full bg-[#00A63E] hover:bg-[#008C35] text-white"
+                disabled={reportingTransfer}
+                onClick={() => void handleReportTransfer()}
+              >
+                <Check className="w-4 h-4 mr-2" />
+                {reportingTransfer
+                  ? (language === 'ja' ? '送信中...' : 'Sending...')
+                  : (language === 'ja' ? '振込が完了したことを運営に伝える' : 'Tell the staff I have paid')}
+              </Button>
+            )}
 
             <Button
               className="w-full bg-[#49B1E4] hover:bg-[#3A9BD4] text-white"

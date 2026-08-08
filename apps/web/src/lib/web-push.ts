@@ -110,6 +110,34 @@ export async function subscribeToPush(): Promise<SubscribeResult> {
  * 運営から指定ユーザーへ Web Push を送る（実際の送信はサーバー側 /api/push/send）。
  * 呼び出しには本人のアクセストークンが要る（サーバー側で is_admin を検証するため）。
  */
+/**
+ * 運営向けの通知を発生させる（会員の操作が起点。宛先・タイトルはサーバー側で決まる）。
+ * 通知の失敗を元の操作の失敗にしないため、例外は投げず null を返す。
+ */
+export async function notifyAdminsByPush(
+  accessToken: string,
+  input: { kind: 'new_application' | 'member_message'; detail?: string }
+): Promise<{ sent: number; failed: number; removed: number } | null> {
+  try {
+    const response = await fetch('/api/push/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ toAdmins: input }),
+    });
+    if (!response.ok) {
+      console.error('Admin push send failed:', response.status, await response.text());
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Admin push send failed:', error);
+    return null;
+  }
+}
+
 export async function sendPushNotification(
   accessToken: string,
   input: {

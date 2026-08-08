@@ -4,7 +4,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { supabase } from '@truss/core';
-import { sendPushNotification } from '../lib/web-push';
+import { sendPushNotification, notifyAdminsByPush } from '../lib/web-push';
 import { queryEvents } from '@truss/core';
 import { queryEventParticipantsGrouped } from '@truss/core';
 import {
@@ -34,6 +34,7 @@ import {
   resetMembershipForNewYearRow,
   deleteUserRow,
   updateUserRoleRow,
+  updateUserAdminFlagRow,
   type UserRole,
 } from '@truss/core';
 import {
@@ -102,6 +103,8 @@ interface DataContextType {
   confirmRenewal: (userId: string) => Promise<void>;
   setRenewalStatus: (userId: string, isRenewal: boolean) => Promise<void>;
   setUserRole: (userId: string, role: UserRole) => Promise<void>;
+  /** 運営権限（is_admin）の付与・剥奪。管理者のみ実行できる */
+  setUserAdminFlag: (userId: string, isAdmin: boolean) => Promise<void>;
   resetMembershipForNewYear: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   sendMessage: (
@@ -641,6 +644,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /** 運営権限の付与・剥奪。自己昇格は DB 側のトリガー（migration 038）が拒否する */
+  const setUserAdminFlag = async (userId: string, isAdmin: boolean) => {
+    try {
+      const { error } = await updateUserAdminFlagRow(userId, isAdmin);
+      if (error) throw error;
+      await fetchUsers(true);
+    } catch (error) {
+      console.error('Error setting admin flag:', error);
+      throw error;
+    }
+  };
+
   const resetMembershipForNewYear = async () => {
     try {
       const currentYear = new Date().getFullYear();
@@ -689,6 +704,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // 失敗しても送信自体は成功しているので、ここでは例外にしない。
       // 一斉送信のループから呼ばれる場合は suppressPush で止め、呼び出し側が1回にまとめて送る
       if (isAdmin && !options?.suppressPush) void notifyByPush(receiverId, text);
+      // 会員からの送信（宛先は運営受信箱に固定）は、運営側にも届いたことを知らせる
+      if (!isAdmin) void notifyAdminsOfMemberMessage(text);
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;
@@ -719,6 +736,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
     } catch (error) {
       console.error('Push notification failed (message was sent):', error);
+    }
+  };
+
+  /** 会員がメッセージを送ったことを、運営ロールの全員にプッシュで知らせる */
+  const notifyAdminsOfMemberMessage = async (text: string) => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (!accessToken) return;
+      await notifyAdminsByPush(accessToken, {
+        kind: 'member_message',
+        detail: user ? `${user.name}: ${text}` : text,
+      });
+    } catch (error) {
+      console.error('Admin push notification failed (message was sent):', error);
     }
   };
 
@@ -1073,7 +1105,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const value: DataContextType = {
     events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading, boardPostsLoading, galleryPhotosLoading,
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
-    approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, setUserRole, resetMembershipForNewYear, deleteUser,
+    approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, setUserRole, setUserAdminFlag, resetMembershipForNewYear, deleteUser,
     sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, notifyMembersByPush, loadOlderThreadMessages, markMessageAsRead, markAllMessagesAsReadForUser, markMemberMessagesAsRead, uploadChatAttachment, updateChatMetadata,
     markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost, togglePinBoardPost, reorderPinnedBoardPosts,
     uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, toggleGalleryPhotoLike, likedGalleryPhotoIds, interestedPostIds, likedEventIds,

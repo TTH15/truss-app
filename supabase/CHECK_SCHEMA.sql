@@ -36,7 +36,11 @@ WITH expected(migration, kind, object_name, detail) AS (
     -- 036: 退会
     ('036', 'column', 'users', 'withdrawn_at'),
     ('036', 'function', 'withdraw_own_account', null),
-    ('036', 'function', 'find_withdrawn_record', null)
+    ('036', 'function', 'find_withdrawn_record', null),
+    -- 037: 通知種別の受信設定
+    ('037', 'column', 'users', 'notify_message'),
+    -- 038: is_admin の自己昇格防止
+    ('038', 'function', 'enforce_admin_flag_change_by_admin', null)
 )
 SELECT
   e.migration,
