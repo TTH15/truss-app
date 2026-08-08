@@ -7,7 +7,7 @@ import { Checkbox } from '../ui/checkbox';
 import { Skeleton } from '../ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Search, Download, Mail, MessageCircle, MoreVertical, Users2, UserMinus, UserCheck, ListChecks } from 'lucide-react';
+import { Search, Download, MessageCircle, Users2, UserMinus, UserCheck, ListChecks, Send, CircleCheck, Trash2, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { queryFeeSettings, toLocalDateKey } from '@truss/core';
 import { upsertFeeSettingsRow } from '@truss/core';
@@ -56,10 +56,10 @@ const translations = {
     sortOrderAsc: '昇順',
     sortOrderDesc: '降順',
     exportData: 'データをエクスポート',
-    sendBulkEmail: 'メールを一斉送信',
+    sendBulkEmail: 'メッセージを一斉送信',
     bulkAction: '一括操作',
     bulkActionTitle: '一括操作',
-    feePriceSetting: '年会費・入会費の価格設定',
+    feePriceSetting: '会費の設定',
     annualFee: '年会費',
     admissionFee: '入会費',
     applyPriceSetting: '価格を適用',
@@ -75,7 +75,7 @@ const translations = {
     paidSettingApplied: '支払い済み設定を更新しました',
     priceUpdated: '価格設定を保存しました',
     deletedMembers: '選択メンバーを削除しました',
-    confirmBulkDelete: '選択したメンバーを削除します。よろしいですか？',
+    confirmBulkDelete: '選択したメンバーを削除します。よろしいですか？', confirmBulkMarkPaid: '選択したメンバーを支払い済みにします。よろしいですか？',
     csvDownloaded: 'CSVをダウンロードしました',
     xlsxDownloaded: 'XLSXをダウンロードしました',
     templateDownloaded: '部員名簿をダウンロードしました',
@@ -107,10 +107,10 @@ const translations = {
     sortOrderAsc: 'Ascending',
     sortOrderDesc: 'Descending',
     exportData: 'Export Data',
-    sendBulkEmail: 'Send Bulk Email',
+    sendBulkEmail: 'Send bulk message',
     bulkAction: 'Edit',
     bulkActionTitle: 'Bulk Actions',
-    feePriceSetting: 'Fee Price Settings',
+    feePriceSetting: 'Fee settings',
     annualFee: 'Annual Fee',
     admissionFee: 'Admission Fee',
     applyPriceSetting: 'Apply Price',
@@ -126,7 +126,7 @@ const translations = {
     paidSettingApplied: 'Payment status updated',
     priceUpdated: 'Price settings saved',
     deletedMembers: 'Selected members deleted',
-    confirmBulkDelete: 'Delete selected members?',
+    confirmBulkDelete: 'Delete selected members?', confirmBulkMarkPaid: 'Mark selected members as paid?',
     csvDownloaded: 'CSV downloaded',
     xlsxDownloaded: 'XLSX downloaded',
     templateDownloaded: 'Member roster downloaded',
@@ -153,6 +153,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showBulkActionsModal, setShowBulkActionsModal] = useState(false);
+  const [showFeeSettingsModal, setShowFeeSettingsModal] = useState(false);
   const [showReuploadModal, setShowReuploadModal] = useState(false);
   const [reuploadUserId, setReuploadUserId] = useState<string | null>(null);
   const [reuploadUserName, setReuploadUserName] = useState<string>('');
@@ -251,6 +252,8 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
       toast.error(t.noMemberSelected);
       return;
     }
+    // 会費の記録を書き換える破壊的な操作なので、削除と同じく確認を挟む
+    if (!window.confirm(t.confirmBulkMarkPaid)) return;
     await Promise.all(selected.map((member) => onConfirmFeePayment(member.id, member.isRenewal ?? false)));
     toast.success(t.bulkUpdated);
   };
@@ -383,6 +386,10 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
   };
 
   const openBulkActionsModal = async () => {
+    setShowBulkActionsModal(true);
+  };
+
+  const openFeeSettingsModal = async () => {
     try {
       const settings = await queryFeeSettings();
       setAnnualFeeAmount(String(settings.annualFee));
@@ -390,7 +397,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     } catch {
       // 取得失敗時は画面上の値をそのまま使う（デフォルトあり）
     } finally {
-      setShowBulkActionsModal(true);
+      setShowFeeSettingsModal(true);
     }
   };
 
@@ -402,6 +409,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     const { error } = await upsertFeeSettingsRow({ annualFee, admissionFee, currency: 'JPY' });
     if (error) return toast.error(error.message);
     toast.success(t.priceUpdated);
+    setShowFeeSettingsModal(false);
   };
   const handleReuploadRequestSend = (reasons: string[]) => {
     const reasonTexts = { ja: { reason1: '規定学生証の画像ではない。', reason2: '画質が荒く、情報が読み取れない。' }, en: { reason1: 'Not a valid student ID image.', reason2: 'Image quality is too low to read information.' } };
@@ -502,7 +510,8 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                 </span>
               </div>
               <div className="flex items-center gap-2 flex-wrap justify-end">
-                <Button onClick={() => void openBulkActionsModal()} disabled={selectedCount === 0} size="sm" title={language === 'ja' ? '選択したメンバーへの一括操作（メール送信・会費確認・名簿出力など）' : 'Bulk actions for selected members'} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1.5"><ListChecks className="w-4 h-4" />{t.bulkAction}</Button>
+                <Button variant="outline" size="sm" onClick={() => void openFeeSettingsModal()} title={t.feePriceSetting} className="gap-1.5 border-[rgba(61,61,78,0.2)] bg-white text-[#3D3D4E] hover:bg-[#EEEBE3]"><Settings2 className="w-4 h-4" />{t.feePriceSetting}</Button>
+                <Button onClick={() => void openBulkActionsModal()} disabled={selectedCount === 0} size="sm" title={language === 'ja' ? '選択したメンバーへの一括操作（メッセージ送信・会費確認・名簿出力など）' : 'Bulk actions for selected members'} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1.5"><ListChecks className="w-4 h-4" />{t.bulkAction}</Button>
               </div>
             </div>
 
@@ -545,9 +554,14 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
             )}
 
             {!isLoading && sortedMembers.map((member) => (
-              <div key={member.id} className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-4">
+              <div
+                key={member.id}
+                onClick={() => { setSelectedUser(member); setShowDetailModal(true); }}
+                className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-4 cursor-pointer transition-shadow hover:shadow-md"
+              >
                 <div className="hidden md:flex items-center gap-4">
-                  <Checkbox checked={selectedMembers.has(member.id)} onCheckedChange={() => handleToggleMember(member.id)} className="size-5 shrink-0 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]" />
+                  {/* チェックとチャットは行クリック（詳細を開く）に伝播させない */}
+                  <Checkbox checked={selectedMembers.has(member.id)} onCheckedChange={() => handleToggleMember(member.id)} onClick={(e) => e.stopPropagation()} className="size-5 shrink-0 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]" />
                   <UserAvatarImage
                     avatarPath={member.avatarPath}
                     name={member.name}
@@ -560,20 +574,18 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                       <h3 className="truncate text-base font-normal text-[#101828]">{member.name}</h3>
                       {/* 役職バッジ = 運営権限あり（役職連動）。運営の盾バッジは役職バッジに置き換えた */}
                       {isPrivilegedRole(member.role) && <RoleBadge role={member.role} language={language} className="shrink-0" />}
-                      {/* 部員タブで未払いは役職と会費の不整合なので目立たせる（非会員タブでは全員未払いのため出さない） */}
-                      {activeTab === 'members' && !member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
+                      {!member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
                     </div>
                     <p className="truncate text-sm text-[#4A5565]">{member.email}</p>
                     {member.studentNumber && <p className="text-xs text-[#6A7282]">{t.studentNumberLabel}: {member.studentNumber}</p>}
                   </div>
                   <Badge className={`${getCategoryColor(member.category)} shrink-0 border-0 px-2 py-0.5 text-xs font-medium`}>{getCategoryLabel(member.category)}</Badge>
-                  <Button onClick={() => onOpenChat && onOpenChat(member.id)} variant="outline" size="icon" title={t.chat} className="h-8 w-8 shrink-0 border-[rgba(61,61,78,0.15)] bg-[#F5F1E8] text-[#3D3D4E] hover:bg-[#E8E4DB]"><MessageCircle className="w-4 h-4" /></Button>
-                  <button type="button" onClick={() => { setSelectedUser(member); setShowDetailModal(true); }} className="shrink-0 rounded p-1 text-[#3D3D4E] transition-colors hover:bg-[#F5F1E8]"><MoreVertical className="w-5 h-5" /></button>
+                  <Button onClick={(e) => { e.stopPropagation(); if (onOpenChat) onOpenChat(member.id); }} variant="outline" size="icon" title={t.chat} className="h-8 w-8 shrink-0 border-[rgba(61,61,78,0.15)] bg-[#F5F1E8] text-[#3D3D4E] hover:bg-[#E8E4DB]"><MessageCircle className="w-4 h-4" /></Button>
                 </div>
 
                 <div className="md:hidden space-y-3">
                   <div className="flex items-start gap-3">
-                    <Checkbox checked={selectedMembers.has(member.id)} onCheckedChange={() => handleToggleMember(member.id)} className="mt-1 size-4 shrink-0 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]" />
+                    <Checkbox checked={selectedMembers.has(member.id)} onCheckedChange={() => handleToggleMember(member.id)} onClick={(e) => e.stopPropagation()} className="mt-1 size-4 shrink-0 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4]" />
                     <UserAvatarImage
                       avatarPath={member.avatarPath}
                       name={member.name}
@@ -586,9 +598,8 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                         <div className="flex min-w-0 flex-1 items-center gap-1.5">
                           <h3 className="truncate text-sm font-normal text-[#101828]">{member.name}</h3>
                           {isPrivilegedRole(member.role) && <RoleBadge role={member.role} language={language} className="shrink-0" />}
-                          {activeTab === 'members' && !member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
+                          {!member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
                         </div>
-                        <button type="button" onClick={() => { setSelectedUser(member); setShowDetailModal(true); }} className="shrink-0 rounded p-0.5 text-[#3D3D4E] transition-colors hover:bg-[#F5F1E8]"><MoreVertical className="w-4 h-4" /></button>
                       </div>
                       <p className="truncate text-xs text-[#4A5565]">{member.email}</p>
                       {member.studentNumber && <p className="text-xs text-[#6A7282]">{t.studentNumberLabel}: {member.studentNumber}</p>}
@@ -596,7 +607,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                   </div>
                   <div className="ml-9 flex items-center gap-2">
                     <Badge className={`${getCategoryColor(member.category)} border-0 px-2 py-0.5 text-xs font-medium`}>{getCategoryLabel(member.category)}</Badge>
-                    <Button onClick={() => onOpenChat && onOpenChat(member.id)} variant="outline" size="icon" title={t.chat} className="h-7 w-7 border-[rgba(61,61,78,0.15)] bg-[#F5F1E8] text-[#3D3D4E] hover:bg-[#E8E4DB]"><MessageCircle className="h-3.5 w-3.5" /></Button>
+                    <Button onClick={(e) => { e.stopPropagation(); if (onOpenChat) onOpenChat(member.id); }} variant="outline" size="icon" title={t.chat} className="h-7 w-7 border-[rgba(61,61,78,0.15)] bg-[#F5F1E8] text-[#3D3D4E] hover:bg-[#E8E4DB]"><MessageCircle className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               </div>
@@ -635,57 +646,80 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
 
       {showBulkActionsModal && (
         <Dialog open={showBulkActionsModal} onOpenChange={setShowBulkActionsModal}>
-          <DialogContent className="max-w-xl bg-[#F5F1E8]">
+          <DialogContent className="max-w-md bg-[#F5F1E8]">
             <DialogHeader>
               <DialogTitle className="text-[#3D3D4E]">{t.bulkActionTitle}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-5 py-2">
+            {/* 操作は白地のリストで統一し、目を引く色は使わない（危険な削除だけ赤）。
+                以前は全ボタンが primary の青一色で、削除と閉じるの区別すら付かなかった */}
+            <div className="space-y-4 py-1">
               <div className="text-sm text-[#6B6B7A]">{t.selectedCount}: {selectedCount}</div>
 
-              <div className="space-y-2 border rounded-lg border-[rgba(61,61,78,0.15)] p-3">
-                <p className="text-sm font-semibold text-[#3D3D4E]">{t.sendBulkEmail}</p>
-                <Button onClick={() => { setShowBulkActionsModal(false); handleBulkEmail(); }} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">
-                  <Mail className="w-4 h-4 mr-1" />
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  onClick={() => { setShowBulkActionsModal(false); handleBulkEmail(); }}
+                  className="w-full justify-start gap-2 border-[rgba(61,61,78,0.2)] bg-white text-[#3D3D4E] hover:bg-[#EEEBE3]"
+                >
+                  <Send className="w-4 h-4 text-[#49B1E4]" />
                   {t.sendBulkEmail}
                 </Button>
-              </div>
-
-              <div className="space-y-3 border rounded-lg border-[rgba(61,61,78,0.15)] p-3">
-                <p className="text-sm font-semibold text-[#3D3D4E]">{t.feePriceSetting}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-xs text-[#3D3D4E]">{t.annualFee}</label>
-                    <Input value={annualFeeAmount} onChange={(e) => setAnnualFeeAmount(e.target.value)} className="bg-[#EEEBE3] border-0" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-[#3D3D4E]">{t.admissionFee}</label>
-                    <Input value={admissionFeeAmount} onChange={(e) => setAdmissionFeeAmount(e.target.value)} className="bg-[#EEEBE3] border-0" />
-                  </div>
-                </div>
-                <Button onClick={() => void handleSaveFeeSettings()} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">
-                  {t.applyPriceSetting}
-                </Button>
-              </div>
-
-              <div className="space-y-3 border rounded-lg border-[rgba(61,61,78,0.15)] p-3">
-                <p className="text-sm font-semibold text-[#3D3D4E]">{t.markPaid}</p>
-                <Button onClick={() => void handleBulkConfirmFeePaymentKeepType()} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">
+                <Button
+                  variant="outline"
+                  onClick={() => void handleBulkConfirmFeePaymentKeepType()}
+                  className="w-full justify-start gap-2 border-[rgba(61,61,78,0.2)] bg-white text-[#3D3D4E] hover:bg-[#EEEBE3]"
+                >
+                  <CircleCheck className="w-4 h-4 text-[#00A63E]" />
                   {t.markPaidInBulk}
                 </Button>
               </div>
 
-              <div className="space-y-2 border rounded-lg border-[rgba(61,61,78,0.15)] p-3">
-                <p className="text-sm font-semibold text-[#3D3D4E]">{t.downloadInfo}</p>
+              <div className="space-y-2">
+                <p className="text-xs text-[#6B6B7A]">{t.downloadInfo}</p>
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleBulkDownloadCsv} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1"><Download className="w-4 h-4" />{t.downloadCsv}</Button>
-                  <Button onClick={handleBulkDownloadXlsx} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1"><Download className="w-4 h-4" />{t.downloadXlsx}</Button>
-                  <Button onClick={() => void handleBulkDownloadTemplate()} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white gap-1"><Download className="w-4 h-4" />{t.downloadTemplate}</Button>
+                  <Button variant="outline" size="sm" onClick={handleBulkDownloadCsv} className="gap-1.5 border-[rgba(61,61,78,0.2)] bg-white text-[#3D3D4E] hover:bg-[#EEEBE3]"><Download className="w-3.5 h-3.5" />{t.downloadCsv}</Button>
+                  <Button variant="outline" size="sm" onClick={handleBulkDownloadXlsx} className="gap-1.5 border-[rgba(61,61,78,0.2)] bg-white text-[#3D3D4E] hover:bg-[#EEEBE3]"><Download className="w-3.5 h-3.5" />{t.downloadXlsx}</Button>
+                  <Button variant="outline" size="sm" onClick={() => void handleBulkDownloadTemplate()} className="gap-1.5 border-[rgba(61,61,78,0.2)] bg-white text-[#3D3D4E] hover:bg-[#EEEBE3]"><Download className="w-3.5 h-3.5" />{t.downloadTemplate}</Button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <Button onClick={() => void handleBulkDelete()} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.bulkDelete}</Button>
-                <Button onClick={() => setShowBulkActionsModal(false)} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.close}</Button>
+              <div className="flex items-center justify-between border-t border-[rgba(61,61,78,0.15)] pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => void handleBulkDelete()}
+                  className="gap-1.5 border-[#D4183D] text-[#D4183D] hover:bg-[#D4183D] hover:text-white"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {t.bulkDelete}
+                </Button>
+                <Button variant="ghost" onClick={() => setShowBulkActionsModal(false)} className="text-[#3D3D4E] hover:bg-[#EEEBE3]">{t.close}</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* 会費の設定（全体設定）。選択メンバーへの一括操作とは無関係なので別ダイアログにした */}
+      {showFeeSettingsModal && (
+        <Dialog open={showFeeSettingsModal} onOpenChange={setShowFeeSettingsModal}>
+          <DialogContent className="max-w-sm bg-[#F5F1E8]">
+            <DialogHeader>
+              <DialogTitle className="text-[#3D3D4E]">{t.feePriceSetting}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-1">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-[#3D3D4E]">{t.annualFee}</label>
+                  <Input value={annualFeeAmount} onChange={(e) => setAnnualFeeAmount(e.target.value)} className="bg-[#EEEBE3] border-0" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-[#3D3D4E]">{t.admissionFee}</label>
+                  <Input value={admissionFeeAmount} onChange={(e) => setAdmissionFeeAmount(e.target.value)} className="bg-[#EEEBE3] border-0" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setShowFeeSettingsModal(false)} className="text-[#3D3D4E] hover:bg-[#EEEBE3]">{t.close}</Button>
+                <Button onClick={() => void handleSaveFeeSettings()} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.applyPriceSetting}</Button>
               </div>
             </div>
           </DialogContent>

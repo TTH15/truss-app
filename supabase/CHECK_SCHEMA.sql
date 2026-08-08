@@ -42,7 +42,9 @@ WITH expected(migration, kind, object_name, detail) AS (
     -- 038: is_admin の自己昇格防止
     ('038', 'function', 'enforce_admin_flag_change_by_admin', null),
     -- 039: 運営権限を役職に連動
-    ('039', 'function', 'sync_admin_flag_with_role', null)
+    ('039', 'function', 'sync_admin_flag_with_role', null),
+    -- 040: イベント閲覧の記録
+    ('040', 'table', 'event_views', null)
 )
 SELECT
   e.migration,

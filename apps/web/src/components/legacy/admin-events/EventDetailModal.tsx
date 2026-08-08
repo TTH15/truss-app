@@ -1,4 +1,4 @@
-import { Calendar as CalendarIcon, Clock, MapPin, Users, Edit2, Heart, Share2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, Users, Edit2, Heart, Share2, Eye } from 'lucide-react';
 import type { Language } from '@truss/core';
 import { Button } from '../../ui/button';
 import { linkifyText } from '../../../lib/linkify';
@@ -13,6 +13,8 @@ interface EventDetailModalProps {
   t: AdminEventsCopy;
   event: AdminEvent;
   participants: EventParticipants;
+  /** インサイト用のユニーク閲覧数。読み込み中・未適用は null（インサイト行を出さない） */
+  viewCount: number | null;
   /** 共有リンク。発行前（shareToken 無し）は null */
   shareUrl: string | null;
   onShare: () => void;
@@ -26,6 +28,7 @@ export function EventDetailModal({
   t,
   event,
   participants,
+  viewCount,
   shareUrl,
   onShare,
   onEdit,
@@ -120,6 +123,24 @@ export function EventDetailModal({
                 <span className="font-semibold text-red-500">{event.likes || 0}</span>
                 <span>{language === 'ja' ? 'いいね' : 'Likes'}</span>
               </div>
+              {/* インサイト: 閲覧 → 参加（クリック率）→ 出席。閲覧の記録が無い環境では行ごと出さない */}
+              {viewCount !== null && (
+                <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
+                  <Eye className="w-4 h-4" />
+                  <span className="font-semibold">{viewCount}</span>
+                  <span>{language === 'ja' ? '閲覧' : 'Views'}</span>
+                  {viewCount > 0 && (
+                    <span className="text-[#6B6B7A]">
+                      → {language === 'ja' ? '参加' : 'joined'} {Math.round((participants.count / viewCount) * 100)}%
+                    </span>
+                  )}
+                  {participants.attendedCount > 0 && participants.count > 0 && (
+                    <span className="text-[#6B6B7A]">
+                      / {language === 'ja' ? '出席' : 'attended'} {Math.round((participants.attendedCount / participants.count) * 100)}%
+                    </span>
+                  )}
+                </div>
+              )}
               {shareUrl && (
                 <Button
                   type="button"

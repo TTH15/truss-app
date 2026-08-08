@@ -32,3 +32,24 @@ export async function queryLikedEventIds(userId: string): Promise<number[]> {
   if (error) throw error;
   return (data ?? []).map((row) => row.event_id as number);
 }
+
+/**
+ * イベント詳細を開いたことを記録する（インサイトの「ユニーク閲覧数」用）。
+ * 1人1イベント1行。2回目以降は何も書かれないので、失敗も含めて画面の動作には影響させないこと。
+ */
+export async function recordEventViewRow(eventId: number, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from("event_views")
+    .upsert({ event_id: eventId, user_id: userId }, { onConflict: "event_id,user_id", ignoreDuplicates: true });
+  if (error) throw error;
+}
+
+/** イベントのユニーク閲覧数（運営のみ RLS で読める） */
+export async function queryEventViewCount(eventId: number): Promise<number> {
+  const { count, error } = await supabase
+    .from("event_views")
+    .select("*", { count: "exact", head: true })
+    .eq("event_id", eventId);
+  if (error) throw error;
+  return count ?? 0;
+}

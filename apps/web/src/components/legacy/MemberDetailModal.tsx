@@ -43,14 +43,15 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[510px] shadow-xl border border-[rgba(61,61,78,0.15)] relative max-h-[90vh] overflow-y-auto">
+      {/* PC ではスクロール無しで全体が見えるよう横長 2 カラム、スマホでは従来どおり縦積み */}
+      <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[510px] lg:max-w-[980px] shadow-xl border border-[rgba(61,61,78,0.15)] relative max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-[rgba(61,61,78,0.15)]">
           <div className="flex items-start justify-between">
             <div className="space-y-2"><div className="flex items-center gap-2 flex-wrap"><h2 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">{user.name}</h2><RoleBadge role={user.role} language={language} /></div><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.furigana}</p><p className="text-[#6B6B7A] text-sm tracking-[-0.1504px]">{t.applicationDate}: 2026-01-13</p></div>
             <button onClick={onClose} className="text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70 p-2 hover:bg-gray-200 rounded-full"><X className="w-5 h-5" /></button>
           </div>
         </div>
-        <div className="p-6">
+        <div className="p-6 lg:grid lg:grid-cols-[1fr_340px] lg:gap-x-10 lg:items-start">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.nickname}</p><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.nickname || '-'}</p></div>
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.email}</p><p className="text-[#101828] text-base tracking-[-0.3125px] break-all">{user.email}</p></div>
@@ -63,8 +64,9 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.languages}</p><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.languages || '-'}</p></div>
           </div>
 
+          <div className="lg:border-l lg:border-[rgba(61,61,78,0.15)] lg:pl-8">
           {!isPending && onSetRole && (
-            <div className="mt-8 pt-6 border-t border-[rgba(61,61,78,0.15)] space-y-2">
+            <div className="mt-8 pt-6 border-t border-[rgba(61,61,78,0.15)] lg:mt-0 lg:pt-0 lg:border-t-0 space-y-2">
               <div className="font-semibold text-[#3D3D4E] tracking-[-0.1504px]">
                 {t.role}
               </div>
@@ -142,7 +144,7 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
           )}
 
           {isPending && (
-            <div className="flex gap-2 mt-8">
+            <div className="flex gap-2 mt-8 lg:mt-0">
               <Button onClick={onApprove} className="flex-1 bg-[#00A63E] hover:bg-[#008C35] text-[#F5F1E8] h-9 flex items-center justify-center gap-2"><CheckCircle2 className="w-4 h-4" /><span className="font-medium text-sm tracking-[-0.1504px]">{t.approve}</span></Button>
               <Button onClick={onReject} className="flex-1 bg-[#D4183D] hover:bg-[#B01432] text-white h-9 flex items-center justify-center gap-2"><XCircle className="w-4 h-4" /><span className="font-medium text-sm tracking-[-0.1504px]">{t.reject}</span></Button>
             </div>
@@ -153,6 +155,7 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
               <Button onClick={() => setShowDeleteConfirm(true)} variant="outline" className="w-full border-[#D4183D] text-[#D4183D] hover:bg-[#D4183D] hover:text-white h-10"><Trash2 className="w-4 h-4 mr-2" />{t.delete}</Button>
             </div>
           )}
+          </div>
         </div>
 
         {showDeleteConfirm && (

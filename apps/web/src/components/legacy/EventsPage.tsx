@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { recordEventViewRow } from '@truss/core';
 import { Button } from '../ui/button';
 import { Heart, Users, Calendar, Camera, MapPin, Clock, MessageCircle, ExternalLink, Share2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
@@ -43,6 +44,20 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
     if (!detailEventSnapshot) return null;
     return events.find((e) => e.id === detailEventSnapshot.id) ?? detailEventSnapshot;
   }, [detailEventSnapshot, events]);
+  // インサイト用に「詳細を開いた」を記録する。1人1イベント1行（再閲覧は書かれない）ので、
+  // この画面で送信済みのイベントはメモリで覚えて通信ごと省く。失敗しても画面には影響させない
+  const viewedEventIdsRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    const eventId = detailEventSnapshot?.id;
+    if (!eventId || !user?.id) return;
+    if (viewedEventIdsRef.current.has(eventId)) return;
+    viewedEventIdsRef.current.add(eventId);
+    recordEventViewRow(eventId, user.id).catch(() => {
+      // 記録できなくても閲覧自体は成立している。次の機会に再送できるよう覚えは取り消す
+      viewedEventIdsRef.current.delete(eventId);
+    });
+  }, [detailEventSnapshot?.id, user?.id]);
+
   const eventRefs = useRef<{ [key: number]: HTMLElement | null }>({});
   const [photoRefusal, setPhotoRefusal] = useState(false);
   const [registrationStep, setRegistrationStep] = useState<'confirm' | 'complete'>('confirm');

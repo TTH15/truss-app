@@ -135,6 +135,13 @@ export interface DbEventParticipant {
   paid: boolean;
 }
 
+export interface DbEventView {
+  [key: string]: unknown;
+  event_id: number;
+  user_id: string;
+  viewed_at: string;
+}
+
 export interface DbEventLike {
   // Supabase JS v2 GenericTable の互換性確保のため（Record<string, unknown> 前提）
   [key: string]: unknown;
@@ -423,6 +430,12 @@ export interface Database {
       event_likes: {
         Row: DbEventLike;
         Insert: Omit<DbEventLike, 'id' | 'created_at'>;
+        Update: never;
+        Relationships: [];
+      };
+      event_views: {
+        Row: DbEventView;
+        Insert: Omit<DbEventView, 'viewed_at'>;
         Update: never;
         Relationships: [];
       };

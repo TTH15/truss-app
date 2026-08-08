@@ -7,7 +7,7 @@ import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import type { Language } from '@truss/core';
 import { BulkEmailModal } from './BulkEmailModal';
 import { useData } from '../../contexts/DataContext';
-import { supabase } from '@truss/core';
+import { supabase, queryEventViewCount } from '@truss/core';
 import { adminEventsTranslations } from './admin-events/translations';
 import {
   eventToFormValues,
@@ -168,6 +168,22 @@ export function AdminEvents({
       })();
     }
   };
+
+  // インサイト用のユニーク閲覧数。詳細を開いたときに1回だけ数える（一覧では取らない）。
+  // イベントIDごとに持つので、別のイベントを開いても前の値が混ざらない
+  const [viewCountByEventId, setViewCountByEventId] = useState<Record<number, number>>({});
+  useEffect(() => {
+    const eventId = selectedEvent?.id;
+    if (!eventId) return;
+    let cancelled = false;
+    queryEventViewCount(eventId)
+      .then((count) => {
+        if (!cancelled) setViewCountByEventId((prev) => ({ ...prev, [eventId]: count }));
+      })
+      .catch(() => { /* 未適用・権限なし等。インサイトは出さないだけ */ });
+    return () => { cancelled = true; };
+  }, [selectedEvent?.id]);
+  const selectedEventViewCount = selectedEvent ? viewCountByEventId[selectedEvent.id] ?? null : null;
 
   const selectedEventShareUrl = useMemo(() => {
     if (!selectedEvent?.shareToken || typeof window === 'undefined') return null;
@@ -339,6 +355,7 @@ export function AdminEvents({
           t={t}
           event={selectedEvent}
           participants={participants}
+          viewCount={selectedEventViewCount}
           shareUrl={selectedEventShareUrl}
           onShare={() => void handleShareEventLink()}
           onEdit={handleEditEvent}
