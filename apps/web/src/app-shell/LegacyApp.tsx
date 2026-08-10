@@ -738,7 +738,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
   const isLoadingUser = authLoading;
   if (isLoadingUser) {
     return (
-      <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center px-6">
+      <div className="min-h-screen relative bg-[#F5F1E8] flex items-center justify-center px-6">
         <div className="text-center flex flex-col items-center gap-5">
           <img
             src="/Truss/3.svg"
@@ -747,6 +747,19 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
             draggable={false}
           />
           <p className="text-[#3D3D4E] text-sm">{language === 'ja' ? '読み込み中...' : 'Loading...'}</p>
+        </div>
+        {/* Google ブランド審査対応: この画面が `/` の SSR 初期出力になるため、
+            JS を実行しないクローラにもアプリ名・目的・ポリシーへのリンクが見えるようここに置く */}
+        <div className="absolute bottom-8 left-0 right-0 px-6 text-center space-y-2">
+          <p className="text-[#3D3D4E] text-sm font-semibold">Truss公式アプリ</p>
+          <p className="text-[#6B6B7A] text-xs leading-relaxed max-w-md mx-auto">
+            神戸大学留学生支援サークル Truss の公式アプリです。イベントの案内と参加登録、会員どうしの交流、運営への連絡ができます。ログインには Google アカウントを使用し、メールアドレスは本人確認とご連絡のためにのみ利用します。
+          </p>
+          <p className="text-xs">
+            <a href="/privacy-policy" className="text-[#49B1E4] underline underline-offset-2">プライバシーポリシー</a>
+            <span className="text-[#6B6B7A] mx-1">/</span>
+            <a href="/terms-of-service" className="text-[#49B1E4] underline underline-offset-2">利用規約</a>
+          </p>
         </div>
       </div>
     );

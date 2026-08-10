@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "利用規約 | Truss",
-  description: "Truss（神戸大学 留学生支援サークル）の利用規約です。",
+  title: "利用規約 | Truss公式アプリ",
+  description: "神戸大学留学生支援サークル Truss の利用規約です。",
 };
 
 export default function TermsOfServicePage() {
-  const doc = `留学生支援サークル Truss（以下「当団体」）は、当団体が提供する「Truss App（以下「本サービス」）」について、以下のとおり利用規約（以下「本規約」）を定めます。
+  const doc = `神戸大学留学生支援サークル Truss（以下「当団体」）は、当団体が提供する「Truss公式アプリ（以下「本サービス」）」について、以下のとおり利用規約（以下「本規約」）を定めます。
 
 本サービスの利用にあたっては、利用者は本規約および当団体のプライバシーポリシーに同意する必要があります。
 
@@ -114,8 +114,8 @@ export default function TermsOfServicePage() {
 第13条（問い合わせ窓口）
 ----------------------------------------------------------------
 本サービスに関する問い合わせは、以下までご連絡ください。
-・窓口：留学生支援サークル Truss（総務）
-・メール：admin@truss.com
+・窓口：神戸大学留学生支援サークル Truss（総務）
+・メール：truss.kobe@gmail.com
 `;
 
   const cleanedDoc = doc
@@ -151,7 +151,7 @@ export default function TermsOfServicePage() {
 
       <main className="mx-auto max-w-5xl px-6 sm:px-10 lg:px-16 pt-20 pb-12">
         <p className="mb-6 text-xs sm:text-sm text-[#3D3D4E]/70">
-          本規約は、Truss Appの利用条件を定めるものです。
+          本規約は、Truss公式アプリの利用条件を定めるものです。
         </p>
 
         <div className="space-y-5 text-sm sm:text-[15px] leading-7">

@@ -72,8 +72,14 @@ export function LoginScreen({
           </p>
           <p className="text-[#6B6B7A] text-sm leading-relaxed">
             {language === "ja"
-              ? "神戸大学 留学生支援サークル Truss の公式アプリです。イベントの案内と参加登録、会員どうしの交流、運営への連絡ができます。"
+              ? "神戸大学留学生支援サークル Truss の公式アプリです。イベントの案内と参加登録、会員どうしの交流、運営への連絡ができます。"
               : "The official app of Truss, the international student support club at Kobe University. Browse and join events, connect with members, and contact the staff."}
+          </p>
+          {/* Google 審査要件「ユーザーデータを要求する目的の説明」をホームページ本文にも明記する */}
+          <p className="text-[#6B6B7A] text-xs leading-relaxed">
+            {language === "ja"
+              ? "ログインには Google アカウントを使用し、メールアドレスは本人確認とご連絡のためにのみ利用します。"
+              : "Sign-in uses your Google account; your email address is used only for identification and contact."}
           </p>
         </div>
 
@@ -107,8 +113,8 @@ export function LoginScreen({
           </div>
         )}
 
-        <div className="w-full max-w-md pb-2">
-          <label className="flex items-start gap-2 cursor-pointer">
+        <div className="w-full max-w-md px-6 pb-2">
+          <label className="flex items-start justify-center gap-2 cursor-pointer">
             <Checkbox
               className="mt-0.5 size-5 border-2 border-[#49B1E4] data-[state=checked]:bg-[#49B1E4] data-[state=checked]:border-[#49B1E4] data-[state=checked]:text-white mt-0.5"
               checked={acceptedAgreement}
@@ -154,7 +160,7 @@ export function LoginScreen({
           </label>
 
           {error && (
-            <p className="ml-7 mt-2 text-xs text-red-600 font-medium leading-snug">
+            <p className="mt-2 text-center text-xs text-red-600 font-medium leading-snug">
               {error}
             </p>
           )}

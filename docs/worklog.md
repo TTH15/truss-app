@@ -1007,3 +1007,22 @@ admin_accounts の共有パスワードログインから、個人 Google アカ
 2. **ログイン画面を全画面タップ → Google 公式風ボタンに変更**: 「画面をタップして始める」を廃止し、白背景 + G ロゴの「Google でログイン / Sign in with Google」ボタンに。アプリ内ブラウザ検知時はボタンを disabled。ルート onClick が消えたため各所の stopPropagation も除去
 3. **`/profile` → `/profile-setup` に改名**: オンボーディング用プロフィール登録フォームの URL を実態に合わせた。旧 `/profile` は「自分のプロフィールを見たい」期待に合わせ `/dashboard` へ redirect（外部からの参照は無いことを確認済み。Service Worker / manifest にも記載なし）
 - 検証: `tsc --noEmit` / `next build` 通過。lint エラー数は既存3件のまま増減なし
+
+## 2026-08-10 ログイン画面の磨き込み・規約表記統一・Google 審査要件の SSR 補強
+
+### ログイン画面
+- 同意チェックボックス行に横パディング（px-6）を追加し中央寄せ（画面端に張り付いていた）。エラーメッセージも中央寄せ
+- チェックボックスに「チェックが弾んで現れる」アニメーション（`truss-check-pop`、globals.css。prefers-reduced-motion 対応）と背景/枠線の色トランジションを追加。**変更は truss ローカルの `components/ui/checkbox.tsx`**（@platform/ui のシム対象外ファイルであることを確認済み）
+
+### 規約・ポリシー（ユーザー決定: 団体名「神戸大学留学生支援サークル Truss」/ サービス名「Truss公式アプリ」）
+- privacy-policy / terms-of-service の当団体名・本サービス名・metadata を統一
+- **偽の連絡先 admin@truss.com を truss.kobe@gmail.com に差し替え**（push の VAPID_SUBJECT 既定値から実在アドレスと推定。要ユーザー確認）
+- layout.tsx / manifest.ts / LoginScreen の「神戸大学 留学生支援サークル」（スペース入り）も統一
+- 事実確認: 学生証画像は承認時に storage からも即削除（ポリシーの「1週間以内」より厳格で問題なし）。電話番号必須も実装と一致。**「正規留学生の住所提出必須」条項に対応する機能はアプリに無い**（アプリ外運用なら可、無いなら条項削除を検討 — ユーザー判断待ち）
+
+### Google ブランド審査要件の SSR 補強
+- 本番 `/` の SSR HTML を検証した結果、title / meta description は要件を満たすが、**本文の目的説明とプライバシーポリシーへのリンクが JS 実行後にしか現れない**ことを確認（前回指摘「目的が説明されていません」の再発リスク）
+- LegacyApp のローディング画面（= `/` の SSR 初期出力）下部に、アプリ名・目的説明・データ利用目的・プライバシーポリシー / 利用規約リンクを常設 → ビルド後の `index.html` に3要素が含まれることを確認
+- LoginScreen 本文にも「Google アカウント / メールアドレスの利用目的」の1行を追加（審査要件「ユーザーデータを要求する目的の説明」）
+- 検証: `tsc --noEmit` / `next build` 通過
+- 残: デプロイ → 再確認リクエスト。Google Cloud Console 側の Homepage URL / Privacy Policy URL が `https://app.trusskobe.com/...` を指しているか（vercel.app のままだと「所有ドメイン」要件に抵触）はユーザー確認

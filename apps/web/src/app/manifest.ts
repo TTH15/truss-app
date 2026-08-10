@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Truss',
     short_name: 'Truss',
     description:
-      '神戸大学 留学生支援サークル Truss の公式アプリ / Official app of Truss, the international student support club at Kobe University',
+      '神戸大学留学生支援サークル Truss の公式アプリ / Official app of Truss, the international student support club at Kobe University',
     start_url: '/',
     display: 'standalone',
     background_color: '#F5F1E8',

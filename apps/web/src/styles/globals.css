@@ -336,3 +336,17 @@ html {
 @media (prefers-reduced-motion: reduce) {
   .animate-truss-message-in { animation: none !important; }
 }
+
+/* チェックボックス: チェックマークが弾んで現れる（Radix Indicator はチェック時にマウントされる） */
+@keyframes truss-check-pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-truss-check-pop {
+  animation: truss-check-pop 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-truss-check-pop { animation: none !important; }
+}
