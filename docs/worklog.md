@@ -1071,3 +1071,26 @@ admin_accounts の共有パスワードログインから、個人 Google アカ
 - CHECK_SCHEMA.sql に 041〜043 の確認エントリを追加
 - 検証: `tsc` / `next build` 通過。lint の新規エラーなし（指摘3件は既存 effect のもの）
 - 残: **migration 043 の本番適用**（重複確認 → 貼り付け Run）。過去の役職の手動登録はメンバー詳細から
+
+## 2026-08-10 21:55 ログイン画面の説明文を削除（ユーザー指示）
+
+- LoginScreen から目的説明（「神戸大学留学生支援サークル Truss の公式アプリです…」）とデータ利用の1行（「ログインには Google アカウントを使用し…」）を削除。「Truss公式アプリ」の見出しのみ残す（OAuth アプリ名一致の審査要件）
+- Google 審査向けの目的説明・データ利用・ポリシーリンクは **`/` の SSR 初期出力（LegacyApp ローディング画面下部）と meta description に残存**することをビルド後の index.html で確認済み。自動チェックは引き続き通る想定
+- リスク: 人間の審査員が JS 有効で見た場合、ログイン画面上に目的説明が見えない。再審査で再指摘されたら文言を戻す
+- 検証: `tsc --noEmit` / `next build` 通過
+
+## 2026-08-10 22:40 学年混在の対策: 本人確認ナッジ + 学籍番号からの推測ヒント
+
+背景: 2026年3月頃の登録案内で前年度の学年を書いた会員が混在。学年は毎年4月に古くなる構造問題でもあるため、A(本人確認・年度ごと) + B(学籍番号推測による運営支援)の二段構えで対応。
+
+- **migration 044**（**本番未適用**）: `users.grade_confirmed_for INTEGER`（学年を本人確認した年度。4月始まり西暦）
+- **core `student-number.ts`**: 神戸大の学籍番号規則（ユーザー提供）を実装
+  - 数字7桁+英字 = 学部生（先頭2桁 = 入学西暦下2桁）/ 4桁目英字 = 大学院 / 5桁目も英字 = 交換留学（先頭2桁は来日年度のため照合対象外）
+  - `parseStudentNumber` / `currentAcademicYear`（4月始まり）/ `enrolledYearsFromStudentNumber` / `isGradeSuspicious`
+  - 推測はヒント専用（留年・休学・標準年限超過は判定不能として **false**。自動修正には使わない）
+  - tsx でロジックの動作確認済み（12ケースすべて期待どおり）
+- **A: ホームの学年確認ナッジ**（`GradeConfirmNudge.tsx`）: `grade_confirmed_for < 現在年度` の承認済み会員に表示。「合っています」1タップ or 学年の選び直しで現在年度を記録して消える。閉じるボタンは置かない（確認するまで残す）。既存会員は NULL なので全員に一巡 → 今回の混在解消。**毎年4月に自動で再表示**され恒久対策になる。初期登録は登録年度で確認済み扱い（`buildInitialRegistrationUserUpdate` に組み込み）
+- **B: 運営支援**: AdminMembers 一覧（PC/モバイル両行）に「学年要確認」バッジ。MemberDetailModal の学年欄に「学籍番号からは在籍N年目（20XX年度入学）と推測されます。留年・休学の場合はそのままで問題ありません」ヒント
+- User 型 / mappers / queries（select リスト + queryUserByAuthId）/ AuthContext.updateUser に `gradeConfirmedFor` を追加。CHECK_SCHEMA に 044 追加
+- 検証: `tsc` / `next build` 通過、lint エラー 0
+- 残: **migration 044 の本番適用**（ALTER TABLE のみ、1行）

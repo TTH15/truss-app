@@ -72,6 +72,8 @@ export interface DbUser {
   student_id_image: string | null;
   student_number: string | null;
   grade: string | null;
+  /** 学年を本人確認した年度（4月始まり西暦）。NULL/過去年度ならホームで確認ナッジを出す */
+  grade_confirmed_for: number | null;
   major: string | null;
   phone: string | null;
   organizations: string | null;

@@ -47,6 +47,7 @@ export function mapDbUserRowToUser(row: DbUser): User {
     studentIdImage: row.student_id_image ?? undefined,
     studentNumber: row.student_number ?? undefined,
     grade: row.grade ?? undefined,
+    gradeConfirmedFor: row.grade_confirmed_for ?? undefined,
     major: row.major ?? undefined,
     phone: row.phone ?? undefined,
     organizations: row.organizations ?? undefined,

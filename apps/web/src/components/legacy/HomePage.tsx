@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPeopleGroup } from '@fortawesome/free-solid-svg-icons';
 import { PwaInstallBanner } from './PwaInstallBanner';
 import { PushPermissionPrompt } from './PushPermissionPrompt';
+import { GradeConfirmNudge } from './GradeConfirmNudge';
 import { useLocalStorageDismissal } from '../../lib/use-local-storage-dismissal';
 import { MembershipCard } from './MembershipCard';
 import { Button } from '../ui/button';
@@ -19,6 +20,7 @@ interface HomePageProps {
   onReopenInitialRegistration?: () => void;
   onDismissReuploadNotification?: () => void;
   onOpenFeePayment?: () => void;
+  onUpdateProfile?: (updates: Partial<User>) => Promise<{ error: Error | null }>;
 }
 
 const translations = {
@@ -46,7 +48,7 @@ const translations = {
 
 const ORGANIZATIONS_NUDGE_DISMISSED_KEY = 'truss-organizations-nudge-dismissed-v1';
 
-export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeePayment, onOpenProfile }: HomePageProps) {
+export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeePayment, onOpenProfile, onUpdateProfile }: HomePageProps) {
   const t = translations[language];
   const [organizationsNudgeDismissed, dismissOrganizationsNudge] = useLocalStorageDismissal(
     ORGANIZATIONS_NUDGE_DISMISSED_KEY
@@ -120,6 +122,10 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
       )}
       <PwaInstallBanner language={language} />
       {user.approved && <PushPermissionPrompt user={user} language={language} />}
+      {/* 年度ごとの学年確認（3月登録で前年度の学年が混ざった対策 + 毎年4月の恒例） */}
+      {onUpdateProfile && (
+        <GradeConfirmNudge language={language} user={user} onUpdateProfile={onUpdateProfile} />
+      )}
       {showOrganizationsNudge && (
         <div className="relative bg-white border border-[#49B1E4]/40 p-4 rounded-xl mb-4 shadow-sm">
           <button

@@ -715,7 +715,7 @@ export function Dashboard({
           </div>
         )}
 
-        {currentPage === 'home' && <HomePage language={language} user={user} events={events} onNavigateToEvent={handleNavigateToEvent} onOpenProfile={onOpenProfile} onReopenInitialRegistration={onReopenInitialRegistration} onDismissReuploadNotification={onDismissReuploadNotification} onOpenFeePayment={() => setFeePaymentDialogOpen(true)} />}
+        {currentPage === 'home' && <HomePage language={language} user={user} events={events} onNavigateToEvent={handleNavigateToEvent} onOpenProfile={onOpenProfile} onReopenInitialRegistration={onReopenInitialRegistration} onDismissReuploadNotification={onDismissReuploadNotification} onOpenFeePayment={() => setFeePaymentDialogOpen(true)} onUpdateProfile={onUpdateProfile} />}
         {currentPage === 'events' && <EventsPage language={language} events={events} attendingEvents={attendingEvents} likedEvents={likedEvents} onToggleAttending={onToggleAttending} onToggleLike={onToggleLike} highlightEventId={highlightEventId} openEventId={pendingOpenEventId} onOpenEventHandled={() => setPendingOpenEventId(undefined)} onAddEventParticipant={onAddEventParticipant} user={user} />}
         {/* 運営メンバーも会員なので名簿に出す（2026-08-08 方針決定）。
             隠すのはシステム行（運営受信箱）と、役職を持たない is_admin = 移行前の専用アカウントだけ */}

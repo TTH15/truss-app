@@ -3,6 +3,7 @@
  */
 import type { DbUserInsert, DbUserUpdate } from "../types/database.types";
 import { normalizePhone } from "../phone";
+import { currentAcademicYear } from "../student-number";
 import type { WithdrawnRecord } from "./mutations/users";
 
 export type InitialRegistrationPayload = {
@@ -31,6 +32,8 @@ export function buildInitialRegistrationUserUpdate(
     student_number: data.studentNumber,
     phone: normalizePhone(data.phone),
     grade: data.grade,
+    // 登録時点の年度で確認済み扱いにする（登録直後に学年確認ナッジを出さない）
+    grade_confirmed_for: currentAcademicYear(),
     major: data.major,
     registration_step: "waiting_approval",
     email_verified: true,

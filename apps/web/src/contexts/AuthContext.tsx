@@ -210,6 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (updates.studentIdImage !== undefined) dbUpdates.student_id_image = updates.studentIdImage || null;
       if (updates.studentNumber !== undefined) dbUpdates.student_number = updates.studentNumber || null;
       if (updates.grade !== undefined) dbUpdates.grade = updates.grade || null;
+      if (updates.gradeConfirmedFor !== undefined) dbUpdates.grade_confirmed_for = updates.gradeConfirmedFor;
       if (updates.major !== undefined) dbUpdates.major = updates.major || null;
       if (updates.phone !== undefined) dbUpdates.phone = updates.phone || null;
       if (updates.organizations !== undefined) dbUpdates.organizations = updates.organizations || null;

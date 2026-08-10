@@ -53,7 +53,9 @@ WITH expected(migration, kind, object_name, detail) AS (
     ('042', 'function', 'is_senior_admin_safe', null),
     -- 043: 役職の在任履歴と引き継ぎ
     ('043', 'table', 'user_role_history', null),
-    ('043', 'function', 'transfer_role', null)
+    ('043', 'function', 'transfer_role', null),
+    -- 044: 学年の本人確認（年度ごと）
+    ('044', 'column', 'users', 'grade_confirmed_for')
 )
 SELECT
   e.migration,

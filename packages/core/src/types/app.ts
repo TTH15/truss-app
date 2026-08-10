@@ -38,6 +38,8 @@ export interface User {
   studentIdImage?: string;
   studentNumber?: string;
   grade?: string;
+  /** 学年を本人確認した年度（4月始まり西暦）。未確認は undefined */
+  gradeConfirmedFor?: number;
   major?: string;
   phone?: string;
   organizations?: string;

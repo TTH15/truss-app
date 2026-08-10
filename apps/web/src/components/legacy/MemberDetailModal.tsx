@@ -14,6 +14,8 @@ import {
   queryUserRoleHistory,
   addUserRoleHistoryRow,
   deleteUserRoleHistoryRow,
+  isGradeSuspicious,
+  enrolledYearsFromStudentNumber,
 } from '@truss/core';
 import { RoleBadge } from './RoleBadge';
 import { useEffect, useState } from 'react';
@@ -177,7 +179,22 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.studentNumber}</p><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.studentNumber || '1234567A'}</p></div>
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.major}</p><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.major || (language === 'ja' ? '理学部 物理学科' : 'Physics Dept.')}</p></div>
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.category}</p><Badge className={`${getCategoryColor(user.category)} border-0 font-medium text-xs px-2 py-0.5 mt-1`}>{getCategoryLabel(user.category)}</Badge></div>
-            <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.grade}</p><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.grade || '3'}</p></div>
+            <div>
+              <p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.grade}</p>
+              <p className="text-[#101828] text-base tracking-[-0.3125px]">{user.grade || '3'}</p>
+              {/* 学籍番号からの推測と食い違う場合のヒント（留年・休学もあるため参考情報） */}
+              {isGradeSuspicious(user) && (() => {
+                const enrolled = enrolledYearsFromStudentNumber(user.studentNumber);
+                if (!enrolled) return null;
+                return (
+                  <p className="mt-1 text-xs text-amber-700 leading-relaxed">
+                    {language === 'ja'
+                      ? `学籍番号からは在籍${enrolled.years}年目（${enrolled.admissionYear}年度入学）と推測されます。留年・休学の場合はそのままで問題ありません`
+                      : `Student number suggests year ${enrolled.years} (admitted ${enrolled.admissionYear}). This is fine if the member repeated a year or took leave.`}
+                  </p>
+                );
+              })()}
+            </div>
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.birthCountry}</p><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.birthCountry || '-'}</p></div>
             <div><p className="text-[#4A5565] text-sm tracking-[-0.1504px] mb-1">{t.languages}</p><p className="text-[#101828] text-base tracking-[-0.3125px]">{user.languages || '-'}</p></div>
           </div>

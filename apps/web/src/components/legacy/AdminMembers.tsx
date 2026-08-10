@@ -19,7 +19,7 @@ import { FeeUnpaidWalletIcon } from './FeeUnpaidWalletIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { AdminApprovals } from './AdminApprovals';
 import type { Language, User, UserRole } from '@truss/core';
-import { isSystemUser, isPrivilegedRole, ROLE_LIST_PRIORITY } from '@truss/core';
+import { isSystemUser, isPrivilegedRole, ROLE_LIST_PRIORITY, isGradeSuspicious } from '@truss/core';
 
 interface AdminMembersProps {
   language: Language;
@@ -580,6 +580,8 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                       {/* 役職バッジ = 運営権限あり（役職連動）。運営の盾バッジは役職バッジに置き換えた */}
                       {isPrivilegedRole(member.role) && <RoleBadge role={member.role} language={language} className="shrink-0" />}
                       {!member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
+                      {/* 学籍番号から推測した学年と入力が食い違う（留年等もあるため確認のヒント） */}
+                      {isGradeSuspicious(member) && <Badge className="shrink-0 border-0 bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">{language === 'ja' ? '学年要確認' : 'Check grade'}</Badge>}
                     </div>
                     <p className="truncate text-sm text-[#4A5565]">{member.email}</p>
                     {member.studentNumber && <p className="text-xs text-[#6A7282]">{t.studentNumberLabel}: {member.studentNumber}</p>}
@@ -604,6 +606,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                           <h3 className="truncate text-sm font-normal text-[#101828]">{member.name}</h3>
                           {isPrivilegedRole(member.role) && <RoleBadge role={member.role} language={language} className="shrink-0" />}
                           {!member.feePaid && <FeeUnpaidWalletIcon tooltip={t.feeUnpaidTooltip} />}
+                          {isGradeSuspicious(member) && <Badge className="shrink-0 border-0 bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">{language === 'ja' ? '学年要確認' : 'Check grade'}</Badge>}
                         </div>
                       </div>
                       <p className="truncate text-xs text-[#4A5565]">{member.email}</p>

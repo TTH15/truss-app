@@ -65,21 +65,11 @@ export function LoginScreen({
           draggable={false}
         />
 
-        {/* Google のブランド審査要件: OAuth のアプリ名と同じ表記と、アプリの目的の説明をページに載せる */}
-        <div className="max-w-md px-6 text-center space-y-1.5 -mt-2">
+        {/* Google のブランド審査要件: OAuth のアプリ名と同じ表記をページに載せる。
+            目的・データ利用の説明文は SSR 初期出力（LegacyApp のローディング画面下部）に残している */}
+        <div className="max-w-md px-6 text-center -mt-2">
           <p className="text-[#3D3D4E] text-base font-semibold tracking-[-0.3125px]">
             {language === "ja" ? "Truss公式アプリ" : "Truss Official App"}
-          </p>
-          <p className="text-[#6B6B7A] text-sm leading-relaxed">
-            {language === "ja"
-              ? "神戸大学留学生支援サークル Truss の公式アプリです。イベントの案内と参加登録、会員どうしの交流、運営への連絡ができます。"
-              : "The official app of Truss, the international student support club at Kobe University. Browse and join events, connect with members, and contact the staff."}
-          </p>
-          {/* Google 審査要件「ユーザーデータを要求する目的の説明」をホームページ本文にも明記する */}
-          <p className="text-[#6B6B7A] text-xs leading-relaxed">
-            {language === "ja"
-              ? "ログインには Google アカウントを使用し、メールアドレスは本人確認とご連絡のためにのみ利用します。"
-              : "Sign-in uses your Google account; your email address is used only for identification and contact."}
           </p>
         </div>
 
