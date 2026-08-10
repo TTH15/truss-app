@@ -44,7 +44,16 @@ WITH expected(migration, kind, object_name, detail) AS (
     -- 039: 運営権限を役職に連動
     ('039', 'function', 'sync_admin_flag_with_role', null),
     -- 040: イベント閲覧の記録
-    ('040', 'table', 'event_views', null)
+    ('040', 'table', 'event_views', null),
+    -- 041: 規約・ポリシー文書の CMS 化
+    ('041', 'table', 'site_documents', null),
+    -- 042: 公開文書の保護と改定履歴
+    ('042', 'column', 'site_documents', 'protected'),
+    ('042', 'table', 'site_document_revisions', null),
+    ('042', 'function', 'is_senior_admin_safe', null),
+    -- 043: 役職の在任履歴と引き継ぎ
+    ('043', 'table', 'user_role_history', null),
+    ('043', 'function', 'transfer_role', null)
 )
 SELECT
   e.migration,

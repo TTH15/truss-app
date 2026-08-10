@@ -34,6 +34,7 @@ import {
   resetMembershipForNewYearRow,
   deleteUserRow,
   updateUserRoleRow,
+  transferRoleRpc,
   type UserRole,
 } from '@truss/core';
 import {
@@ -102,6 +103,8 @@ interface DataContextType {
   confirmRenewal: (userId: string) => Promise<void>;
   setRenewalStatus: (userId: string, isRenewal: boolean) => Promise<void>;
   setUserRole: (userId: string, role: UserRole) => Promise<void>;
+  /** 代表・副代表の引き継ぎ（前任の降格 + 後任の昇格を1トランザクションで実行） */
+  transferRole: (successorId: string, role: 'president' | 'vice_president', predecessorNewRole: 'member' | 'officer') => Promise<{ error: Error | null }>;
   resetMembershipForNewYear: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   sendMessage: (
@@ -641,6 +644,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const transferRole = async (
+    successorId: string,
+    role: 'president' | 'vice_president',
+    predecessorNewRole: 'member' | 'officer',
+  ) => {
+    const { error } = await transferRoleRpc(successorId, role, predecessorNewRole);
+    if (error) {
+      console.error('Error transferring role:', error);
+      return { error };
+    }
+    await fetchUsers(true);
+    return { error: null };
+  };
+
   const resetMembershipForNewYear = async () => {
     try {
       const currentYear = new Date().getFullYear();
@@ -1090,7 +1107,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const value: DataContextType = {
     events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading, boardPostsLoading, galleryPhotosLoading,
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
-    approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, setUserRole, resetMembershipForNewYear, deleteUser,
+    approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, setUserRole, transferRole, resetMembershipForNewYear, deleteUser,
     sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, notifyMembersByPush, loadOlderThreadMessages, markMessageAsRead, markAllMessagesAsReadForUser, markMemberMessagesAsRead, uploadChatAttachment, updateChatMetadata,
     markNotificationAsRead, dismissNotification, createBoardPost, addReply, toggleInterest, deleteBoardPost, togglePinBoardPost, reorderPinnedBoardPosts,
     uploadGalleryPhoto, deleteGalleryPhoto, approveGalleryPhoto, toggleGalleryPhotoLike, likedGalleryPhotoIds, interestedPostIds, likedEventIds,

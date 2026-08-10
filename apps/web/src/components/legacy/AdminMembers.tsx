@@ -773,6 +773,10 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
             setSelectedUser({ ...selectedUser, role, isAdmin: isPrivilegedRole(role) });
             toast.success(language === 'ja' ? '役職を変更しました' : 'Role updated');
           } : undefined}
+          onRoleTransferred={(role) => {
+            // 引き継いだ役職は必ず運営権限つき（DB トリガーが連動）
+            setSelectedUser({ ...selectedUser, role, isAdmin: true });
+          }}
           isSelf={currentAdmin?.id === selectedUser.id}
         />
       )}

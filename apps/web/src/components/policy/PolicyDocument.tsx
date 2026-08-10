@@ -79,10 +79,13 @@ export function PolicyPage({
   title,
   intro,
   content,
+  updatedAt,
 }: {
   title: string;
   intro: string;
   content: string;
+  /** 最終改定日時（DB で改定されている場合のみ。既定文面のときは null） */
+  updatedAt?: string | null;
 }) {
   return (
     <div className="min-h-screen bg-[#F5F1E8] text-[#3D3D4E]">
@@ -97,7 +100,13 @@ export function PolicyPage({
       </header>
 
       <main className="mx-auto max-w-5xl px-6 sm:px-10 lg:px-16 pt-20 pb-12">
-        <p className="mb-6 text-xs sm:text-sm text-[#3D3D4E]/70">{intro}</p>
+        <p className="mb-2 text-xs sm:text-sm text-[#3D3D4E]/70">{intro}</p>
+        {updatedAt && (
+          <p className="mb-6 text-xs text-[#3D3D4E]/60">
+            最終改定: {new Date(updatedAt).toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" })}
+          </p>
+        )}
+        {!updatedAt && <div className="mb-6" />}
         <PolicyDocumentBody content={content} />
       </main>
     </div>

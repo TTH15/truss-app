@@ -43,6 +43,14 @@ export function isPrivilegedRole(role: UserRole | undefined): boolean {
 }
 
 /**
+ * 上位役職（代表・副代表・顧問）。保護文書（規約・ポリシー等）の改定はここに限定される。
+ * DB 側の判定は migration 042 の is_senior_admin_safe()（両者は同じ集合を指すこと）
+ */
+export function isSeniorRole(role: UserRole | undefined): boolean {
+  return role === "president" || role === "vice_president" || role === "advisor";
+}
+
+/**
  * 名簿で役職者を上に出すときの序列（小さいほど先頭）。
  * 代表 → 副代表 → 役職者 → 顧問教員 の順。部員・非会員は同列で、通常の並び替えに従う。
  */

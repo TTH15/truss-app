@@ -146,8 +146,31 @@ export interface DbSiteDocument {
   [key: string]: unknown;
   id: string;
   content: string;
+  protected: boolean;
   updated_at: string;
   updated_by: string | null;
+}
+
+export interface DbUserRoleHistory {
+  [key: string]: unknown;
+  id: number;
+  user_id: string;
+  role: string;
+  started_on: string;
+  ended_on: string | null;
+  note: string | null;
+  source: 'auto' | 'manual';
+  created_at: string;
+}
+
+export interface DbSiteDocumentRevision {
+  [key: string]: unknown;
+  id: number;
+  document_id: string;
+  content: string;
+  saved_at: string;
+  saved_by: string | null;
+  archived_at: string;
 }
 
 export interface DbEventLike {
@@ -449,8 +472,20 @@ export interface Database {
       };
       site_documents: {
         Row: DbSiteDocument;
-        Insert: DbSiteDocument;
+        Insert: Omit<DbSiteDocument, 'protected'> & { protected?: boolean };
         Update: Partial<DbSiteDocument>;
+        Relationships: [];
+      };
+      site_document_revisions: {
+        Row: DbSiteDocumentRevision;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      user_role_history: {
+        Row: DbUserRoleHistory;
+        Insert: Omit<DbUserRoleHistory, 'id' | 'created_at' | 'source'> & { source?: 'auto' | 'manual' };
+        Update: never;
         Relationships: [];
       };
       fee_settings: {
@@ -532,6 +567,10 @@ export interface Database {
       };
       increment_participants: {
         Args: { event_id: number };
+        Returns: void;
+      };
+      transfer_role: {
+        Args: { p_successor: string; p_role: string; p_predecessor_new_role: string };
         Returns: void;
       };
       decrement_participants: {

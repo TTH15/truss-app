@@ -566,6 +566,10 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
             void setUserRole(detailMember.id, role);
             setDetailMember({ ...detailMember, role });
           }}
+          onRoleTransferred={(role) => {
+            // 引き継いだ役職は必ず運営権限つき（DB トリガーが連動）
+            setDetailMember({ ...detailMember, role, isAdmin: true });
+          }}
         />
       )}
     </div>

@@ -200,27 +200,32 @@ export const DEFAULT_SITE_DOCUMENTS: Record<SiteDocumentId, string> = {
 /**
  * 公開ページ（サーバーコンポーネント）用。DB の文書を ISR キャッシュ付きで取得し、
  * 無ければ既定文面へフォールバックする。運営画面での保存は最大5分で公開ページに反映される。
+ * updatedAt は DB の文面を採用したときだけ返す（改定日の表示用。既定文面には改定日が無い）。
  */
-export async function fetchSiteDocumentContent(id: SiteDocumentId): Promise<string> {
+export async function fetchSiteDocument(
+  id: SiteDocumentId
+): Promise<{ content: string; updatedAt: string | null }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (url && key) {
     try {
       const res = await fetch(
-        `${url}/rest/v1/site_documents?id=eq.${id}&select=content`,
+        `${url}/rest/v1/site_documents?id=eq.${id}&select=content,updated_at`,
         {
           headers: { apikey: key, Authorization: `Bearer ${key}` },
           next: { revalidate: 300 },
         }
       );
       if (res.ok) {
-        const rows = (await res.json()) as Array<{ content?: string }>;
+        const rows = (await res.json()) as Array<{ content?: string; updated_at?: string }>;
         const content = rows?.[0]?.content;
-        if (typeof content === "string" && content.trim()) return content;
+        if (typeof content === "string" && content.trim()) {
+          return { content, updatedAt: rows[0]?.updated_at ?? null };
+        }
       }
     } catch {
       // ネットワーク・ビルド時エラーは既定文面で継続
     }
   }
-  return DEFAULT_SITE_DOCUMENTS[id];
+  return { content: DEFAULT_SITE_DOCUMENTS[id], updatedAt: null };
 }

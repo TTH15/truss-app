@@ -4,6 +4,8 @@ import { Button } from '../ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { PushNotificationSetting } from './PushNotificationSetting';
 import { AdminSiteDocuments } from './AdminSiteDocuments';
+import { SITE_DOCUMENT_TITLES, type SiteDocumentId } from '../../lib/site-documents';
+import { isSystemUser } from '@truss/core';
 import { AdminMembersManagement } from './AdminMembersManagement';
 import { AdminEvents } from './AdminEvents';
 import { AdminBoards } from './AdminBoards';
@@ -173,7 +175,30 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
                   </PopoverContent>
                 </Popover>
                 {/* 利用規約・プライバシーポリシーの閲覧・改定（連絡先メール等は年度ごとに変わるため運営画面から直す） */}
-                <AdminSiteDocuments language={language} adminUserId={user.id} />
+                <AdminSiteDocuments
+                  language={language}
+                  user={user}
+                  onAnnounce={
+                    onSendBulkEmail
+                      ? async (docId: SiteDocumentId) => {
+                          const title = SITE_DOCUMENT_TITLES[docId];
+                          const titleEn = docId === 'terms-of-service' ? 'Terms of Service' : 'Privacy Policy';
+                          const url = `${window.location.origin}/${docId}`;
+                          const memberIds = approvedMembers.filter((m) => !isSystemUser(m)).map((m) => m.id);
+                          onSendBulkEmail(
+                            memberIds,
+                            `${title}改定のお知らせ`,
+                            `Notice: ${titleEn} has been updated`,
+                            `${title}を改定しました。最新の内容は次のページからご確認ください。\n${url}`,
+                            `We have updated our ${titleEn}. Please review the latest version here:\n${url}`,
+                            true,
+                            false,
+                            'announcement',
+                          );
+                        }
+                      : undefined
+                  }
+                />
                 <Button variant="ghost" onClick={onLogout} className="text-[#F5F1E8] hover:bg-[#2D2D3D]">
                   <LogOut className="w-4 h-4 mr-2" />
                   {t.logout}

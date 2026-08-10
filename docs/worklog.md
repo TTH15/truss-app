@@ -1037,3 +1037,37 @@ admin_accounts の共有パスワードログインから、個人 Google アカ
 - **運営画面**: ヘッダーに ScrollText アイコン → 「規約・ポリシーの管理」モーダル（`AdminSiteDocuments.tsx`）。文書切り替え・テキスト編集・プレビュー・保存・最終更新表示・公開ページへのリンク。保存後は最大5分で公開ページに反映
 - 検証: `tsc --noEmit` / `next build` / 対象ファイルの eslint すべて通過
 - 残: migration 041 の本番適用（適用前でも既定文面で動作）。**現行の連絡先メールが確定したら運営画面から2文書の「メール：」行を書き換えて保存**（コード変更不要）
+
+## 2026-08-10 文書 CMS の保護・改定履歴・会員告知（ユーザー決定を反映）
+
+ユーザー決定: 3点すべて実装。保護文書の編集権限は**代表・副代表・顧問**（president / vice_president / advisor）。
+
+- **migration 042**（041 の拡張。**本番未適用**）:
+  - `site_documents.protected` 列 + `is_senior_admin_safe()`（役職ベース判定、SECURITY DEFINER）。保護行の INSERT/UPDATE は上位役職のみに RLS で強制。**規約・ポリシーの2行を protected=TRUE・content 空でシード**（一般運営が先に無保護行を作って乗っ取る穴を塞ぐ。content 空の間は既定文面で表示）
+  - `site_document_revisions` テーブル + BEFORE UPDATE トリガーで旧内容を自動退避（SECURITY DEFINER。空のシード行は履歴にしない）。閲覧は運営のみ
+  - ⚠️ 注意: 判定は役職ベースのため、役職なしの旧・専用運営アカウント（Truss Admin）では保護文書を保存できない。改定は役職付き個人アカウントで行う
+- **core**: `isSeniorRole()`（DB の is_senior_admin_safe と同じ集合）、`querySiteDocumentRevisions`、型追加
+- **運営画面（AdminSiteDocuments）**: 保護文書は非上位役職には閲覧のみ + 案内バナー / 履歴一覧（日時 + 冒頭プレビュー + ドラフトへの復元）/ 保存時「会員に告知」チェック → 既存の一斉通知（アプリ内 + プッシュ、URL 付き文面）で送信
+- **公開ページ**: DB の文面を採用しているときのみ「最終改定: YYYY年M月D日」を表示（既定文面の間は非表示）
+- **Web サイト共用は先送りを明言**: site_documents は公開読み取り + 汎用 id なのでサイト側からそのまま読める。scope 列 / id 接頭辞はサイト実装が具体化した時に追加（無停止で可能）
+- 検証: `tsc` / `next build` 通過。lint の新規エラーなし（AdminPage の3件は既存のタブ復元 effect のもの）
+- 残: **migration 041 → 042 の順で本番適用**。連絡先メール確定後に運営画面から差し替え
+
+## 2026-08-10 役職の在任履歴と代表・副代表の引き継ぎ
+
+ユーザー確認事項: migration 041・042 は本番適用済み（1ファイル丸ごと貼り付けて Run で正しい運用）。前任の引き継ぎ後の役職は**引き継ぎ時に選ぶ**（部員 or 総務）、過去の役職履歴は**運営画面から手動登録**。
+
+- **migration 043**（**本番未適用**）:
+  - `user_role_history`（user_id / role / started_on / ended_on / note / source auto|manual）。役職のみ記録（部員⇄非会員の会費連動はノイズなので対象外）。RLS は運営のみ（SELECT/INSERT/DELETE）
+  - users.role の変更を AFTER UPDATE トリガーで自動記録（旧役職の期間を閉じ、新役職の期間を開く。SECURITY DEFINER）
+  - **代表・副代表の1人制約**を部分ユニークインデックスで強制（退会者は除外）。⚠️ 適用前に重複がないことを確認（migration 冒頭に確認 SQL を記載）
+  - `transfer_role(successor, role, predecessor_new_role)` RPC: 前任降格 → 後任昇格を1トランザクションで実行。呼び出しは運営のみ。既存トリガー（032 権限ガード / 039 is_admin 連動 / 履歴記録）を通る
+- **core**: `queryUserRoleHistory` / `addUserRoleHistoryRow` / `deleteUserRoleHistoryRow` / `transferRoleRpc` + 型 + Functions 定義
+- **DataContext**: `transferRole`（RPC + fetchUsers）
+- **MemberDetailModal**:
+  - 役職セレクトで代表/副代表を選んだとき、別の保持者がいれば**引き継ぎ確認ダイアログ**（現保持者名を表示、前任の新役職を部員/総務から選択）→ transfer_role 実行
+  - **役職履歴セクション**: 在任一覧（期間・メモ・自動記録バッジ・削除）+ 手動登録フォーム（役職 / 開始日・終了日は @platform/ui の DatePicker / メモ）
+  - モーダルは useData() から approvedMembers / transferRole を直接参照（4層のプロパゲーションを回避）。親の表示更新用に `onRoleTransferred` を追加し AdminMembers / AdminChatMessages に配線
+- CHECK_SCHEMA.sql に 041〜043 の確認エントリを追加
+- 検証: `tsc` / `next build` 通過。lint の新規エラーなし（指摘3件は既存 effect のもの）
+- 残: **migration 043 の本番適用**（重複確認 → 貼り付け Run）。過去の役職の手動登録はメンバー詳細から
