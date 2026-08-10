@@ -1,9 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
-import { LandingPage } from '../components/legacy/LandingPage';
-import { AuthSelection } from '../components/legacy/AuthSelection';
-import { EmailVerification } from '../components/legacy/EmailVerification';
 import { InitialRegistration, InitialRegistrationData } from '@/components/legacy/InitialRegistration';
 import { ProfileRegistration } from '../components/legacy/ProfileRegistration';
 import { Dashboard } from '../components/legacy/Dashboard';
@@ -13,9 +10,7 @@ const AdminPage = dynamic(
   { ssr: false }
 );
 import { AdminLogin } from '../components/legacy/AdminLogin';
-import { WaitingApproval } from '../components/legacy/WaitingApproval';
 import { LoginScreen } from '../components/legacy/LoginScreen';
-import { AuthCompleteScreen } from '../components/legacy/AuthCompleteScreen';
 import { Toaster, toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -53,11 +48,8 @@ export type {
 
 type PageState =
   | 'landing'
-  | 'auth-selection'
-  | 'auth-complete'
   | 'login'
   | 'admin-login'
-  | 'email-verification'
   | 'initial-registration'
   | 'profile'
   | 'dashboard'
@@ -135,7 +127,6 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
   const [language, setLanguage] = useState<Language>('ja');
   const [user, setUser] = useState<User | null>(null);
   const [tempEmail, setTempEmail] = useState('');
-  const [tempInitialData, setTempInitialData] = useState<InitialRegistrationData | null>(null);
 
   // attendingEvents は eventParticipants から派生。DataContext が register/unregister 後に
   // fetchEventParticipants() を呼ぶ + Supabase realtime で event_participants の変更を購読しているため、
@@ -176,7 +167,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     login: '/login',
     dashboard: '/dashboard',
     admin: ADMIN_PATH,
-    profile: '/profile',
+    profile: '/profile-setup',
   };
 
   /** URL → 画面状態（App Router と同期。未割当パスは触れない） */
@@ -185,7 +176,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     '/login': 'login',
     '/dashboard': 'dashboard',
     [ADMIN_PATH]: 'admin',
-    '/profile': 'profile',
+    '/profile-setup': 'profile',
   };
 
   const navigateTo = (page: PageState) => {
@@ -229,12 +220,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
   if (!standaloneAdmin && pathname !== lastSyncedPathname) {
     setLastSyncedPathname(pathname);
     const next = pathToPage[pathname];
-    const authFlowPages: PageState[] = [
-      'email-verification',
-      'initial-registration',
-      'auth-selection',
-      'auth-complete',
-    ];
+    const authFlowPages: PageState[] = ['initial-registration'];
     const reuploadFlowRequested =
       pathname === '/' &&
       typeof window !== 'undefined' &&
@@ -319,11 +305,8 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       } else if (!authUser.initialRegistered) {
         setTempEmail(authUser.email);
         showAuthFlowPage('initial-registration');
-      } else if (!authUser.approved) {
-        navigateTo('dashboard');
-      } else if (!authUser.profileCompleted && authUser.category !== 'exchange') {
-        navigateTo('dashboard');
       } else {
+        // 承認待ち・プロフィール未完了の案内は Dashboard 内のバナーで行う
         navigateTo('dashboard');
       }
     } else if (!authLoading && !session) {
@@ -454,11 +437,6 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     }
   };
 
-  const handleEmailVerified = (email: string) => {
-    setTempEmail(email);
-    showAuthFlowPage('initial-registration');
-  };
-
   const handleGoogleLogin = async () => {
     toast.loading(language === 'ja' ? 'Googleで認証中...' : 'Authenticating with Google...');
     const { error } = await signInWithGoogle();
@@ -471,22 +449,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     toast.dismiss();
   };
 
-  const handleAuthComplete = () => {
-    if (authUser) {
-      setUser(authUser);
-      if (!authUser.initialRegistered) {
-        setTempEmail(authUser.email);
-        showAuthFlowPage('initial-registration');
-      } else {
-        navigateTo('dashboard');
-      }
-    } else {
-      showAuthFlowPage('initial-registration');
-    }
-  };
-
   const handleInitialRegistrationComplete = async (data: InitialRegistrationData) => {
-    setTempInitialData(data);
     try {
       const { data: authData } = await supabase.auth.getUser();
       if (!authData?.user) {
@@ -581,11 +544,15 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     }
   };
 
-  const handleProfileComplete = async (userData: User) => {
+  const handleProfileComplete = async (updates: Partial<User>) => {
+    // 会費が必要なのは日本人学生のみ（留学生は承認時に feePaid=true になる）。
+    // 支払い済みの場合まで fee_payment に巻き戻さない
+    const current = user ?? authUser;
+    const needsFeePayment = current?.category === 'japanese' && !current?.feePaid;
     const { error } = await updateAuthUser({
-      ...userData,
+      ...updates,
       profileCompleted: true,
-      registrationStep: userData.category === 'japanese' ? 'fee_payment' : 'fully_active',
+      registrationStep: needsFeePayment ? 'fee_payment' : 'fully_active',
     });
     if (error) {
       toast.error(language === 'ja' ? 'プロフィール更新エラー' : 'Profile update error');
@@ -626,6 +593,16 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
   };
   const handleApproveUser = async (userId: string) => {
     await approveUser(userId);
+    // 本人に承認を知らせる（運営名義のアプリ内メッセージ。sendMessage が購読済みならプッシュも送る）。
+    // 受信者の言語設定は分からないため日英併記
+    const approvalMessage =
+      '登録が承認されました。Truss へようこそ！イベントへの参加や会員どうしの交流をお楽しみください。\n\n' +
+      'Your registration has been approved. Welcome to Truss! Enjoy joining events and connecting with other members.';
+    try {
+      await sendMessage(userId, approvalMessage, true);
+    } catch (error) {
+      console.error('Approval notification failed (approval itself succeeded):', error);
+    }
     await refreshUsers();
     if (user && user.id === userId) await refreshUser();
     toast.success(language === 'ja' ? 'ユーザーを承認しました' : 'User approved');
@@ -780,20 +757,14 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       {currentPage === 'landing' && (
         <LoginScreen onLogin={handleGoogleLogin} language={language} onLanguageChange={setLanguage} />
       )}
-      {currentPage === 'auth-selection' && (
-        <AuthSelection language={language} onLanguageChange={setLanguage} onGoogleAuth={handleGoogleLogin} />
-      )}
       {currentPage === 'login' && (
         <LoginScreen onLogin={handleGoogleLogin} onAdminLogin={() => navigateTo('admin-login')} language={language} onLanguageChange={setLanguage} />
-      )}
-      {currentPage === 'email-verification' && (
-        <EmailVerification onVerified={handleEmailVerified} onBack={() => setCurrentPage('auth-selection')} language={language} onLanguageChange={setLanguage} />
       )}
       {currentPage === 'initial-registration' && (
         <InitialRegistration email={tempEmail} onComplete={handleInitialRegistrationComplete} language={language} onLanguageChange={setLanguage} onBack={() => setCurrentPage('landing')} existingUser={user || undefined} />
       )}
       {currentPage === 'profile' && (
-        <ProfileRegistration email={tempEmail} onComplete={handleProfileComplete} language={language} onBack={() => navigateTo('dashboard')} existingUser={user || undefined} />
+        <ProfileRegistration onComplete={handleProfileComplete} language={language} onBack={() => navigateTo('dashboard')} existingUser={user || undefined} />
       )}
       {currentPage === 'dashboard' && user && (
         <Dashboard
@@ -827,9 +798,6 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       )}
       {currentPage === 'admin-login' && (
         <AdminLogin onLogin={handleAdminLogin} language={language} onBack={() => (standaloneAdmin ? setCurrentPage('admin-login') : navigateTo('landing'))} />
-      )}
-      {currentPage === 'auth-complete' && (
-        <AuthCompleteScreen onContinue={handleAuthComplete} language={language} onLanguageChange={setLanguage} />
       )}
       <Toaster />
     </div>

@@ -18,7 +18,7 @@ export type {
 } from "@truss/core";
 
 export default function AppShell(props: {
-  initialPage?: "landing" | "auth-selection" | "auth-complete" | "login" | "admin-login" | "email-verification" | "initial-registration" | "profile" | "dashboard" | "admin";
+  initialPage?: "landing" | "login" | "admin-login" | "initial-registration" | "profile" | "dashboard" | "admin";
   standaloneAdmin?: boolean;
   sharedEventToken?: string;
 }) {

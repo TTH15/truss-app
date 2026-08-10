@@ -922,3 +922,88 @@ admin_accounts の共有パスワードログインから、個人 Google アカ
 - 残り2件（目的の説明・アプリ名の一致）への追加対応: LoginScreen の説明文はデプロイ済みだが**クライアント描画後にしか現れない**（SSR 初期 HTML はローディング画面）。Google の自動チェックが確実に読む `<title>` が「Truss」で OAuth アプリ名「Truss公式アプリ」と不一致だったため、**layout.tsx の title を「Truss公式アプリ」に変更**（meta description には目的説明が既にあり、title + description で SSR HTML 側の要件を満たす）。PWA のホーム画面名は manifest（name: Truss）で決まるため影響なし。
 - 検証: `tsc --noEmit`・`next build` 通過。
 - 残: この変更の push・デプロイ → Google の「問題は修正した（再確認をリクエスト）」送信。周知 → Step 3 再有効化。Supabase カスタムドメイン。
+
+## 2026-08-10 17:58 デプロイが始まらない問題の対処（Vercel の webhook 取りこぼし）
+
+- title 変更コミット（6e284ef）は GitHub に push 済みだったが、**Vercel にビルドが1件も現れない**状態（本番 `<title>` も旧のまま）を確認。push は成功しており、Git 連携の webhook 取りこぼしと判断。
+- 空コミット（e756aae）を push して webhook を再発火。バックグラウンドで本番 `<title>` の反映を監視中（15秒間隔、「Truss公式アプリ」が出たら完了）。
+- 反映確認後の残り: Google ブランディングの「問題は修正した（再確認リクエスト）」送信（ユーザー）→ Supabase カスタムドメイン → 周知 → 旧URLリダイレクトの再有効化。
+
+## 2026-08-10 18:00 title 変更の本番反映を確認
+
+- 空コミットによる再デプロイが成功し、17:56 に本番の `<title>` が「Truss公式アプリ」に切り替わったことを監視スクリプトで確認。
+- Google ブランディング審査の要件（アプリ名一致・目的説明・ドメイン所有確認）がすべて整った。ユーザーへ「問題は修正した（再確認リクエスト）」の送信を案内。
+- 残: 再確認リクエスト送信（ユーザー）→ 審査待ち。Supabase カスタムドメイン。周知 → 旧URLリダイレクト再有効化。
+
+## 2026-08-10 18:15 Supabase カスタムドメインを保留に（判断の記録）
+
+- ブランド審査（再確認リクエスト送信済み・数日待ち）が通れば同意画面の主表示は「Truss公式アプリにログイン」+ロゴになり、supabase.co は細字の遷移先表記に残るだけ。カスタムドメイン（$10/月）の短期的な効果はその細字の差し替えのみ。
+- 本来の価値は**ベンダーロックイン回避**（API URL を自社ドメインにしておけば、配布済みモバイルバイナリを壊さず DNS でバックエンド移行できる）。PWA のうちは env 差し替えで移行できるため急がない。
+- 判断: **アドオンはいったん無効化して課金を止め、モバイル配布の直前に再検討**（ユーザーへ提案済み）。DNS レコード（auth CNAME / _acme-challenge TXT。伝播確認済み）はお名前.com に残す — 再開時は有効化 → Verify → Google へ URI 追加 → Activate → env 差し替えで数分。tasks.md の Step 4 を保留版に更新。
+- 参考: Verify が進まなかったのは設定ミスではなく伝播直後の検証待ち（dig で権威・パブリック両方の反映を確認済み）。
+
+## 2026-08-10 18:20 ドメイン移行の現状整理（カスタムドメイン停止を確定）
+
+ユーザー決定: Supabase カスタムドメインのアドオンは**一旦停止**（Add-ons から無効化）。ここまでの移行状況を tasks.md・メモリに整理して反映した。
+
+**現状サマリ:**
+- ✅ app.trusskobe.com 稼働（Vercel / TLS 済み）。旧 vercel.app も並行稼働中
+- ✅ Supabase Auth 設定済み（新旧両ドメイン許可）。旧 PWA は無影響で動作継続
+- ✅ ブランド審査の要件対応完了・再確認リクエスト送信済み → **数日の審査待ち**
+- ⏸ カスタムドメイン: 停止。DNS レコードは残置（モバイル配布前に再検討）
+- ⏳ 周知 → 旧URLリダイレクト有効化（Step 6 → Step 3 の順で、周知と同時に実行）
+
+**次に動くとき:**
+1. 審査結果が来たら同意画面の表示を確認
+2. 会員周知の文面確定（ホーム画面再追加 + プッシュ再オンの2点を必ず記載。文面案は 2026-08-09 の手順書エントリ参照）
+3. 周知と同時に Vercel Domains で旧→新リダイレクトを有効化
+
+## 2026-08-10 18:30 次セッションへの引き継ぎ: オンボーディング・ログイン設定と運営画面のスマホ対応
+
+ユーザーの次の作業宣言: 「役職者がそのアカウントで運営画面に入れるように。Hakotora と同じようにスマホ画面でも運営画面が出せるように」。
+
+**⚠️ 前半は実装済み（2026-08-08 の統合ログイン第1段階）。二重実装しないこと:**
+- Google ログイン + `users.is_admin` で運営画面へ入れる（LegacyApp の振り分けは認証フロー画面からのみ。dashboard/profile に居るときは動かさない）
+- 役職 ⇄ 運営権限の連動は **migration 039**（部員・非会員以外 = is_admin。トリガー + 既存データ整合 UPDATE）
+- Dashboard ヘッダーに盾アイコン（運営画面へ）、AdminPage ヘッダーに家アイコン(会員画面へ)
+- 役職の付与 UI はメンバー詳細モーダル（自分の役職は変更不可 = 自己降格ロックアウト防止）
+
+**動かすために必要な残作業:**
+1. **migration 038 / 039 / 040 の本番適用**（未適用。`CHECK_SCHEMA.sql` で確認可能）。特に 039 を適用しないと役職を付けても is_admin が連動しない
+2. 実機確認: 個人アカウントに役職を付与 → Google ログイン → 盾アイコン → 運営画面
+3. **スマホでの運営画面**: AdminPage は既に下部ナビ付きのモバイルレイアウトを持つ。「Hakotora と同じように」の具体像は **hakotora プロジェクトの実装を参照**して差分を確認すること（~/Developer/projects/hakotora）
+4. オンボーディング設定の詳細はユーザーから次セッションで聞く
+
+- 本日のコード変更はドキュメント整理のみ（直前エントリ参照）。
+
+## 2026-08-10 オンボーディング・ログイン周りの整理（デッドコード除去・動線修正・バグ修正）
+
+### 削除（廃止済みメール認証時代の残骸）
+- コンポーネント6ファイル削除: `AuthSelection` / `EmailVerification` / `AuthCompleteScreen` / `LandingPage` / `WaitingApproval` / `LimitedAccessBanner`（中身が `return null` のみ）。いずれも到達不能または無意味な描画だった
+- `LegacyApp`: PageState から `auth-selection` / `auth-complete` / `email-verification` を削除、`handleEmailVerified` / `handleAuthComplete` / 未読 state `tempInitialData` を削除。実質同じ結果になる3分岐を1つに統合
+- `AuthContext`: 未使用の `signUp` / `signIn`（メール+パスワード）を削除。認証は Google OAuth（+管理者共有パスワード）のみに
+- `AppShell` の initialPage 型も同期
+
+### バグ修正
+1. **ProfileRegistration の「生まれた国」が DB に保存されていなかった**: `country` だけ渡していたが `updateUser` は `birthCountry` しか country 列に書かないため、リロードで消え、プロフィール完了判定（`isProfileCompleteForParticipation`）も巻き戻っていた。`birthCountry` を渡すよう修正
+2. **会費支払い済みでもプロフィール登録完了で未払いに巻き戻るバグ**: 旧実装はプロフィール完了時に日本人学生へ `feePaid: false` を常に書き込んでいた（運営が先に支払い確認したケースを上書き）。`handleProfileComplete` は feePaid を書かず、`fee_payment` へ進めるのは「日本人 && 未払い」のときだけに
+3. **fee_payment ステップの案内の途切れ**: 日本人学生がプロフィール完了→`fee_payment` になると承認後ステップバナーが消えていた。Dashboard バナーを `approved_limited | fee_payment` で表示するよう拡張
+
+### 動線のねじれ解消
+- `registrationStep` の算出を `LegacyApp.handleProfileComplete` に一本化（ProfileRegistration 側の重複計算・`Math.random()` の仮ID生成を削除。onComplete は編集フィールドのみの `Partial<User>` に）
+- 会費バナーの役割分担を明確化: 入会フロー中（approved_limited / fee_payment）は Dashboard の承認後ステップバナー、年度リセット後の継続会員（fully_active で fee_paid=false）は HomePage のバナー。従来はホームタブで二重表示だった
+
+### 検証
+- `tsc --noEmit` / `next build` 通過。ESLint はエラー数変化なし（23件、全て既存）・警告は7件減
+
+### 見送り・申し送り
+- `users` 行の二重生成経路（DBトリガー + クライアント INSERT）は退会→再登録の意図的設計のため維持
+- DB enum `registration_step` の未使用値（email_input / email_sent / initial_registration / profile_completion）は挙動に影響しないため DB 側は未整理
+- **承認時に会員へ通知が飛ばない**（メール・プッシュ・アプリ内いずれも無し）のに承認待ちバナーは「メールでお知らせします」と表示 — 要対応（UX調査レポート参照）
+
+## 2026-08-10 オンボーディング UX 改善3件（承認通知・ログインボタン・URL改名）
+
+1. **承認時の会員向け通知を実装**: `handleApproveUser` で承認直後に運営名義のアプリ内メッセージ（日英併記）を送信。`sendMessage(userId, text, true)` はプッシュ購読済みならプッシュも自動送信（既存の再アップロード依頼と同じ経路）。通知失敗でも承認自体は成功扱い。承認待ちバナーの「承認後、メールでお知らせします」（メール送信は未実装で事実と相違）を「アプリのメッセージでお知らせします」に修正
+2. **ログイン画面を全画面タップ → Google 公式風ボタンに変更**: 「画面をタップして始める」を廃止し、白背景 + G ロゴの「Google でログイン / Sign in with Google」ボタンに。アプリ内ブラウザ検知時はボタンを disabled。ルート onClick が消えたため各所の stopPropagation も除去
+3. **`/profile` → `/profile-setup` に改名**: オンボーディング用プロフィール登録フォームの URL を実態に合わせた。旧 `/profile` は「自分のプロフィールを見たい」期待に合わせ `/dashboard` へ redirect（外部からの参照は無いことを確認済み。Service Worker / manifest にも記載なし）
+- 検証: `tsc --noEmit` / `next build` 通過。lint エラー数は既存3件のまま増減なし

@@ -108,7 +108,9 @@ export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeeP
 
   return (
     <div className="flex flex-col h-full">
-      {user.category === 'japanese' && !user.feePaid && onOpenFeePayment && (
+      {/* 年度リセット後の継続会員向け（fully_active のまま fee_paid だけ false になる）。
+          入会フロー中（approved_limited / fee_payment）は Dashboard の承認後ステップバナーが案内する */}
+      {user.category === 'japanese' && !user.feePaid && user.registrationStep === 'fully_active' && onOpenFeePayment && (
         <div className="bg-linear-to-r from-[#3D3D4E] to-[#5A5A6E] text-white p-4 rounded-xl mb-4 shadow-lg border border-[#49B1E4]">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 bg-[#49B1E4] rounded-full flex items-center justify-center shrink-0"><AlertCircle className="w-5 h-5 text-white" /></div>

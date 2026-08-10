@@ -7,8 +7,8 @@ import { X } from 'lucide-react';
 import type { User, Language } from '@truss/core';
 
 interface ProfileRegistrationProps {
-  email: string;
-  onComplete: (user: User) => void;
+  /** フォームで編集した項目だけを渡す。登録ステップ等の更新は呼び出し側が行う */
+  onComplete: (updates: Partial<User>) => void;
   language: Language;
   onBack?: () => void;
   existingUser?: User;
@@ -51,7 +51,7 @@ const translations = {
   }
 };
 
-export function ProfileRegistration({ email, onComplete, language, onBack, existingUser }: ProfileRegistrationProps) {
+export function ProfileRegistration({ onComplete, language, onBack, existingUser }: ProfileRegistrationProps) {
   const t = translations[language];
   const [formData, setFormData] = useState({
     name: existingUser?.name || '',
@@ -68,41 +68,15 @@ export function ProfileRegistration({ email, onComplete, language, onBack, exist
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    let registrationStep: 'profile_completion' | 'fee_payment' | 'fully_active';
-    let feePaid = false;
-
-    if (existingUser?.category === 'exchange' || existingUser?.category === 'regular-international') {
-      registrationStep = 'fully_active';
-      feePaid = true;
-    } else {
-      registrationStep = 'fee_payment';
-      feePaid = false;
-    }
-
-    const updatedUser: User = {
-      ...existingUser,
-      id: existingUser?.id || Math.random().toString(36).substr(2, 9),
-      email: existingUser?.email || email,
-      name: formData.name,
+    // birthCountry が保存用の正データ（updateUser は birthCountry を country 列に書く）
+    onComplete({
       nickname: formData.nickname,
-      furigana: formData.furigana,
       languages: formData.languages.split(',').map((l) => l.trim()),
+      birthCountry: formData.country,
       country: formData.country,
-      category: existingUser?.category || formData.category as 'japanese' | 'regular-international' | 'exchange',
-      approved: existingUser?.approved || false,
-      studentIdImage: existingUser?.studentIdImage || '',
-      studentNumber: existingUser?.studentNumber || '',
-      grade: formData.grade,
-      major: formData.major,
-      registrationStep,
-      emailVerified: true,
-      initialRegistered: true,
-      profileCompleted: true,
-      feePaid,
       phone: formData.phone,
       organizations: formData.organizations,
-    };
-    onComplete(updatedUser);
+    });
   };
 
   return (

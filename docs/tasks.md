@@ -308,12 +308,14 @@ Web の改善作業中に、モバイル開発で確実に踏むことになる�
 
 アプリは **app.trusskobe.com** で配信（apex の trusskobe.com は別途単独サイト予定）。コード変更ゼロで移行可能（共有URL・manifest・SW・プッシュはすべて相対/originベース確認済み）。実施順:
 
-- [ ] **Step 1**: Vercel Domains に `app.trusskobe.com` 追加 → レジストラに CNAME（app → cname.vercel-dns.com）
-- [ ] **Step 2**: Supabase Auth URL Configuration — Site URL を `https://app.trusskobe.com`、Redirect URLs に `https://app.trusskobe.com/**` を追加（**旧 vercel.app は移行期間中残す**）→ 新ドメインでログイン確認
-- [ ] **Step 3**: 旧 `*.vercel.app` → 新ドメインのリダイレクト（Vercel Domains の Redirect 設定。**周知と同時に**切替）
-- [ ] **Step 4**: Supabase カスタムドメイン（Pro アドオン）`auth.trusskobe.com` — **有効化前に** Google OAuth クライアントのリダイレクト URI へ `https://auth.trusskobe.com/auth/v1/callback` を追加 → 有効化 → Vercel の `NEXT_PUBLIC_SUPABASE_URL` を差し替えて再デプロイ（storageKey 不変・セッション維持）
-- [ ] **Step 5**: Google ブランディング — ホームページ / `https://app.trusskobe.com/privacy-policy` / 承認済みドメイン `trusskobe.com`（Search Console 所有確認）→ **審査送信**（通過で「Truss公式アプリにログイン」表示）
-- [ ] **Step 6**: 会員周知（必須2点: **ホーム画面の再追加**・**プッシュ通知の再オン**。どちらも origin 単位のため）
+（2026-08-10 時点の進捗）
+
+- [x] **Step 1 完了**: `app.trusskobe.com` を Vercel に追加、お名前.com のネームサーバーを dnsv.jp へ切替、CNAME 設定。HTTP 200 / TLS 発行済み
+- [x] **Step 2 完了**: Supabase の Site URL = `https://app.trusskobe.com`、Redirect URLs に `https://app.trusskobe.com/**` 追加（旧 vercel.app・truss:// は残置）。`NEXT_PUBLIC_APP_URL` 未設定のため redirectTo は開いている origin に自動追従 = 旧 PWA は影響なし
+- [ ] **Step 3 待機**: 旧 `*.vercel.app` → 新ドメインのリダイレクト。**周知と同時に** Vercel Domains の Edit で「Redirect to Another Domain」に切替（8/10 に誤って有効化 → 即日巻き戻し済み。現在は両 URL とも通常配信）
+- [ ] **Step 4 保留（決定）**: Supabase カスタムドメイン（$10/月）は**アドオンを無効化して停止**。ブランド審査通過で主表示は解決し、残る効果は同意画面の細字のドメイン表記のみ。本命の価値はモバイル配布時のベンダーロックイン回避なので、**モバイル配布の直前に再検討**。DNS レコード（`auth` CNAME → phcwiuzhqfkeuqvpnwsf.supabase.co / `_acme-challenge.auth` TXT。伝播確認済み）は**お名前.com に残したまま**にする → 再開時: アドオン有効化 → Verify → Google に `https://auth.trusskobe.com/auth/v1/callback` を追加 → Activate → `NEXT_PUBLIC_SUPABASE_URL` 差し替え
+- [ ] **Step 5 審査待ち**: ブランディング要件はすべて対応済み（title「Truss公式アプリ」= OAuth アプリ名と一致、meta description + ログイン画面に目的説明、Search Console 所有確認済み）。「問題は修正した」送信済み → **Google の再審査待ち（数日）**。通過で「Truss公式アプリにログイン」表示
+- [ ] **Step 6 未実施**: 会員周知（必須2点: **ホーム画面の再追加**・**プッシュ通知の再オン**）→ 周知と同時に Step 3 を実行
 
 ### 保留
 

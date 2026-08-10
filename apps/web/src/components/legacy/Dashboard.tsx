@@ -12,7 +12,6 @@ import { BulletinBoard } from './BulletinBoard';
 import { GalleryPage } from './GalleryPage';
 import { ProfilePage } from './ProfilePage';
 import { MessagesPage } from './MessagesPage';
-import { LimitedAccessBanner } from './LimitedAccessBanner';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
 import type { User as UserType, Language, Event, MessageThread, ChatThreadMetadata, Notification, BoardPost, BoardPostReply } from '@truss/core';
@@ -644,14 +643,15 @@ export function Dashboard({
               </div>
               <p className="text-center text-sm text-gray-600 mt-4">
                 {language === 'ja'
-                  ? '承認後、メールでお知らせします。'
-                  : 'We will notify you by email after approval.'}
+                  ? '承認されると、アプリのメッセージでお知らせします。'
+                  : 'We will notify you with an in-app message once approved.'}
               </p>
             </div>
           </div>
         )}
 
-        {user.registrationStep === 'approved_limited' && (!profileDone || !user.feePaid) && (
+        {/* fee_payment はプロフィール完了後の会費待ち状態。案内が途切れないようここでも表示する */}
+        {(user.registrationStep === 'approved_limited' || user.registrationStep === 'fee_payment') && (!profileDone || !user.feePaid) && (
           <div className="mb-6 bg-linear-to-r from-[#49B1E4] to-[#3A9BD4] rounded-lg p-6 shadow-lg text-white">
             <div className="flex items-start gap-4">
               <div className="flex-1">
@@ -714,12 +714,6 @@ export function Dashboard({
             </div>
           </div>
         )}
-
-        <LimitedAccessBanner
-          language={language}
-          user={user}
-          onOpenProfile={onOpenProfile}
-        />
 
         {currentPage === 'home' && <HomePage language={language} user={user} events={events} onNavigateToEvent={handleNavigateToEvent} onOpenProfile={onOpenProfile} onReopenInitialRegistration={onReopenInitialRegistration} onDismissReuploadNotification={onDismissReuploadNotification} onOpenFeePayment={() => setFeePaymentDialogOpen(true)} />}
         {currentPage === 'events' && <EventsPage language={language} events={events} attendingEvents={attendingEvents} likedEvents={likedEvents} onToggleAttending={onToggleAttending} onToggleLike={onToggleLike} highlightEventId={highlightEventId} openEventId={pendingOpenEventId} onOpenEventHandled={() => setPendingOpenEventId(undefined)} onAddEventParticipant={onAddEventParticipant} user={user} />}
