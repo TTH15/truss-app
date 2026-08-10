@@ -1026,3 +1026,14 @@ admin_accounts の共有パスワードログインから、個人 Google アカ
 - LoginScreen 本文にも「Google アカウント / メールアドレスの利用目的」の1行を追加（審査要件「ユーザーデータを要求する目的の説明」）
 - 検証: `tsc --noEmit` / `next build` 通過
 - 残: デプロイ → 再確認リクエスト。Google Cloud Console 側の Homepage URL / Privacy Policy URL が `https://app.trusskobe.com/...` を指しているか（vercel.app のままだと「所有ドメイン」要件に抵触）はユーザー確認
+
+## 2026-08-10 規約・ポリシーの CMS 化（運営画面から改定できるように）
+
+背景: 連絡先メールは年度ごとに作り変えており（truss.kobe@gmail.com も現行ではない）、コード変更なしで規約・ポリシーを改定できる必要がある。
+
+- **migration 041**: `site_documents` テーブル（1文書=1行、id は 'privacy-policy' / 'terms-of-service'）。SELECT は匿名含む全員（ログイン前に表示するため）、INSERT/UPDATE は `is_admin_safe()`。**本番未適用 — SQL Editor での適用が必要**
+- **packages/core**: `querySiteDocument` / `upsertSiteDocumentRow` を追加、`database.types.ts` に `site_documents` を追加
+- **公開ページ**: privacy-policy / terms-of-service をサーバーコンポーネント化。DB を REST + ISR（revalidate 300秒）で読み、**行が無い/取得失敗時はアプリ内蔵の既定文面にフォールバック**（migration 未適用でも表示は壊れない）。描画は共通の `components/policy/PolicyDocument.tsx` に統一
+- **運営画面**: ヘッダーに ScrollText アイコン → 「規約・ポリシーの管理」モーダル（`AdminSiteDocuments.tsx`）。文書切り替え・テキスト編集・プレビュー・保存・最終更新表示・公開ページへのリンク。保存後は最大5分で公開ページに反映
+- 検証: `tsc --noEmit` / `next build` / 対象ファイルの eslint すべて通過
+- 残: migration 041 の本番適用（適用前でも既定文面で動作）。**現行の連絡先メールが確定したら運営画面から2文書の「メール：」行を書き換えて保存**（コード変更不要）

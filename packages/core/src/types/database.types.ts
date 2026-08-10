@@ -142,6 +142,14 @@ export interface DbEventView {
   viewed_at: string;
 }
 
+export interface DbSiteDocument {
+  [key: string]: unknown;
+  id: string;
+  content: string;
+  updated_at: string;
+  updated_by: string | null;
+}
+
 export interface DbEventLike {
   // Supabase JS v2 GenericTable の互換性確保のため（Record<string, unknown> 前提）
   [key: string]: unknown;
@@ -437,6 +445,12 @@ export interface Database {
         Row: DbEventView;
         Insert: Omit<DbEventView, 'viewed_at'>;
         Update: never;
+        Relationships: [];
+      };
+      site_documents: {
+        Row: DbSiteDocument;
+        Insert: DbSiteDocument;
+        Update: Partial<DbSiteDocument>;
         Relationships: [];
       };
       fee_settings: {
