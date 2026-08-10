@@ -304,6 +304,17 @@ Web の改善作業中に、モバイル開発で確実に踏むことになる�
 - [x] VAPID 鍵を Vercel に設定 — 2026-08-08 完了
 - [ ] Web Push の実機確認（iOS はホーム画面に追加してから。鍵の設定が直近デプロイより後なら再デプロイが必要 — `NEXT_PUBLIC_` はビルド時に埋め込まれるため）
 
+### 独自ドメイン移行（trusskobe.com 取得済み・2026-08-09）
+
+アプリは **app.trusskobe.com** で配信（apex の trusskobe.com は別途単独サイト予定）。コード変更ゼロで移行可能（共有URL・manifest・SW・プッシュはすべて相対/originベース確認済み）。実施順:
+
+- [ ] **Step 1**: Vercel Domains に `app.trusskobe.com` 追加 → レジストラに CNAME（app → cname.vercel-dns.com）
+- [ ] **Step 2**: Supabase Auth URL Configuration — Site URL を `https://app.trusskobe.com`、Redirect URLs に `https://app.trusskobe.com/**` を追加（**旧 vercel.app は移行期間中残す**）→ 新ドメインでログイン確認
+- [ ] **Step 3**: 旧 `*.vercel.app` → 新ドメインのリダイレクト（Vercel Domains の Redirect 設定。**周知と同時に**切替）
+- [ ] **Step 4**: Supabase カスタムドメイン（Pro アドオン）`auth.trusskobe.com` — **有効化前に** Google OAuth クライアントのリダイレクト URI へ `https://auth.trusskobe.com/auth/v1/callback` を追加 → 有効化 → Vercel の `NEXT_PUBLIC_SUPABASE_URL` を差し替えて再デプロイ（storageKey 不変・セッション維持）
+- [ ] **Step 5**: Google ブランディング — ホームページ / `https://app.trusskobe.com/privacy-policy` / 承認済みドメイン `trusskobe.com`（Search Console 所有確認）→ **審査送信**（通過で「Truss公式アプリにログイン」表示）
+- [ ] **Step 6**: 会員周知（必須2点: **ホーム画面の再追加**・**プッシュ通知の再オン**。どちらも origin 単位のため）
+
 ### 保留
 
 - Journey Stamp は画面から外してある。電子スタンプ（NFC/BLE）の方針が決まってから戻す（Phase 5 に復帰手順を記載）

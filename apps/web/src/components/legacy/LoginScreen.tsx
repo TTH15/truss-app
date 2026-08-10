@@ -71,6 +71,18 @@ export function LoginScreen({
           draggable={false}
         />
 
+        {/* Google のブランド審査要件: OAuth のアプリ名と同じ表記と、アプリの目的の説明をページに載せる */}
+        <div className="max-w-md px-6 text-center space-y-1.5 -mt-2">
+          <p className="text-[#3D3D4E] text-base font-semibold tracking-[-0.3125px]">
+            {language === "ja" ? "Truss公式アプリ" : "Truss Official App"}
+          </p>
+          <p className="text-[#6B6B7A] text-sm leading-relaxed">
+            {language === "ja"
+              ? "神戸大学 留学生支援サークル Truss の公式アプリです。イベントの案内と参加登録、会員どうしの交流、運営への連絡ができます。"
+              : "The official app of Truss, the international student support club at Kobe University. Browse and join events, connect with members, and contact the staff."}
+          </p>
+        </div>
+
         {inAppBrowser && (
           <div
             className="w-full max-w-md rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-3"
