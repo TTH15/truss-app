@@ -1094,3 +1094,9 @@ admin_accounts の共有パスワードログインから、個人 Google アカ
 - User 型 / mappers / queries（select リスト + queryUserByAuthId）/ AuthContext.updateUser に `gradeConfirmedFor` を追加。CHECK_SCHEMA に 044 追加
 - 検証: `tsc` / `next build` 通過、lint エラー 0
 - 残: **migration 044 の本番適用**（ALTER TABLE のみ、1行）
+
+## 2026-08-11 00:15 運営チャット一覧に会員属性バッジを追加
+
+- `MemberAttributeBadges.tsx` を新設: 承認待ち（琥珀）/ 交換留学（桃）/ 正規留学（緑）/ 非会員（灰）の小型バッジ列。多数派の日本人学生はバッジ無しでノイズを抑える。色は AdminMembers の区分バッジと同体系
+- 運営チャット（AdminChatMessages）の一覧行の名前横と、会話ヘッダーの両方に表示。各行が既に持っていた `member`（User）をそのまま利用
+- 検証: `tsc` / `next build` 通過。lint の新規エラーなし（1件は既存の selectedChatUserId 同期 effect）

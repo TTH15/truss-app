@@ -6,6 +6,7 @@ import { ScrollFade } from './ScrollFade';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { FeeUnpaidWalletIcon } from './FeeUnpaidWalletIcon';
+import { MemberAttributeBadges } from './MemberAttributeBadges';
 import { MemberDetailModal } from './MemberDetailModal';
 import { MessageCircle, Send, Pin, Flag, ArrowLeft, Image as ImageIcon, Images, Calendar, Clock, MapPin, X, FileText, IdCard } from 'lucide-react';
 import type { Language, MessageThread, User as UserType, Message, ChatThreadMetadata } from '@truss/core';
@@ -416,6 +417,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-2">
                           <p className="font-medium text-gray-900 truncate">{user.userName}</p>
+                          <MemberAttributeBadges member={user.member} language={language} />
                           {user.feeUnpaid && <FeeUnpaidWalletIcon tooltip={language === 'ja' ? '会費が未払いです' : 'Membership fee unpaid'} />}
                           <p className="ml-auto shrink-0 text-xs text-gray-400">{user.lastMessageTime}</p>
                         </div>
@@ -451,6 +453,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
               />
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <h3 className="font-medium text-gray-900 truncate">{selectedUser.userName}</h3>
+                <MemberAttributeBadges member={selectedUser.member} language={language} />
                 {selectedUser.feeUnpaid && <FeeUnpaidWalletIcon tooltip={language === 'ja' ? '会費が未払いです' : 'Membership fee unpaid'} />}
               </div>
               {/* チャットで「振り込みました」と来たら、その場で詳細を開いて会費確認できるようにする */}
