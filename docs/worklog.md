@@ -914,3 +914,11 @@ admin_accounts の共有パスワードログインから、個人 Google アカ
 - 2・3 はデプロイ後に Google の「問題は修正した（再確認をリクエスト）」を送信する。
 - 検証: `tsc --noEmit`・`next build` 通過。
 - 残: Search Console 所有確認 → 再審査リクエスト（ユーザー）。Supabase カスタムドメイン（アドオン購入から）。周知 → Step 3 リダイレクト有効化。
+
+## 2026-08-10 リダイレクト巻き戻しの確認と、ブランド審査の残指摘への追加対応
+
+- 旧 vercel.app → 新ドメインのリダイレクトが**意図せず有効になっていた**（ユーザーが編集画面を保存済みだった）のを検知し、解除を案内。解除後 vercel.app が HTTP 200 でアプリを返すことを確認（旧 PWA への影響は短時間で収束）。
+- ブランド審査の指摘は 3件 → 2件に減少（**Search Console の所有確認が通った**）。
+- 残り2件（目的の説明・アプリ名の一致）への追加対応: LoginScreen の説明文はデプロイ済みだが**クライアント描画後にしか現れない**（SSR 初期 HTML はローディング画面）。Google の自動チェックが確実に読む `<title>` が「Truss」で OAuth アプリ名「Truss公式アプリ」と不一致だったため、**layout.tsx の title を「Truss公式アプリ」に変更**（meta description には目的説明が既にあり、title + description で SSR HTML 側の要件を満たす）。PWA のホーム画面名は manifest（name: Truss）で決まるため影響なし。
+- 検証: `tsc --noEmit`・`next build` 通過。
+- 残: この変更の push・デプロイ → Google の「問題は修正した（再確認をリクエスト）」送信。周知 → Step 3 再有効化。Supabase カスタムドメイン。

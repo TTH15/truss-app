@@ -21,7 +21,8 @@ const islandMoments = Island_Moments({
 });
 
 export const metadata: Metadata = {
-  title: "Truss",
+  // OAuth 同意画面のアプリ名「Truss公式アプリ」と一致させる（Google ブランド審査が title を照合する）
+  title: "Truss公式アプリ",
   description: "神戸大学 留学生支援サークル Truss の公式アプリです。/ This is the official app of Truss, the international student support club at Kobe University.",
   icons: {
     icon: "/truss-favicon.svg",
