@@ -86,3 +86,9 @@ ORDER BY e.migration, e.object_name, e.detail NULLS FIRST;
 SELECT COUNT(*) AS phone_not_normalized
 FROM public.users
 WHERE phone <> '' AND phone !~ '^\+?[0-9]+$';
+
+-- 045: SE 役職はデータと制約の変更のためスキーマ一覧では検出できない。
+--      下のクエリが role='se', is_admin=true の1行を返せば適用済み。
+SELECT student_number, role, is_admin
+FROM public.users
+WHERE student_number = '2243327S' AND withdrawn_at IS NULL;

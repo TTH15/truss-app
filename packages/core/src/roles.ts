@@ -6,6 +6,7 @@
  * 将来的には admin_accounts による運営ログインを role ベースの権限に統合していく方針。
  */
 
+/** UI（メンバー詳細の役職セレクト）から選べる役職 */
 export const USER_ROLES = [
   "non_member",
   "member",
@@ -15,7 +16,13 @@ export const USER_ROLES = [
   "advisor",
 ] as const;
 
-export type UserRole = (typeof USER_ROLES)[number];
+/**
+ * システム管理者（アプリの開発・保守者）。代表と同じ全権限を持つ。
+ * UI からは付与・変更できず、SQL でのみ設定する（migration 045）
+ */
+export const SYSTEM_ROLE_SE = "se" as const;
+
+export type UserRole = (typeof USER_ROLES)[number] | typeof SYSTEM_ROLE_SE;
 
 /** 新規登録者は年会費未払いなので非会員から始まる */
 export const DEFAULT_USER_ROLE: UserRole = "non_member";
@@ -27,6 +34,7 @@ export const USER_ROLE_LABELS: Record<UserRole, { ja: string; en: string }> = {
   vice_president: { ja: "副代表", en: "Vice President" },
   president: { ja: "代表", en: "President" },
   advisor: { ja: "顧問教員", en: "Advisor" },
+  se: { ja: "SE", en: "SE" },
 };
 
 /**
@@ -43,11 +51,11 @@ export function isPrivilegedRole(role: UserRole | undefined): boolean {
 }
 
 /**
- * 上位役職（代表・副代表・顧問）。保護文書（規約・ポリシー等）の改定はここに限定される。
- * DB 側の判定は migration 042 の is_senior_admin_safe()（両者は同じ集合を指すこと）
+ * 上位役職（代表・副代表・顧問・SE）。保護文書（規約・ポリシー等）の改定はここに限定される。
+ * DB 側の判定は is_senior_admin_safe()（migration 042 → 045。両者は同じ集合を指すこと）
  */
 export function isSeniorRole(role: UserRole | undefined): boolean {
-  return role === "president" || role === "vice_president" || role === "advisor";
+  return role === "president" || role === "vice_president" || role === "advisor" || role === "se";
 }
 
 /**
@@ -59,6 +67,7 @@ export const ROLE_LIST_PRIORITY: Record<UserRole, number> = {
   vice_president: 1,
   officer: 2,
   advisor: 3,
+  se: 4,
   member: 10,
   non_member: 10,
 };

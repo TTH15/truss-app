@@ -1100,3 +1100,14 @@ admin_accounts の共有パスワードログインから、個人 Google アカ
 - `MemberAttributeBadges.tsx` を新設: 承認待ち（琥珀）/ 交換留学（桃）/ 正規留学（緑）/ 非会員（灰）の小型バッジ列。多数派の日本人学生はバッジ無しでノイズを抑える。色は AdminMembers の区分バッジと同体系
 - 運営チャット（AdminChatMessages）の一覧行の名前横と、会話ヘッダーの両方に表示。各行が既に持っていた `member`（User）をそのまま利用
 - 検証: `tsc` / `next build` 通過。lint の新規エラーなし（1件は既存の selectedChatUserId 同期 effect）
+
+## 2026-08-11 01:00 システム管理役職「SE」を新設（平石孝也アカウント専用）
+
+質問への回答: CMS（規約・ポリシー管理）ボタンは役職に関係なく全運営に表示される設計。見えないのは本日実装分が未コミット・未デプロイのため。
+
+- **migration 045**（**本番未適用**）: role の許容値に 'se' を追加し、039（is_admin 連動）/ 042（is_senior_admin_safe = 保護文書の編集可）/ 043（在任履歴の対象・CHECK 制約）をすべて SE 対応版に置き換え。最後に `student_number='2243327S'` へ SE を付与（関数差し替え後に実行するので連動・履歴も正しく動く）
+- **SE の位置づけ**: 代表と同じ全権限（運営画面・保護文書の改定・承認等）。**UI からは付与・変更不可**（メンバー詳細の役職セレクトは SE アカウントに対して無効化 + 「SE はシステム管理用の役職です」ヒント。SelectItem は表示用のみ）。付与・解除は SQL のみ。引き継ぎ（transfer_role）の対象外。1人制約は設けない（SQL 限定運用で足りる）
+- core: `SYSTEM_ROLE_SE` を追加し UserRole 型を `USER_ROLES | 'se'` に拡張（USER_ROLES は「UI で選べる役職」のまま維持）。labels / priority / isSeniorRole を SE 対応。RoleBadge に SE 用配色（チャコール地 + 生成り文字）
+- CHECK_SCHEMA に 045 のデータ確認クエリを追加
+- 検証: `tsc` / `next build` 通過
+- 残: migration 044 → 045 の順で本番適用

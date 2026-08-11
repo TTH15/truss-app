@@ -11,6 +11,7 @@ const ROLE_BADGE_CLASSES: Record<UserRole, string> = {
   vice_president: 'bg-[#EDE9FE] text-[#6D28D9]',
   president: 'bg-[#FEF3C7] text-[#B45309]',
   advisor: 'bg-[#DCFCE7] text-[#166534]',
+  se: 'bg-[#3D3D4E] text-[#F5F1E8]',
 };
 
 /**
