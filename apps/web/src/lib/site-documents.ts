@@ -8,6 +8,74 @@
 
 export type SiteDocumentId = "privacy-policy" | "terms-of-service";
 
+/** 条文（「第N条…」または「N. …」で始まるまとまり） */
+export interface DocumentSection {
+  /** 見出し行（例: 第1条（適用） / 1. 個人情報取扱事業者） */
+  title: string;
+  /** 見出しを除いた本文（複数行・空行区切りの段落を含む） */
+  body: string;
+}
+
+export interface SplitDocument {
+  /** 最初の条文より前の前文 */
+  preamble: string;
+  sections: DocumentSection[];
+}
+
+/**
+ * 文書テキストを前文と条文ごとに分割する（運営画面の条文別エディタと公開ページの区切り表示で共用）。
+ * 見出しの判定は文書のスタイルに合わせる:
+ * - 「第N条」がある文書（利用規約）→ 第N条 だけが条文見出し。「1. 」は条内の号として本文に残す
+ * - 無い文書（プライバシーポリシー）→ 空行区切りブロックの先頭の「N. 」が見出し
+ */
+export function splitSiteDocument(content: string): SplitDocument {
+  const cleaned = content
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("---"))
+    .join("\n");
+  const usesArticleStyle = /^第\d+条/m.test(cleaned);
+  const isSectionHeading = (line: string) =>
+    usesArticleStyle ? /^第\d+条/.test(line) : /^\d+\.\s/.test(line);
+
+  const blocks = cleaned
+    .split(/\n\s*\n/g)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  const preambleBlocks: string[] = [];
+  const sections: DocumentSection[] = [];
+  let current: { title: string; bodyBlocks: string[] } | null = null;
+  for (const block of blocks) {
+    const lines = block.split("\n");
+    const first = lines[0].trim();
+    if (isSectionHeading(first)) {
+      if (current) sections.push({ title: current.title, body: current.bodyBlocks.join("\n\n") });
+      current = { title: first, bodyBlocks: [] };
+      const rest = lines.slice(1).join("\n").trim();
+      if (rest) current.bodyBlocks.push(rest);
+    } else if (current) {
+      current.bodyBlocks.push(block);
+    } else {
+      preambleBlocks.push(block);
+    }
+  }
+  if (current) sections.push({ title: current.title, body: current.bodyBlocks.join("\n\n") });
+  return { preamble: preambleBlocks.join("\n\n"), sections };
+}
+
+/** splitSiteDocument の逆。保存時に1つの content に戻す */
+export function joinSiteDocument(doc: SplitDocument): string {
+  const parts: string[] = [];
+  if (doc.preamble.trim()) parts.push(doc.preamble.trim());
+  for (const section of doc.sections) {
+    const title = section.title.trim();
+    const body = section.body.trim();
+    if (!title && !body) continue;
+    parts.push(body ? `${title}\n${body}` : title);
+  }
+  return parts.join("\n\n");
+}
+
 export const SITE_DOCUMENT_TITLES: Record<SiteDocumentId, string> = {
   "privacy-policy": "プライバシーポリシー",
   "terms-of-service": "利用規約",

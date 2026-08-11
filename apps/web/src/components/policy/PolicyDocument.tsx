@@ -1,11 +1,22 @@
 import Link from "next/link";
+import { splitSiteDocument } from "../../lib/site-documents";
 
 /**
  * 規約・ポリシー本文のプレーンテキストを整形して表示する。
  * 書式は lib/site-documents.ts の冒頭コメント参照（見出し・箇条書きの規則）。
  * サーバー/クライアント両方から使う（運営画面のプレビューでも利用）。
+ *
+ * variant:
+ * - 'document': テキスト全体をそのまま描画（ブロック先頭の「N. 」「第N条」を見出し扱い）
+ * - 'section-body': 条文カードの本文用。「N. 」で始まる行は条内の号として描画し、見出しにしない
  */
-export function PolicyDocumentBody({ content }: { content: string }) {
+export function PolicyDocumentBody({
+  content,
+  variant = "document",
+}: {
+  content: string;
+  variant?: "document" | "section-body";
+}) {
   const cleanedDoc = content
     .split("\n")
     .map((line) => {
@@ -22,6 +33,25 @@ export function PolicyDocumentBody({ content }: { content: string }) {
     .map((b) => b.trim())
     .filter(Boolean);
 
+  const renderLine = (line: string, key: string) => {
+    const isNumberedPoint = /^\d+\.\s/.test(line);
+    const isBulletPoint = line.startsWith("・");
+    return (
+      <p
+        key={key}
+        className={
+          isNumberedPoint
+            ? "pl-6 font-medium text-sm sm:text-[15px] leading-7"
+            : isBulletPoint
+              ? "pl-4 text-sm sm:text-[15px] leading-7"
+              : "text-sm sm:text-[15px] leading-7"
+        }
+      >
+        {line}
+      </p>
+    );
+  };
+
   return (
     <div className="space-y-5 text-sm sm:text-[15px] leading-7">
       {blocks.map((block, blockIndex) => {
@@ -31,7 +61,7 @@ export function PolicyDocumentBody({ content }: { content: string }) {
           .filter(Boolean);
         const first = lines[0] || "";
         const headingType =
-          /^\d+\.\s/.test(first) || /^第\d+条/.test(first)
+          variant === "document" && (/^\d+\.\s/.test(first) || /^第\d+条/.test(first))
             ? "h2"
             : /^\(\d+\)\s/.test(first)
               ? "h3"
@@ -45,31 +75,44 @@ export function PolicyDocumentBody({ content }: { content: string }) {
             {headingType === "h3" && (
               <h3 className="text-base sm:text-lg font-semibold leading-snug mt-2">{first}</h3>
             )}
-            {headingType === "none" && (
-              <p className="text-sm sm:text-[15px] leading-7">{first}</p>
-            )}
+            {headingType === "none" && renderLine(first, `${blockIndex}-first`)}
 
-            {lines.slice(1).map((line, i) => {
-              const isNumberedPoint = /^\d+\.\s/.test(line);
-              const isBulletPoint = line.startsWith("・");
-              return (
-                <p
-                  key={`${blockIndex}-${i}`}
-                  className={
-                    isNumberedPoint
-                      ? "pl-6 font-medium text-sm sm:text-[15px] leading-7"
-                      : isBulletPoint
-                        ? "pl-4 text-sm sm:text-[15px] leading-7"
-                        : "text-sm sm:text-[15px] leading-7"
-                  }
-                >
-                  {line}
-                </p>
-              );
-            })}
+            {lines.slice(1).map((line, i) => renderLine(line, `${blockIndex}-${i}`))}
           </section>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * 文書を前文 + 条文カードに区切って描画する（公開ページと運営画面プレビューで共用）。
+ * 条文ごとにカードで区切ることで長文でも読みやすくする
+ */
+export function PolicyArticles({ content }: { content: string }) {
+  const { preamble, sections } = splitSiteDocument(content);
+  return (
+    <div className="space-y-4">
+      {preamble && (
+        <div className="px-1">
+          <PolicyDocumentBody content={preamble} variant="section-body" />
+        </div>
+      )}
+      {sections.map((section, index) => (
+        <section
+          key={index}
+          className="rounded-xl border border-[rgba(61,61,78,0.12)] bg-white/70 p-5 sm:p-6"
+        >
+          <h2 className="text-base sm:text-lg font-bold leading-snug text-[#3D3D4E]">
+            {section.title}
+          </h2>
+          {section.body && (
+            <div className="mt-3">
+              <PolicyDocumentBody content={section.body} variant="section-body" />
+            </div>
+          )}
+        </section>
+      ))}
     </div>
   );
 }
@@ -107,7 +150,7 @@ export function PolicyPage({
           </p>
         )}
         {!updatedAt && <div className="mb-6" />}
-        <PolicyDocumentBody content={content} />
+        <PolicyArticles content={content} />
       </main>
     </div>
   );

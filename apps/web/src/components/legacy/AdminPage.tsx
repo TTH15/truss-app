@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Users, Calendar, FileText, MessageCircle, LogOut, Image, Bell, Home } from 'lucide-react';
+import { Users, Calendar, FileText, MessageCircle, LogOut, Image, Home, Settings } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { PushNotificationSetting } from './PushNotificationSetting';
-import { AdminSiteDocuments } from './AdminSiteDocuments';
+import { AdminSettings } from './AdminSettings';
 import { SITE_DOCUMENT_TITLES, type SiteDocumentId } from '../../lib/site-documents';
 import { isSystemUser } from '@truss/core';
 import { AdminMembersManagement } from './AdminMembersManagement';
@@ -64,7 +62,7 @@ interface AdminPageProps {
   onSwitchToMemberView?: () => void;
 }
 
-type AdminTab = 'members' | 'events' | 'gallery' | 'boards' | 'chat';
+type AdminTab = 'members' | 'events' | 'gallery' | 'boards' | 'chat' | 'settings';
 
 const translations = {
   ja: {
@@ -74,6 +72,7 @@ const translations = {
     gallery: 'ギャラリー',
     boards: '掲示板',
     chat: 'チャット',
+    settings: '設定',
     logout: 'ログアウト',
     adminPanel: '運営管理画面',
   },
@@ -84,6 +83,7 @@ const translations = {
     gallery: 'Gallery',
     boards: 'Boards',
     chat: 'Chat',
+    settings: 'Settings',
     logout: 'Logout',
     adminPanel: 'Admin Panel',
   }
@@ -99,7 +99,7 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
     try {
       const saved = localStorage.getItem(ADMIN_TAB_STORAGE_KEY) as AdminTab | null;
       if (!saved) return;
-      const validTabs: AdminTab[] = ['members', 'events', 'gallery', 'boards', 'chat'];
+      const validTabs: AdminTab[] = ['members', 'events', 'gallery', 'boards', 'chat', 'settings'];
       if (validTabs.includes(saved)) setCurrentTab(saved);
     } catch {
       // ignore storage errors
@@ -157,48 +157,6 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
                     <Home className="w-5 h-5" />
                   </Button>
                 )}
-                {/* 運営向けプッシュ通知（入会申請・会員からのメッセージ）の購読設定。
-                    会員はプロフィール画面から購読するが、運営はこの画面しか使わないためここに置く */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-[#F5F1E8] hover:bg-[#2D2D3D]"
-                      title={language === 'ja' ? '通知設定' : 'Notification settings'}
-                    >
-                      <Bell className="w-5 h-5" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-80 p-0 border-0 shadow-xl">
-                    <PushNotificationSetting user={user} language={language} variant="admin" />
-                  </PopoverContent>
-                </Popover>
-                {/* 利用規約・プライバシーポリシーの閲覧・改定（連絡先メール等は年度ごとに変わるため運営画面から直す） */}
-                <AdminSiteDocuments
-                  language={language}
-                  user={user}
-                  onAnnounce={
-                    onSendBulkEmail
-                      ? async (docId: SiteDocumentId) => {
-                          const title = SITE_DOCUMENT_TITLES[docId];
-                          const titleEn = docId === 'terms-of-service' ? 'Terms of Service' : 'Privacy Policy';
-                          const url = `${window.location.origin}/${docId}`;
-                          const memberIds = approvedMembers.filter((m) => !isSystemUser(m)).map((m) => m.id);
-                          onSendBulkEmail(
-                            memberIds,
-                            `${title}改定のお知らせ`,
-                            `Notice: ${titleEn} has been updated`,
-                            `${title}を改定しました。最新の内容は次のページからご確認ください。\n${url}`,
-                            `We have updated our ${titleEn}. Please review the latest version here:\n${url}`,
-                            true,
-                            false,
-                            'announcement',
-                          );
-                        }
-                      : undefined
-                  }
-                />
                 <Button variant="ghost" onClick={onLogout} className="text-[#F5F1E8] hover:bg-[#2D2D3D]">
                   <LogOut className="w-4 h-4 mr-2" />
                   {t.logout}
@@ -234,6 +192,10 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
               {t.chat}
               {totalUnreadCount > 0 && <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{totalUnreadCount}</span>}
             </Button>
+            <Button variant={currentTab === 'settings' ? 'default' : 'ghost'} className={`w-full justify-start ${currentTab === 'settings' ? 'bg-[#3D3D4E] text-white hover:bg-[#2D2D3D] text-white' : ''}`} onClick={() => setCurrentTab('settings')}>
+              <Settings className="w-5 h-5 mr-3" />
+              {t.settings}
+            </Button>
           </nav>
         </aside>
 
@@ -243,6 +205,32 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
           {currentTab === 'gallery' && <AdminGallery language={language} />}
           {currentTab === 'boards' && <AdminBoards language={language} adminUserId={user.id} adminName={user.name} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onDeleteBoardPost={onDeleteBoardPost} onTogglePinBoardPost={onTogglePinBoardPost} onReorderPinnedBoardPosts={onReorderPinnedBoardPosts} />}
           {currentTab === 'chat' && <AdminChat language={language} adminUserId={user.id} messageThreads={messageThreads} onUpdateMessageThreads={onUpdateMessageThreads} onSendMessage={onSendMessage} onMarkMemberMessagesAsRead={onMarkMemberMessagesAsRead} onUploadChatAttachment={onUploadChatAttachment} onSendBulkMessages={onSendBulkMessages} onCancelBroadcast={onCancelBroadcast} approvedMembers={approvedMembers} pendingUsers={pendingUsers} chatThreadMetadata={chatThreadMetadata} onUpdateChatThreadMetadata={onUpdateChatThreadMetadata} selectedChatUserId={selectedChatUserId} onOpenMemberChat={onOpenMemberChat} onOpenEventDetail={setFocusEventId} />}
+          {currentTab === 'settings' && (
+            <AdminSettings
+              language={language}
+              user={user}
+              onAnnounce={
+                onSendBulkEmail
+                  ? async (docId: SiteDocumentId) => {
+                      const title = SITE_DOCUMENT_TITLES[docId];
+                      const titleEn = docId === 'terms-of-service' ? 'Terms of Service' : 'Privacy Policy';
+                      const url = `${window.location.origin}/${docId}`;
+                      const memberIds = approvedMembers.filter((m) => !isSystemUser(m)).map((m) => m.id);
+                      onSendBulkEmail(
+                        memberIds,
+                        `${title}改定のお知らせ`,
+                        `Notice: ${titleEn} has been updated`,
+                        `${title}を改定しました。最新の内容は次のページからご確認ください。\n${url}`,
+                        `We have updated our ${titleEn}. Please review the latest version here:\n${url}`,
+                        true,
+                        false,
+                        'announcement',
+                      );
+                    }
+                  : undefined
+              }
+            />
+          )}
         </main>
       </div>
 
@@ -273,6 +261,10 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
               {totalUnreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{totalUnreadCount}</span>}
             </div>
             <span className="text-xs mt-1">{t.chat}</span>
+          </button>
+          <button onClick={() => setCurrentTab('settings')} className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${currentTab === 'settings' ? 'text-[#3D3D4E]' : 'text-[#B8B8C8]'}`}>
+            <Settings className="w-6 h-6" />
+            <span className="text-xs mt-1">{t.settings}</span>
           </button>
         </div>
       </nav>
