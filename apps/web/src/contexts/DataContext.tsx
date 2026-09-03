@@ -106,7 +106,7 @@ interface DataContextType {
   /** 役職の変更。失敗理由を画面で案内できるよう、握りつぶさずに DbError を返す */
   setUserRole: (userId: string, role: UserRole) => Promise<{ error: DbError | null }>;
   /** 代表・副代表の引き継ぎ（前任の降格 + 後任の昇格を1トランザクションで実行） */
-  transferRole: (successorId: string, role: 'president' | 'vice_president', predecessorNewRole: 'member' | 'officer') => Promise<{ error: DbError | null }>;
+  transferRole: (successorId: string, role: 'president' | 'vice_president', predecessorNewRole: 'member' | 'officer', notice?: string | null) => Promise<{ error: DbError | null }>;
   resetMembershipForNewYear: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   sendMessage: (
@@ -650,8 +650,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     successorId: string,
     role: 'president' | 'vice_president',
     predecessorNewRole: 'member' | 'officer',
+    notice?: string | null,
   ) => {
-    const { error } = await transferRoleRpc(successorId, role, predecessorNewRole);
+    const { error } = await transferRoleRpc(successorId, role, predecessorNewRole, notice);
     if (error) {
       console.error('Error transferring role:', { message: error.message, code: error.code, details: error.details, hint: error.hint });
       return { error };

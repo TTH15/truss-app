@@ -17,7 +17,10 @@
 --       → **現職が自分で後任へ引き継いだときの自滅**（032 のガードが、直前の自己降格で
 --         FALSE になった自分の is_admin を読んで弾く）。migration 046 で修正済み。
 --         セクション6で 046 の適用状況を確認する
---   - `Only admins can transfer roles (P0001)` → セクション4
+--   - `Only the current holder can transfer this role (P0001)`
+--       → 仕様どおり（047）。引き継ぎはその役職の現職本人しか実行できない。
+--         現職のアカウントで操作してもらう
+--   - `Only admins can transfer roles (P0001)` → セクション4（047 適用後は出ない）
 --   - `duplicate key ... uniq_users_single_president (23505)` → セクション2・3
 --   - `Could not find the function ... (PGRST202)` → セクション1
 
@@ -129,3 +132,13 @@ SELECT
 FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public' AND p.proname = 'enforce_role_change_by_admin';
+
+-- ---------------------------------------------
+-- 7. 047（現職本人のみ + 後任への通知）が適用されているか
+-- ---------------------------------------------
+SELECT
+  '7. migration 047' AS section,
+  CASE WHEN prosrc LIKE '%Only the current holder%' THEN 'OK' ELSE 'MISSING -> 047 を適用する' END AS status
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public' AND p.proname = 'transfer_role';

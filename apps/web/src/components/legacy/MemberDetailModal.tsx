@@ -51,12 +51,18 @@ const HISTORY_ROLES: UserRole[] = ['officer', 'vice_president', 'president', 'ad
 const translations = {
   ja: { applicationDate: '申請日', nickname: 'ニックネーム', id: 'ID', email: 'メールアドレス', phone: '電話番号', studentNumber: '学生番号', major: '学部学科', category: '区分', grade: '学年', birthCountry: '生まれた国', languages: '話せる言語', approve: '承認する', reject: '拒否する', delete: '削除', confirmDelete: '本当にこのメンバーを削除しますか？', confirmDeleteMessage: 'この操作は取り消せません。', cancel: 'キャンセル', japanese: '日本人学生・国内学生', regularInternational: '正規留学生', exchange: '交換留学生', feeStatus: '会費状況', feePaid: '支払い済み', feeUnpaid: '未払い', confirmFeePayment: '支払い確認', renewal: '継続会員', newMember: '新規会員', renewalFee: '¥2,000（年会費のみ）', newMemberFee: '¥2,500（入会金+年会費）', membershipYear: '会員年度', confirmAsRenewal: '継続として確認（¥2,000）', confirmAsNew: '新規として確認（¥2,500）', setAsRenewal: '継続会員に設定', setAsNew: '新規会員に設定', memberTypeHint: '※3/31までに登録完了した会員は「継続」扱い', adminFlag: '運営権限', adminFlagOn: '運営権限あり', adminFlagOff: '運営権限なし', adminFlagHint: '運営権限は役職に連動します。「部員」「非会員」以外の役職にすると、運営画面へのアクセス・会員の承認・通知の送信ができるようになります', roleSelfHint: '自分の役職は変更できません（誤って自分の運営権限を外してしまうのを防ぐため）', roleSeHint: 'SE はシステム管理用の役職です。ここからは変更できません', role: '役職', roleHint: '役職はプロフィールや名簿にバッジとして表示されます。「非会員／部員」は年会費の支払い状況に連動して自動で切り替わります。部員・非会員以外の役職には運営権限が付きます',
     transferTitle: '役職の引き継ぎ', transferMessage: (roleLabel: string, holderName: string, successorName: string) => `${roleLabel}は現在 ${holderName} さんです。${successorName} さんに引き継ぎますか？`, predecessorNewRole: '前任の引き継ぎ後の役職', transferConfirm: '引き継ぐ', transferring: '引き継ぎ中...', transferDone: '役職を引き継ぎました', transferFailed: '引き継ぎに失敗しました',
-    transferSelfWarning: 'この引き継ぎであなた自身が前任として「部員」に降格し、運営画面に入れなくなります。運営権限を残すなら下の「前任の引き継ぎ後の役職」で「役職者」を選んでください',
+    transferSelfWarning: 'この引き継ぎであなた自身が「部員」に降格し、運営画面に入れなくなります。運営権限を残すなら下の「前任の引き継ぎ後の役職」で「役職者」を選んでください',
+    transferNotHolderTitle: '引き継ぎを実行できません',
+    transferNotHolder: (roleLabel: string, holderName: string) => `${roleLabel}の引き継ぎは、現職の${roleLabel}である ${holderName} さん本人のアカウントからのみ行えます`,
+    transferNotice: (roleLabelJa: string, roleLabelEn: string, predecessorName: string) =>
+      `${predecessorName} さんから${roleLabelJa}を引き継ぎました。本日より${roleLabelJa}としてよろしくお願いします。\n\n` +
+      `The ${roleLabelEn} role has been handed over to you by ${predecessorName}. Thank you for taking it on.`,
     transferSelfDone: 'あなたは部員になったため、運営権限がなくなりました。次に画面を開き直すと運営画面には入れません',
     roleChangeDone: '役職を変更しました', roleChangeFailed: '役職の変更に失敗しました',
     failure: {
       notSignedIn: 'ログインの有効期限が切れています。一度ログアウトして、運営アカウントでログインし直してください',
       notAdmin: '運営権限として認識されていません。運営アカウントでログインし直しても直らない場合は開発者に連絡してください',
+      notRoleHolder: 'この役職の引き継ぎは、現職本人のアカウントからのみ行えます',
       forbidden: 'データベース側で操作が拒否されました（権限設定の問題）。開発者に連絡してください',
       functionMissing: 'サーバー側の引き継ぎ機能が見つかりません（DBマイグレーション未適用の可能性）。開発者に連絡してください',
       duplicateHolder: (roleLabel: string) => `${roleLabel}が他にも残っているため引き継げませんでした。先に他の${roleLabel}を別の役職に変更してから、もう一度お試しください`,
@@ -69,11 +75,17 @@ const translations = {
   en: { applicationDate: 'Application Date', nickname: 'Nickname', id: 'ID', email: 'Email', phone: 'Phone Number', studentNumber: 'Student Number', major: 'Major', category: 'Category', grade: 'Grade', birthCountry: 'Birth Country', languages: 'Languages', approve: 'Approve', reject: 'Reject', delete: 'Delete', confirmDelete: 'Are you sure you want to delete this member?', confirmDeleteMessage: 'This action cannot be undone.', cancel: 'Cancel', japanese: 'Japanese Student', regularInternational: 'Regular International', exchange: 'Exchange Student', feeStatus: 'Fee Status', feePaid: 'Paid', feeUnpaid: 'Unpaid', confirmFeePayment: 'Confirm Payment', renewal: 'Renewal', newMember: 'New Member', renewalFee: '¥2,000 (Annual fee only)', newMemberFee: '¥2,500 (Entry + Annual)', membershipYear: 'Membership Year', confirmAsRenewal: 'Confirm as Renewal (¥2,000)', confirmAsNew: 'Confirm as New (¥2,500)', setAsRenewal: 'Set as Renewal', setAsNew: 'Set as New Member', memberTypeHint: '* Members registered by 3/31 are treated as "Renewal"', adminFlag: 'Admin access', adminFlagOn: 'Has admin access', adminFlagOff: 'No admin access', adminFlagHint: 'Admin access follows the role. Any role other than Member / Non-member grants access to the admin panel, member approval, and notifications.', roleSelfHint: 'You cannot change your own role (prevents accidentally removing your own admin access).', roleSeHint: 'SE is a system-administration role and cannot be changed here.', role: 'Role', roleHint: 'Shown as a badge on profiles and the member list. Non-member and Member follow the annual fee status automatically. Roles above Member also grant admin access',
     transferTitle: 'Transfer Role', transferMessage: (roleLabel: string, holderName: string, successorName: string) => `${holderName} currently holds the ${roleLabel} role. Transfer it to ${successorName}?`, predecessorNewRole: "Predecessor's new role", transferConfirm: 'Transfer', transferring: 'Transferring...', transferDone: 'Role transferred', transferFailed: 'Failed to transfer role',
     transferSelfWarning: 'This transfer demotes you to Member and you will lose access to the admin panel. To keep admin access, pick Officer under "Predecessor\'s new role" below.',
+    transferNotHolderTitle: 'Cannot start the transfer',
+    transferNotHolder: (roleLabel: string, holderName: string) => `Only ${holderName}, the current ${roleLabel}, can hand over the ${roleLabel} role.`,
+    transferNotice: (roleLabelJa: string, roleLabelEn: string, predecessorName: string) =>
+      `${predecessorName} さんから${roleLabelJa}を引き継ぎました。本日より${roleLabelJa}としてよろしくお願いします。\n\n` +
+      `The ${roleLabelEn} role has been handed over to you by ${predecessorName}. Thank you for taking it on.`,
     transferSelfDone: 'You are now a Member, so your admin access has been removed. You will not be able to open the admin panel after reloading.',
     roleChangeDone: 'Role updated', roleChangeFailed: 'Failed to update role',
     failure: {
       notSignedIn: 'Your session has expired. Sign out and sign in again with an admin account.',
       notAdmin: 'You are not recognized as an admin. If signing in again does not help, contact the developer.',
+      notRoleHolder: 'Only the person currently holding this role can hand it over.',
       forbidden: 'The database rejected the operation (permission settings). Contact the developer.',
       functionMissing: 'The server-side transfer function was not found (database migration may not be applied). Contact the developer.',
       duplicateHolder: (roleLabel: string) => `Another ${roleLabel} still exists, so the transfer could not complete. Change the other ${roleLabel} to a different role first, then try again.`,
@@ -100,6 +112,7 @@ function describeRoleFailure(error: DbError | Error, roleLabel: string, t: Trans
   const explanation =
     reason === 'not-signed-in' ? f.notSignedIn
     : reason === 'not-admin' ? f.notAdmin
+    : reason === 'not-role-holder' ? f.notRoleHolder
     : reason === 'forbidden' ? f.forbidden
     : reason === 'function-missing' ? f.functionMissing
     : reason === 'duplicate-holder' ? f.duplicateHolder(roleLabel)
@@ -117,7 +130,7 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
   const currentAdminId = currentAdmin?.id;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   // 引き継ぎ確認（1人制約のある役職を、現在の保持者がいる状態で選んだとき）
-  const [pendingTransfer, setPendingTransfer] = useState<{ role: TransferableRole; holderId: string; holderName: string } | null>(null);
+  const [pendingTransfer, setPendingTransfer] = useState<{ role: TransferableRole; holderName: string } | null>(null);
   const [predecessorNewRole, setPredecessorNewRole] = useState<'member' | 'officer'>('member');
   const [transferring, setTransferring] = useState(false);
   const [roleSaving, setRoleSaving] = useState(false);
@@ -163,8 +176,15 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
     if ((TRANSFERABLE_ROLES as readonly string[]).includes(value)) {
       const holder = approvedMembers.find((m) => m.role === value && m.id !== user.id);
       if (holder) {
+        const roleLabel = USER_ROLE_LABELS[value][language];
+        // 引き継げるのは現職本人だけ（migration 047）。DB でも弾かれるが、
+        // 押してから断られないよう、確認ダイアログを開く前に伝える
+        if (holder.id !== currentAdminId) {
+          toast.error(t.transferNotHolderTitle, { description: t.transferNotHolder(roleLabel, holder.name), ...FAILURE_TOAST_OPTIONS });
+          return;
+        }
         setPredecessorNewRole('member');
-        setPendingTransfer({ role: value as TransferableRole, holderId: holder.id, holderName: holder.name });
+        setPendingTransfer({ role: value as TransferableRole, holderName: holder.name });
         return;
       }
     }
@@ -184,7 +204,14 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
     if (!pendingTransfer) return;
     const roleLabel = USER_ROLE_LABELS[pendingTransfer.role][language];
     setTransferring(true);
-    const { error } = await transferRole(user.id, pendingTransfer.role, predecessorNewRole);
+    // 後任への通知文はここで作って DB へ渡す。前任は降格直後に運営権限を失うことがあり、
+    // その状態ではクライアントから messages を書けないため（migration 047）
+    const notice = t.transferNotice(
+      USER_ROLE_LABELS[pendingTransfer.role].ja,
+      USER_ROLE_LABELS[pendingTransfer.role].en,
+      pendingTransfer.holderName,
+    );
+    const { error } = await transferRole(user.id, pendingTransfer.role, predecessorNewRole, notice);
     setTransferring(false);
     if (error) {
       // 失敗の理由（権限切れ／保持者が複数／未適用のマイグレーション等）まで出す。
@@ -192,8 +219,7 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
       toast.error(t.transferFailed, { description: describeRoleFailure(error, roleLabel, t), ...FAILURE_TOAST_OPTIONS });
       return;
     }
-    const losesOwnAdmin = pendingTransfer.holderId === currentAdminId && predecessorNewRole === 'member';
-    toast.success(t.transferDone, losesOwnAdmin ? { description: t.transferSelfDone, duration: 12000 } : undefined);
+    toast.success(t.transferDone, predecessorNewRole === 'member' ? { description: t.transferSelfDone, duration: 12000 } : undefined);
     onRoleTransferred?.(pendingTransfer.role);
     setPendingTransfer(null);
     // 引き継ぎで履歴も動くので取り直す
@@ -454,9 +480,9 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
                   <p className="text-[#3D3D4E] text-sm tracking-[-0.1504px] leading-relaxed">
                     {t.transferMessage(USER_ROLE_LABELS[pendingTransfer.role][language], pendingTransfer.holderName, user.name)}
                   </p>
-                  {/* 前任が自分自身で、かつ部員に降りる場合は運営権限を失う。
-                      「役職者」を選べば運営権限は残るので、実行前にそこまで伝える */}
-                  {pendingTransfer.holderId === currentAdminId && predecessorNewRole === 'member' && (
+                  {/* 前任は常に操作者本人（047）。部員に降りると運営権限を失うので、
+                      「役職者」を選べば残ることまで実行前に伝える */}
+                  {predecessorNewRole === 'member' && (
                     <p className="text-xs text-amber-700 leading-relaxed">{t.transferSelfWarning}</p>
                   )}
                 </div>

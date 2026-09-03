@@ -49,6 +49,8 @@ export type RoleChangeFailureReason =
   | "not-signed-in"
   /** ログインはしているが運営権限として認識されていない */
   | "not-admin"
+  /** その役職の現職本人ではない（引き継ぎは現職しか実行できない。migration 047） */
+  | "not-role-holder"
   /** RLS などで DB 側から拒否された */
   | "forbidden"
   /** transfer_role が DB に無い（マイグレーション未適用） */
@@ -98,6 +100,7 @@ export function classifyRoleChangeError(error: DbError | Error): RoleChangeFailu
   }
 
   // RAISE EXCEPTION は SQLSTATE P0001 で来るため、本文で見分ける
+  if (text.includes("only the current holder")) return "not-role-holder";
   if (text.includes("only admins")) return "not-admin";
   if (text.includes("jwt") && (text.includes("expired") || text.includes("invalid"))) return "not-signed-in";
   if (text.includes("could not find the function")) return "function-missing";

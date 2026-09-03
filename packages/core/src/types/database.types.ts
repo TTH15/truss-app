@@ -572,7 +572,13 @@ export interface Database {
         Returns: void;
       };
       transfer_role: {
-        Args: { p_successor: string; p_role: string; p_predecessor_new_role: string };
+        Args: {
+          p_successor: string;
+          p_role: string;
+          p_predecessor_new_role: string;
+          /** 後任へ送る運営名義メッセージ（migration 047）。null なら送らない */
+          p_notice: string | null;
+        };
         Returns: void;
       };
       decrement_participants: {
