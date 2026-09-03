@@ -51,7 +51,8 @@ const HISTORY_ROLES: UserRole[] = ['officer', 'vice_president', 'president', 'ad
 const translations = {
   ja: { applicationDate: '申請日', nickname: 'ニックネーム', id: 'ID', email: 'メールアドレス', phone: '電話番号', studentNumber: '学生番号', major: '学部学科', category: '区分', grade: '学年', birthCountry: '生まれた国', languages: '話せる言語', approve: '承認する', reject: '拒否する', delete: '削除', confirmDelete: '本当にこのメンバーを削除しますか？', confirmDeleteMessage: 'この操作は取り消せません。', cancel: 'キャンセル', japanese: '日本人学生・国内学生', regularInternational: '正規留学生', exchange: '交換留学生', feeStatus: '会費状況', feePaid: '支払い済み', feeUnpaid: '未払い', confirmFeePayment: '支払い確認', renewal: '継続会員', newMember: '新規会員', renewalFee: '¥2,000（年会費のみ）', newMemberFee: '¥2,500（入会金+年会費）', membershipYear: '会員年度', confirmAsRenewal: '継続として確認（¥2,000）', confirmAsNew: '新規として確認（¥2,500）', setAsRenewal: '継続会員に設定', setAsNew: '新規会員に設定', memberTypeHint: '※3/31までに登録完了した会員は「継続」扱い', adminFlag: '運営権限', adminFlagOn: '運営権限あり', adminFlagOff: '運営権限なし', adminFlagHint: '運営権限は役職に連動します。「部員」「非会員」以外の役職にすると、運営画面へのアクセス・会員の承認・通知の送信ができるようになります', roleSelfHint: '自分の役職は変更できません（誤って自分の運営権限を外してしまうのを防ぐため）', roleSeHint: 'SE はシステム管理用の役職です。ここからは変更できません', role: '役職', roleHint: '役職はプロフィールや名簿にバッジとして表示されます。「非会員／部員」は年会費の支払い状況に連動して自動で切り替わります。部員・非会員以外の役職には運営権限が付きます',
     transferTitle: '役職の引き継ぎ', transferMessage: (roleLabel: string, holderName: string, successorName: string) => `${roleLabel}は現在 ${holderName} さんです。${successorName} さんに引き継ぎますか？`, predecessorNewRole: '前任の引き継ぎ後の役職', transferConfirm: '引き継ぐ', transferring: '引き継ぎ中...', transferDone: '役職を引き継ぎました', transferFailed: '引き継ぎに失敗しました',
-    transferSelfWarning: 'この引き継ぎであなた自身が前任として降格し、運営画面に入れなくなります。別の運営メンバーがいることを確認してから実行してください',
+    transferSelfWarning: 'この引き継ぎであなた自身が前任として「部員」に降格し、運営画面に入れなくなります。運営権限を残すなら下の「前任の引き継ぎ後の役職」で「役職者」を選んでください',
+    transferSelfDone: 'あなたは部員になったため、運営権限がなくなりました。次に画面を開き直すと運営画面には入れません',
     roleChangeDone: '役職を変更しました', roleChangeFailed: '役職の変更に失敗しました',
     failure: {
       notSignedIn: 'ログインの有効期限が切れています。一度ログアウトして、運営アカウントでログインし直してください',
@@ -67,7 +68,8 @@ const translations = {
     roleHistory: '役職履歴', roleHistoryEmpty: '記録はまだありません', roleHistoryCurrent: '在任中', roleHistoryAuto: '自動記録', addHistory: '過去の役職を記録', historyRole: '役職', historyStart: '開始日', historyEnd: '終了日（任意）', historyNote: 'メモ（任意）', historyNotePlaceholder: '2024年度 など', historyAdd: '登録する', historyAdded: '役職履歴を登録しました', historyAddFailed: '登録に失敗しました', historyNeedsFields: '役職と開始日を入力してください', historyDeleted: '履歴を削除しました', historyDeleteFailed: '履歴の削除に失敗しました' },
   en: { applicationDate: 'Application Date', nickname: 'Nickname', id: 'ID', email: 'Email', phone: 'Phone Number', studentNumber: 'Student Number', major: 'Major', category: 'Category', grade: 'Grade', birthCountry: 'Birth Country', languages: 'Languages', approve: 'Approve', reject: 'Reject', delete: 'Delete', confirmDelete: 'Are you sure you want to delete this member?', confirmDeleteMessage: 'This action cannot be undone.', cancel: 'Cancel', japanese: 'Japanese Student', regularInternational: 'Regular International', exchange: 'Exchange Student', feeStatus: 'Fee Status', feePaid: 'Paid', feeUnpaid: 'Unpaid', confirmFeePayment: 'Confirm Payment', renewal: 'Renewal', newMember: 'New Member', renewalFee: '¥2,000 (Annual fee only)', newMemberFee: '¥2,500 (Entry + Annual)', membershipYear: 'Membership Year', confirmAsRenewal: 'Confirm as Renewal (¥2,000)', confirmAsNew: 'Confirm as New (¥2,500)', setAsRenewal: 'Set as Renewal', setAsNew: 'Set as New Member', memberTypeHint: '* Members registered by 3/31 are treated as "Renewal"', adminFlag: 'Admin access', adminFlagOn: 'Has admin access', adminFlagOff: 'No admin access', adminFlagHint: 'Admin access follows the role. Any role other than Member / Non-member grants access to the admin panel, member approval, and notifications.', roleSelfHint: 'You cannot change your own role (prevents accidentally removing your own admin access).', roleSeHint: 'SE is a system-administration role and cannot be changed here.', role: 'Role', roleHint: 'Shown as a badge on profiles and the member list. Non-member and Member follow the annual fee status automatically. Roles above Member also grant admin access',
     transferTitle: 'Transfer Role', transferMessage: (roleLabel: string, holderName: string, successorName: string) => `${holderName} currently holds the ${roleLabel} role. Transfer it to ${successorName}?`, predecessorNewRole: "Predecessor's new role", transferConfirm: 'Transfer', transferring: 'Transferring...', transferDone: 'Role transferred', transferFailed: 'Failed to transfer role',
-    transferSelfWarning: 'This transfer demotes you as the predecessor and you will lose access to the admin panel. Make sure another admin remains before continuing.',
+    transferSelfWarning: 'This transfer demotes you to Member and you will lose access to the admin panel. To keep admin access, pick Officer under "Predecessor\'s new role" below.',
+    transferSelfDone: 'You are now a Member, so your admin access has been removed. You will not be able to open the admin panel after reloading.',
     roleChangeDone: 'Role updated', roleChangeFailed: 'Failed to update role',
     failure: {
       notSignedIn: 'Your session has expired. Sign out and sign in again with an admin account.',
@@ -190,7 +192,8 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
       toast.error(t.transferFailed, { description: describeRoleFailure(error, roleLabel, t), ...FAILURE_TOAST_OPTIONS });
       return;
     }
-    toast.success(t.transferDone);
+    const losesOwnAdmin = pendingTransfer.holderId === currentAdminId && predecessorNewRole === 'member';
+    toast.success(t.transferDone, losesOwnAdmin ? { description: t.transferSelfDone, duration: 12000 } : undefined);
     onRoleTransferred?.(pendingTransfer.role);
     setPendingTransfer(null);
     // 引き継ぎで履歴も動くので取り直す
@@ -433,63 +436,67 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
           )}
           </div>
         </div>
-
-        {pendingTransfer && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => { e.stopPropagation(); if (!transferring) setPendingTransfer(null); }}>
-            <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[420px] shadow-xl border border-[rgba(61,61,78,0.15)] relative m-4" onClick={(e) => e.stopPropagation()}>
-              <div className="p-6 border-b border-[rgba(61,61,78,0.15)]">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <h2 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px] flex items-center gap-2">
-                      <ArrowLeftRight className="w-5 h-5" />
-                      {t.transferTitle}
-                    </h2>
-                    <p className="text-[#3D3D4E] text-sm tracking-[-0.1504px] leading-relaxed">
-                      {t.transferMessage(USER_ROLE_LABELS[pendingTransfer.role][language], pendingTransfer.holderName, user.name)}
-                    </p>
-                    {/* 前任が自分自身なら、実行した瞬間に運営画面へ入れなくなる。実行前に伝える */}
-                    {pendingTransfer.holderId === currentAdminId && (
-                      <p className="text-xs text-amber-700 leading-relaxed">{t.transferSelfWarning}</p>
-                    )}
-                  </div>
-                  <button onClick={() => { if (!transferring) setPendingTransfer(null); }} className="text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"><X className="w-4 h-4" /></button>
-                </div>
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="space-y-1.5">
-                  <p className="text-sm font-medium text-[#3D3D4E]">{t.predecessorNewRole}</p>
-                  <Select value={predecessorNewRole} onValueChange={(value) => setPredecessorNewRole(value as 'member' | 'officer')}>
-                    <SelectTrigger className="w-full bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="member">{USER_ROLE_LABELS.member[language]}</SelectItem>
-                      <SelectItem value="officer">{USER_ROLE_LABELS.officer[language]}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1 h-9" disabled={transferring} onClick={() => setPendingTransfer(null)}>
-                    {t.cancel}
-                  </Button>
-                  <Button className="flex-1 bg-[#49B1E4] hover:bg-[#3A9FD3] text-white h-9" disabled={transferring} onClick={() => void executeTransfer()}>
-                    {transferring ? t.transferring : t.transferConfirm}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showDeleteConfirm && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(false); }}>
-            <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[400px] shadow-xl border border-[rgba(61,61,78,0.15)] relative max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-              <div className="p-6 border-b border-[rgba(61,61,78,0.15)]"><div className="flex items-start justify-between"><div className="space-y-2"><h2 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">{t.confirmDelete}</h2><p className="text-[#6B6B7A] text-sm tracking-[-0.1504px]">{t.confirmDeleteMessage}</p></div><button onClick={() => setShowDeleteConfirm(false)} className="text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"><X className="w-4 h-4" /></button></div></div>
-              <div className="p-6"><div className="flex gap-2 mt-8"><Button onClick={() => { onDelete?.(); setShowDeleteConfirm(false); onClose(); }} className="w-full bg-[#D4183D] hover:bg-[#B01432] text-white h-9 flex items-center justify-center gap-2"><Trash2 className="w-4 h-4" /><span className="font-medium text-sm tracking-[-0.1504px]">{t.delete}</span></Button></div></div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* 確認ダイアログは fixed で画面全体を覆う。
+          スクロールするモーダルの内側に absolute で置くと、覆えるのが1画面分だけになり
+          下の項目が暗転せず、親モーダルの縁も透けて枠が二重に見えていた */}
+      {pendingTransfer && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={(e) => { e.stopPropagation(); if (!transferring) setPendingTransfer(null); }}>
+          <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[420px] shadow-xl border border-[rgba(61,61,78,0.15)] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-[rgba(61,61,78,0.15)]">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <h2 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px] flex items-center gap-2">
+                    <ArrowLeftRight className="w-5 h-5" />
+                    {t.transferTitle}
+                  </h2>
+                  <p className="text-[#3D3D4E] text-sm tracking-[-0.1504px] leading-relaxed">
+                    {t.transferMessage(USER_ROLE_LABELS[pendingTransfer.role][language], pendingTransfer.holderName, user.name)}
+                  </p>
+                  {/* 前任が自分自身で、かつ部員に降りる場合は運営権限を失う。
+                      「役職者」を選べば運営権限は残るので、実行前にそこまで伝える */}
+                  {pendingTransfer.holderId === currentAdminId && predecessorNewRole === 'member' && (
+                    <p className="text-xs text-amber-700 leading-relaxed">{t.transferSelfWarning}</p>
+                  )}
+                </div>
+                <button onClick={() => { if (!transferring) setPendingTransfer(null); }} className="text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"><X className="w-4 h-4" /></button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-[#3D3D4E]">{t.predecessorNewRole}</p>
+                <Select value={predecessorNewRole} onValueChange={(value) => setPredecessorNewRole(value as 'member' | 'officer')}>
+                  <SelectTrigger className="w-full bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">{USER_ROLE_LABELS.member[language]}</SelectItem>
+                    <SelectItem value="officer">{USER_ROLE_LABELS.officer[language]}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1 h-9" disabled={transferring} onClick={() => setPendingTransfer(null)}>
+                  {t.cancel}
+                </Button>
+                <Button className="flex-1 bg-[#49B1E4] hover:bg-[#3A9FD3] text-white h-9" disabled={transferring} onClick={() => void executeTransfer()}>
+                  {transferring ? t.transferring : t.transferConfirm}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(false); }}>
+          <div className="bg-[#F5F1E8] rounded-[10px] w-full max-w-[400px] shadow-xl border border-[rgba(61,61,78,0.15)] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-[rgba(61,61,78,0.15)]"><div className="flex items-start justify-between"><div className="space-y-2"><h2 className="text-[#3D3D4E] text-lg font-semibold tracking-[-0.4395px]">{t.confirmDelete}</h2><p className="text-[#6B6B7A] text-sm tracking-[-0.1504px]">{t.confirmDeleteMessage}</p></div><button onClick={() => setShowDeleteConfirm(false)} className="text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"><X className="w-4 h-4" /></button></div></div>
+            <div className="p-6"><div className="flex gap-2 mt-8"><Button onClick={() => { onDelete?.(); setShowDeleteConfirm(false); onClose(); }} className="w-full bg-[#D4183D] hover:bg-[#B01432] text-white h-9 flex items-center justify-center gap-2"><Trash2 className="w-4 h-4" /><span className="font-medium text-sm tracking-[-0.1504px]">{t.delete}</span></Button></div></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

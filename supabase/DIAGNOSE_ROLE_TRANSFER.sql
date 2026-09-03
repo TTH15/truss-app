@@ -13,6 +13,10 @@
 --
 -- 画面側の詳細メッセージも併せて確認する:
 --   引き継ぎ失敗のトーストに `詳細: <DBのメッセージ> (<SQLSTATE>)` が出る。
+--   - `Only admins can change user roles (P0001)`
+--       → **現職が自分で後任へ引き継いだときの自滅**（032 のガードが、直前の自己降格で
+--         FALSE になった自分の is_admin を読んで弾く）。migration 046 で修正済み。
+--         セクション6で 046 の適用状況を確認する
 --   - `Only admins can transfer roles (P0001)` → セクション4
 --   - `duplicate key ... uniq_users_single_president (23505)` → セクション2・3
 --   - `Could not find the function ... (PGRST202)` → セクション1
@@ -115,3 +119,13 @@ SELECT
 FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public' AND p.proname = 'transfer_role';
+
+-- ---------------------------------------------
+-- 6. 046（自己降格による自滅の修正）が適用されているか
+-- ---------------------------------------------
+SELECT
+  '6. migration 046' AS section,
+  CASE WHEN prosrc LIKE '%truss.role_transfer%' THEN 'OK' ELSE 'MISSING -> 046 を適用する' END AS status
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public' AND p.proname = 'enforce_role_change_by_admin';

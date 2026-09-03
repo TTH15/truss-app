@@ -92,3 +92,6 @@ WHERE phone <> '' AND phone !~ '^\+?[0-9]+$';
 SELECT student_number, role, is_admin
 FROM public.users
 WHERE student_number = '2243327S' AND withdrawn_at IS NULL;
+
+-- 046: 引き継ぎの自己降格修正は既存関数の差し替えのため、名前の有無では検出できない。
+--      DIAGNOSE_ROLE_TRANSFER.sql のセクション6で確認する。

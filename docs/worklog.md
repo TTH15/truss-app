@@ -1174,3 +1174,37 @@ admin_accounts の共有パスワードログインから、個人 Google アカ
 - [ ] **デプロイ後に引き継ぎを再実行し、トーストの「詳細:」行を確認する**（これで原因が確定する）
 - [ ] または先に `supabase/DIAGNOSE_ROLE_TRANSFER.sql` を Dashboard で実行して重複・リンク切れを確認
 - [ ] 診断で重複が出た場合、`transfer_role` が全保持者を降格するようマイグレーション046を追加（原因未確定のため今回は未着手）
+
+## 2026-09-04 00:15 引き継ぎ失敗の原因確定（自己降格による自滅）と修正・モーダルの表示崩れ修正
+
+前エントリで仕込んだ詳細メッセージにより、実機のトーストに `詳細: Only admins can change user roles (P0001)` が出て原因が確定した。
+
+### 原因（確定）
+エラー文は `transfer_role`（043）のものではなく **migration 032 の `enforce_role_change_by_admin`** のもの。つまり入口の運営権限チェックは通っていて、その先の UPDATE で弾かれていた。
+
+`transfer_role` は1人制約を避けるため「前任の降格 → 後任の昇格」の順に2つの UPDATE を実行する。**前任が操作している本人**（＝現代表が自分で後任へ引き継ぐ）の場合:
+1. 1つ目の UPDATE で `sync_admin_flag_with_role`（039/045）が本人の `is_admin` を FALSE にする
+2. 2つ目の UPDATE で 032 のガードが `is_admin_safe()` を評価 → 同じトランザクション内で書き換わった自分の `is_admin=FALSE` を読み「運営ではない」と判定して例外
+3. トランザクション全体がロールバックされ、引き継ぎは常に失敗
+
+→ **現職が自分で引き継ぐ限り100%失敗する**。他人が代理で操作すれば成功していたため気づきにくかった。
+
+### 変更内容
+- `supabase/migrations/046_truss_role_transfer_self_demotion_fix.sql`（新規・**要適用**）
+  - `enforce_role_change_by_admin`: `current_setting('truss.role_transfer', true)` が `'on'` のときは再検査を免除。目印は `set_config(..., true)` でトランザクションローカル。PostgREST から `set_config` は呼べないため会員が自己昇格に悪用する経路は無い
+  - `transfer_role`: 入口で目印を立てる。併せて前任の降格を `LIMIT 1` から「現保持者すべて」に広げ（重複時の 23505 を回避）、後任が存在し退会していないことの検査を追加
+- `MemberDetailModal.tsx`
+  - **表示崩れの修正**: 引き継ぎ確認・削除確認のダイアログがスクロールするモーダルの内側に `absolute inset-0` で置かれており、暗転が1画面分しか効かず（下の「話せる言語」だけ明るい）親モーダルの縁が透けて枠が二重に見えていた。両ダイアログをスクロールコンテナの外へ出し `fixed inset-0 z-[60]` に変更
+  - 自己降格の警告は「前任＝自分」かつ「引き継ぎ後＝部員」のときだけ表示（役職者を選べば運営権限は残るので、その旨も文言に追加）
+  - 自分が運営権限を失う引き継ぎが成功したときは、成功トーストにその旨を添える
+- `supabase/DIAGNOSE_ROLE_TRANSFER.sql`: `Only admins can change user roles` の項を追加、046 の適用確認（セクション6）を追加
+- `supabase/CHECK_SCHEMA.sql`: 046 は関数差し替えのため名前では検出できない旨を追記
+
+### 検証
+- `tsc --noEmit`（web）通過、`next build` 通過、lint はベースラインと同一（99 problems、新規指摘なし）
+- migration 046 は**未適用**（本番 DB への適用はユーザー操作）
+
+### 残課題
+- [ ] **migration 046 を本番に適用** → 現代表のアカウントで引き継ぎを再実行して成功を確認
+- [ ] 適用後、`DIAGNOSE_ROLE_TRANSFER.sql` セクション6が OK になることを確認
+- [ ] 引き継ぎ後、前任が「部員」を選んだ場合はその場で運営権限を失う。画面はリロードするまで運営画面に留まる（トーストで案内済み。強制サインアウトまではしていない）
