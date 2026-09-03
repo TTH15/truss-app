@@ -1,5 +1,5 @@
 import { AdminMembers } from './AdminMembers';
-import type { Language, User, UserRole } from '@truss/core';
+import type { Language, User, UserRole, DbError } from '@truss/core';
 
 interface AdminMembersManagementProps {
   language: Language;
@@ -13,7 +13,7 @@ interface AdminMembersManagementProps {
   onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
   onConfirmFeePayment?: (userId: string, isRenewal: boolean) => void | Promise<void>;
   onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void | Promise<void>;
-  onSetUserRole?: (userId: string, role: UserRole) => void | Promise<void>;
+  onSetUserRole?: (userId: string, role: UserRole) => Promise<{ error: DbError | null }>;
   onDeleteUser?: (userId: string) => void;
 }
 

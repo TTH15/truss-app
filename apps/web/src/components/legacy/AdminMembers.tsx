@@ -18,7 +18,7 @@ import { RoleBadge } from './RoleBadge';
 import { FeeUnpaidWalletIcon } from './FeeUnpaidWalletIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { AdminApprovals } from './AdminApprovals';
-import type { Language, User, UserRole } from '@truss/core';
+import type { Language, User, UserRole, DbError } from '@truss/core';
 import { isSystemUser, isPrivilegedRole, ROLE_LIST_PRIORITY, isGradeSuspicious } from '@truss/core';
 
 interface AdminMembersProps {
@@ -33,7 +33,7 @@ interface AdminMembersProps {
   onSendBulkEmail?: (userIds: string[], subjectJa: string, subjectEn: string, messageJa: string, messageEn: string, sendInApp: boolean, sendEmail: boolean) => void;
   onConfirmFeePayment?: (userId: string, isRenewal: boolean) => void | Promise<void>;
   onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void | Promise<void>;
-  onSetUserRole?: (userId: string, role: UserRole) => void | Promise<void>;
+  onSetUserRole?: (userId: string, role: UserRole) => Promise<{ error: DbError | null }>;
   onDeleteUser?: (userId: string) => void;
 }
 
@@ -769,12 +769,12 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
             toast.success(language === 'ja' ? `年会費（${feeAmount}）の支払いを確認しました` : `Fee payment (${feeAmount}) confirmed`);
             setShowDetailModal(false);
           }}
-          onSetRole={onSetUserRole ? (role) => {
-            void onSetUserRole(selectedUser.id, role);
-            // is_admin は DB トリガー（migration 039）が役職に連動して切り替える。
-            // 再取得を待たずに表示へ反映する
-            setSelectedUser({ ...selectedUser, role, isAdmin: isPrivilegedRole(role) });
-            toast.success(language === 'ja' ? '役職を変更しました' : 'Role updated');
+          onSetRole={onSetUserRole ? async (role) => {
+            const result = await onSetUserRole(selectedUser.id, role);
+            // 成功したときだけ表示へ反映する（失敗の案内はモーダル側が出す）。
+            // is_admin は DB トリガー（migration 039）が役職に連動して切り替える
+            if (!result.error) setSelectedUser({ ...selectedUser, role, isAdmin: isPrivilegedRole(role) });
+            return result;
           } : undefined}
           onRoleTransferred={(role) => {
             // 引き継いだ役職は必ず運営権限つき（DB トリガーが連動）

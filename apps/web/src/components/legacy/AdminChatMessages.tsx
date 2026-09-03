@@ -565,9 +565,11 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
             // 一覧の再取得を待たずに表示へ反映する（役職も 035 のトリガーで member に上がる）
             setDetailMember({ ...detailMember, feePaid: true, role: detailMember.role === 'non_member' ? 'member' : detailMember.role });
           }}
-          onSetRole={(role) => {
-            void setUserRole(detailMember.id, role);
-            setDetailMember({ ...detailMember, role });
+          onSetRole={async (role) => {
+            const result = await setUserRole(detailMember.id, role);
+            // 成功したときだけ表示へ反映する（失敗の案内はモーダル側が出す）
+            if (!result.error) setDetailMember({ ...detailMember, role });
+            return result;
           }}
           onRoleTransferred={(role) => {
             // 引き継いだ役職は必ず運営権限つき（DB トリガーが連動）

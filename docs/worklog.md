@@ -1142,3 +1142,35 @@ admin_accounts の共有パスワードログインから、個人 Google アカ
 - [ ] 保護文書の初回保存は SE/代表等の上位役職アカウントで行う（保存するまで公開ページは既定文面のまま）
 - [ ] 一斉メール送信は未実装のまま UI に残存（BulkEmailModal。実装 or UI から除去の判断待ち）
 - [ ] 提案済み・未着手: 学籍番号の学部一対一対応の検証活用、Web サイト CMS 共用時の id 規約（サイト実装が具体化してから）
+
+## 2026-09-03 13:25 役職引き継ぎの失敗原因を切り分けられるようにする（具体的なエラー表示）
+
+運営から「引き継ぎに失敗しました、と出る」との報告。原因究明のための調査と、失敗理由が画面から分かるようにする改修。
+
+### 調査で分かったこと
+- `transfer_role` RPC は本番 DB に**存在する**（PostgREST の OpenAPI に `/rpc/transfer_role` が `p_successor` / `p_role` / `p_predecessor_new_role` で公開されている）。マイグレーション未適用ではない
+- **原因が分からない構造だった**: `MemberDetailModal` は `toast.error(t.transferFailed)` と出すだけで `error.message` すら捨てており、core の `transferRoleRpc` も `new Error(error.message)` に潰して SQLSTATE を落としていた
+- 併発していた別問題: 通常の役職変更は失敗しても `AdminMembers` が無条件に「役職を変更しました」と成功トーストを出していた（＝権限やトリガーで弾かれていても気づけない）。役職履歴の削除も失敗時は無言
+- `users` の実データ照会（保持者の重複・`auth_id` のリンク状況）は環境の権限制限でブロックされ未確認。原因は未確定
+
+### 有力な仮説（表示される詳細で切り分け可能）
+- `duplicate key ... uniq_users_single_president (23505)` → 代表/副代表が2人以上残存。`transfer_role` は前任を `LIMIT 1` でしか降格しないため後任の昇格が一意制約に当たる（潜在的欠陥）
+- `Only admins can transfer roles (P0001)` → `is_admin_safe()` が false（`users.auth_id` のリンク切れ・重複、セッション切れ）
+- `Could not find the function ... (PGRST202)` → マイグレーション未適用（今回は該当しない見込み）
+
+### 変更内容
+- `packages/core/src/db/errors.ts`（新規）: `DbError`（code / details / hint を保持）と `classifyRoleChangeError()`（原因を8種に分類）。`index.ts` から re-export
+- `packages/core/src/db/mutations/role-history.ts` / `users.ts`: エラー詳細を落とさず `DbError` を返す
+- `apps/web/src/contexts/DataContext.tsx`: `setUserRole` が握りつぶさず `{ error }` を返すよう変更（型も `DbError` に）
+- `MemberDetailModal.tsx`: 失敗時に**理由ごとの具体的な案内 + 生の DB メッセージと SQLSTATE** をトースト表示（役職変更・引き継ぎ・履歴登録・履歴削除の4箇所）。引き継ぎ失敗時はモーダルを閉じずそのまま再試行できる。前任が自分自身になる引き継ぎに「運営画面に入れなくなる」警告を追加
+- `AdminMembers.tsx` / `AdminChatMessages.tsx`: 成功したときだけ表示へ反映し、嘘の成功トーストを廃止。`onSetUserRole` の型を `Promise<{ error: DbError | null }>` に（`AdminPage` / `AdminMembersManagement` も追随）
+- `supabase/DIAGNOSE_ROLE_TRANSFER.sql`（新規）: 保持者の重複・退会者に残る役職・`auth_id` リンク切れ・インデックス欠落・SECURITY DEFINER を読み取り専用で確認する診断クエリ
+
+### 検証
+- `tsc --noEmit`（web / core）通過、`next build` 通過
+- lint はベースラインと同一（99 problems: 23 errors / 76 warnings、すべて既存の effect 内 setState 等）。今回変更したファイル由来の新規指摘なし
+
+### 残課題
+- [ ] **デプロイ後に引き継ぎを再実行し、トーストの「詳細:」行を確認する**（これで原因が確定する）
+- [ ] または先に `supabase/DIAGNOSE_ROLE_TRANSFER.sql` を Dashboard で実行して重複・リンク切れを確認
+- [ ] 診断で重複が出た場合、`transfer_role` が全保持者を降格するようマイグレーション046を追加（原因未確定のため今回は未着手）

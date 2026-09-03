@@ -36,6 +36,7 @@ import {
   updateUserRoleRow,
   transferRoleRpc,
   type UserRole,
+  type DbError,
 } from '@truss/core';
 import {
   createBoardPostRow,
@@ -102,9 +103,10 @@ interface DataContextType {
   confirmFeePayment: (userId: string, isRenewal?: boolean) => Promise<void>;
   confirmRenewal: (userId: string) => Promise<void>;
   setRenewalStatus: (userId: string, isRenewal: boolean) => Promise<void>;
-  setUserRole: (userId: string, role: UserRole) => Promise<void>;
+  /** 役職の変更。失敗理由を画面で案内できるよう、握りつぶさずに DbError を返す */
+  setUserRole: (userId: string, role: UserRole) => Promise<{ error: DbError | null }>;
   /** 代表・副代表の引き継ぎ（前任の降格 + 後任の昇格を1トランザクションで実行） */
-  transferRole: (successorId: string, role: 'president' | 'vice_president', predecessorNewRole: 'member' | 'officer') => Promise<{ error: Error | null }>;
+  transferRole: (successorId: string, role: 'president' | 'vice_president', predecessorNewRole: 'member' | 'officer') => Promise<{ error: DbError | null }>;
   resetMembershipForNewYear: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   sendMessage: (
@@ -635,13 +637,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const setUserRole = async (userId: string, role: UserRole) => {
-    try {
-      const { error } = await updateUserRoleRow(userId, role);
-      if (error) throw error;
-      await fetchUsers(true);
-    } catch (error) {
-      console.error('Error setting user role:', error);
+    const { error } = await updateUserRoleRow(userId, role);
+    if (error) {
+      console.error('Error setting user role:', { message: error.message, code: error.code, details: error.details, hint: error.hint });
+      return { error };
     }
+    await fetchUsers(true);
+    return { error: null };
   };
 
   const transferRole = async (
@@ -651,7 +653,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   ) => {
     const { error } = await transferRoleRpc(successorId, role, predecessorNewRole);
     if (error) {
-      console.error('Error transferring role:', error);
+      console.error('Error transferring role:', { message: error.message, code: error.code, details: error.details, hint: error.hint });
       return { error };
     }
     await fetchUsers(true);

@@ -60,6 +60,7 @@ export * from "./message-categories";
 export * from "./phone";
 export * from "./student-number";
 export * from "./roles";
+export * from "./db/errors";
 export * from "./db/mappers";
 export * from "./db/initial-registration";
 export * from "./db/queries/board";

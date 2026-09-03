@@ -9,9 +9,11 @@ import {
 } from "../initial-registration";
 import type { UserRole } from "../../roles";
 import { toLocalDateKey } from "../../date-key";
+import { toDbErrorOrNull, type DbError, type RawDbError } from "../errors";
 
-function toErrorOrNull(error: { message: string } | null) {
-  return error ? new Error(error.message) : null;
+// code / details / hint を残したまま返す（画面で原因別の案内を出すため。db/errors.ts 参照）
+function toErrorOrNull(error: RawDbError | null): DbError | null {
+  return toDbErrorOrNull(error);
 }
 
 export async function approvePendingUserRow(
@@ -47,7 +49,7 @@ export async function approvePendingUserRow(
 export async function updateUserRoleRow(
   userId: string,
   role: UserRole
-): Promise<{ error: Error | null }> {
+): Promise<{ error: DbError | null }> {
   const { error } = await supabase.from("users").update({ role }).eq("id", userId);
   return { error: toErrorOrNull(error) };
 }

@@ -11,7 +11,7 @@ import { AdminChat } from './AdminChat';
 import { AdminGallery } from './AdminGallery';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import logoImage from '@/assets/bd10685cae8608f82fd9e782ed0442fecb293fc5.png';
-import type { User as UserType, Language, Event, EventParticipant, MessageThread, ChatThreadMetadata, Notification, BoardPost, UserRole } from '@truss/core';
+import type { User as UserType, Language, Event, EventParticipant, MessageThread, ChatThreadMetadata, Notification, BoardPost, UserRole, DbError } from '@truss/core';
 import type { Dispatch, SetStateAction } from 'react';
 
 interface AdminPageProps {
@@ -32,7 +32,7 @@ interface AdminPageProps {
   onRequestReupload: (userId: string, reasons?: string[]) => void;
   onConfirmFeePayment?: (userId: string, isRenewal?: boolean) => void | Promise<void>;
   onSetRenewalStatus?: (userId: string, isRenewal: boolean) => void | Promise<void>;
-  onSetUserRole?: (userId: string, role: UserRole) => void | Promise<void>;
+  onSetUserRole?: (userId: string, role: UserRole) => Promise<{ error: DbError | null }>;
   onDeleteUser?: (userId: string) => void;
   messageThreads: MessageThread;
   onUpdateMessageThreads: Dispatch<SetStateAction<MessageThread>>;

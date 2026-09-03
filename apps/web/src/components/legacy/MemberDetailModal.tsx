@@ -16,10 +16,13 @@ import {
   deleteUserRoleHistoryRow,
   isGradeSuspicious,
   enrolledYearsFromStudentNumber,
+  classifyRoleChangeError,
 } from '@truss/core';
+import type { DbError } from '@truss/core';
 import { RoleBadge } from './RoleBadge';
 import { useEffect, useState } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface MemberDetailModalProps {
   isOpen: boolean;
@@ -31,7 +34,8 @@ interface MemberDetailModalProps {
   onReject?: () => void;
   onDelete?: () => void;
   onConfirmFeePayment?: (isRenewal: boolean) => void;
-  onSetRole?: (role: UserRole) => void;
+  /** 役職の変更。成否をモーダル側で案内するため、結果を返すこと */
+  onSetRole?: (role: UserRole) => Promise<{ error: DbError | null }>;
   /** 引き継ぎ（前任降格 + 後任昇格）が完了したとき。親が保持する表示用 user の更新に使う */
   onRoleTransferred?: (role: UserRole) => void;
   /** 自分自身の詳細を開いている場合 true（役職の自己変更 = 運営権限の自己剥奪を防ぐ） */
@@ -47,20 +51,74 @@ const HISTORY_ROLES: UserRole[] = ['officer', 'vice_president', 'president', 'ad
 const translations = {
   ja: { applicationDate: '申請日', nickname: 'ニックネーム', id: 'ID', email: 'メールアドレス', phone: '電話番号', studentNumber: '学生番号', major: '学部学科', category: '区分', grade: '学年', birthCountry: '生まれた国', languages: '話せる言語', approve: '承認する', reject: '拒否する', delete: '削除', confirmDelete: '本当にこのメンバーを削除しますか？', confirmDeleteMessage: 'この操作は取り消せません。', cancel: 'キャンセル', japanese: '日本人学生・国内学生', regularInternational: '正規留学生', exchange: '交換留学生', feeStatus: '会費状況', feePaid: '支払い済み', feeUnpaid: '未払い', confirmFeePayment: '支払い確認', renewal: '継続会員', newMember: '新規会員', renewalFee: '¥2,000（年会費のみ）', newMemberFee: '¥2,500（入会金+年会費）', membershipYear: '会員年度', confirmAsRenewal: '継続として確認（¥2,000）', confirmAsNew: '新規として確認（¥2,500）', setAsRenewal: '継続会員に設定', setAsNew: '新規会員に設定', memberTypeHint: '※3/31までに登録完了した会員は「継続」扱い', adminFlag: '運営権限', adminFlagOn: '運営権限あり', adminFlagOff: '運営権限なし', adminFlagHint: '運営権限は役職に連動します。「部員」「非会員」以外の役職にすると、運営画面へのアクセス・会員の承認・通知の送信ができるようになります', roleSelfHint: '自分の役職は変更できません（誤って自分の運営権限を外してしまうのを防ぐため）', roleSeHint: 'SE はシステム管理用の役職です。ここからは変更できません', role: '役職', roleHint: '役職はプロフィールや名簿にバッジとして表示されます。「非会員／部員」は年会費の支払い状況に連動して自動で切り替わります。部員・非会員以外の役職には運営権限が付きます',
     transferTitle: '役職の引き継ぎ', transferMessage: (roleLabel: string, holderName: string, successorName: string) => `${roleLabel}は現在 ${holderName} さんです。${successorName} さんに引き継ぎますか？`, predecessorNewRole: '前任の引き継ぎ後の役職', transferConfirm: '引き継ぐ', transferring: '引き継ぎ中...', transferDone: '役職を引き継ぎました', transferFailed: '引き継ぎに失敗しました',
-    roleHistory: '役職履歴', roleHistoryEmpty: '記録はまだありません', roleHistoryCurrent: '在任中', roleHistoryAuto: '自動記録', addHistory: '過去の役職を記録', historyRole: '役職', historyStart: '開始日', historyEnd: '終了日（任意）', historyNote: 'メモ（任意）', historyNotePlaceholder: '2024年度 など', historyAdd: '登録する', historyAdded: '役職履歴を登録しました', historyAddFailed: '登録に失敗しました', historyNeedsFields: '役職と開始日を入力してください', historyDeleted: '履歴を削除しました' },
+    transferSelfWarning: 'この引き継ぎであなた自身が前任として降格し、運営画面に入れなくなります。別の運営メンバーがいることを確認してから実行してください',
+    roleChangeDone: '役職を変更しました', roleChangeFailed: '役職の変更に失敗しました',
+    failure: {
+      notSignedIn: 'ログインの有効期限が切れています。一度ログアウトして、運営アカウントでログインし直してください',
+      notAdmin: '運営権限として認識されていません。運営アカウントでログインし直しても直らない場合は開発者に連絡してください',
+      forbidden: 'データベース側で操作が拒否されました（権限設定の問題）。開発者に連絡してください',
+      functionMissing: 'サーバー側の引き継ぎ機能が見つかりません（DBマイグレーション未適用の可能性）。開発者に連絡してください',
+      duplicateHolder: (roleLabel: string) => `${roleLabel}が他にも残っているため引き継げませんでした。先に他の${roleLabel}を別の役職に変更してから、もう一度お試しください`,
+      invalidRole: '指定した役職が正しくありません。役職を選び直してください',
+      network: '通信できませんでした。ネットワークを確認して、もう一度お試しください',
+      unknown: '原因を特定できないエラーが発生しました。下の詳細を開発者に伝えてください',
+      detailLabel: '詳細',
+    },
+    roleHistory: '役職履歴', roleHistoryEmpty: '記録はまだありません', roleHistoryCurrent: '在任中', roleHistoryAuto: '自動記録', addHistory: '過去の役職を記録', historyRole: '役職', historyStart: '開始日', historyEnd: '終了日（任意）', historyNote: 'メモ（任意）', historyNotePlaceholder: '2024年度 など', historyAdd: '登録する', historyAdded: '役職履歴を登録しました', historyAddFailed: '登録に失敗しました', historyNeedsFields: '役職と開始日を入力してください', historyDeleted: '履歴を削除しました', historyDeleteFailed: '履歴の削除に失敗しました' },
   en: { applicationDate: 'Application Date', nickname: 'Nickname', id: 'ID', email: 'Email', phone: 'Phone Number', studentNumber: 'Student Number', major: 'Major', category: 'Category', grade: 'Grade', birthCountry: 'Birth Country', languages: 'Languages', approve: 'Approve', reject: 'Reject', delete: 'Delete', confirmDelete: 'Are you sure you want to delete this member?', confirmDeleteMessage: 'This action cannot be undone.', cancel: 'Cancel', japanese: 'Japanese Student', regularInternational: 'Regular International', exchange: 'Exchange Student', feeStatus: 'Fee Status', feePaid: 'Paid', feeUnpaid: 'Unpaid', confirmFeePayment: 'Confirm Payment', renewal: 'Renewal', newMember: 'New Member', renewalFee: '¥2,000 (Annual fee only)', newMemberFee: '¥2,500 (Entry + Annual)', membershipYear: 'Membership Year', confirmAsRenewal: 'Confirm as Renewal (¥2,000)', confirmAsNew: 'Confirm as New (¥2,500)', setAsRenewal: 'Set as Renewal', setAsNew: 'Set as New Member', memberTypeHint: '* Members registered by 3/31 are treated as "Renewal"', adminFlag: 'Admin access', adminFlagOn: 'Has admin access', adminFlagOff: 'No admin access', adminFlagHint: 'Admin access follows the role. Any role other than Member / Non-member grants access to the admin panel, member approval, and notifications.', roleSelfHint: 'You cannot change your own role (prevents accidentally removing your own admin access).', roleSeHint: 'SE is a system-administration role and cannot be changed here.', role: 'Role', roleHint: 'Shown as a badge on profiles and the member list. Non-member and Member follow the annual fee status automatically. Roles above Member also grant admin access',
     transferTitle: 'Transfer Role', transferMessage: (roleLabel: string, holderName: string, successorName: string) => `${holderName} currently holds the ${roleLabel} role. Transfer it to ${successorName}?`, predecessorNewRole: "Predecessor's new role", transferConfirm: 'Transfer', transferring: 'Transferring...', transferDone: 'Role transferred', transferFailed: 'Failed to transfer role',
-    roleHistory: 'Role History', roleHistoryEmpty: 'No records yet', roleHistoryCurrent: 'Current', roleHistoryAuto: 'Auto', addHistory: 'Record a past role', historyRole: 'Role', historyStart: 'Start date', historyEnd: 'End date (optional)', historyNote: 'Note (optional)', historyNotePlaceholder: 'e.g. AY2024', historyAdd: 'Add', historyAdded: 'Role history added', historyAddFailed: 'Failed to add history', historyNeedsFields: 'Role and start date are required', historyDeleted: 'History entry deleted' }
+    transferSelfWarning: 'This transfer demotes you as the predecessor and you will lose access to the admin panel. Make sure another admin remains before continuing.',
+    roleChangeDone: 'Role updated', roleChangeFailed: 'Failed to update role',
+    failure: {
+      notSignedIn: 'Your session has expired. Sign out and sign in again with an admin account.',
+      notAdmin: 'You are not recognized as an admin. If signing in again does not help, contact the developer.',
+      forbidden: 'The database rejected the operation (permission settings). Contact the developer.',
+      functionMissing: 'The server-side transfer function was not found (database migration may not be applied). Contact the developer.',
+      duplicateHolder: (roleLabel: string) => `Another ${roleLabel} still exists, so the transfer could not complete. Change the other ${roleLabel} to a different role first, then try again.`,
+      invalidRole: 'The selected role is not valid. Please pick the role again.',
+      network: 'Could not reach the server. Check your connection and try again.',
+      unknown: 'An unidentified error occurred. Please share the details below with the developer.',
+      detailLabel: 'Details',
+    },
+    roleHistory: 'Role History', roleHistoryEmpty: 'No records yet', roleHistoryCurrent: 'Current', roleHistoryAuto: 'Auto', addHistory: 'Record a past role', historyRole: 'Role', historyStart: 'Start date', historyEnd: 'End date (optional)', historyNote: 'Note (optional)', historyNotePlaceholder: 'e.g. AY2024', historyAdd: 'Add', historyAdded: 'Role history added', historyAddFailed: 'Failed to add history', historyNeedsFields: 'Role and start date are required', historyDeleted: 'History entry deleted', historyDeleteFailed: 'Failed to delete history entry' }
 };
+
+type Translation = (typeof translations)['ja'];
+
+/** 失敗の案内は「説明 + 詳細」の2行で出すので、改行を効かせて長めに表示する */
+const FAILURE_TOAST_OPTIONS = { duration: 12000, style: { whiteSpace: 'pre-line' as const } };
+
+/**
+ * Supabase のエラーを、運営が読んで次の行動が分かる文言に変換する。
+ * 原因究明のため、末尾には DB が返した生のメッセージ（+ SQLSTATE）も必ず添える。
+ */
+function describeRoleFailure(error: DbError | Error, roleLabel: string, t: Translation): string {
+  const f = t.failure;
+  const reason = classifyRoleChangeError(error);
+  const explanation =
+    reason === 'not-signed-in' ? f.notSignedIn
+    : reason === 'not-admin' ? f.notAdmin
+    : reason === 'forbidden' ? f.forbidden
+    : reason === 'function-missing' ? f.functionMissing
+    : reason === 'duplicate-holder' ? f.duplicateHolder(roleLabel)
+    : reason === 'invalid-role' ? f.invalidRole
+    : reason === 'network' ? f.network
+    : f.unknown;
+  const raw = 'debugLine' in error ? (error as DbError).debugLine : error.message;
+  return `${explanation}\n${f.detailLabel}: ${raw}`;
+}
 
 export function MemberDetailModal({ isOpen, onClose, user, language, isPending = false, onApprove, onReject, onDelete, onConfirmFeePayment, onSetRole, onRoleTransferred, isSelf = false }: MemberDetailModalProps) {
   const t = translations[language];
   const { approvedMembers, transferRole } = useData();
+  const { user: currentAdmin } = useAuth();
+  const currentAdminId = currentAdmin?.id;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   // 引き継ぎ確認（1人制約のある役職を、現在の保持者がいる状態で選んだとき）
-  const [pendingTransfer, setPendingTransfer] = useState<{ role: TransferableRole; holderName: string } | null>(null);
+  const [pendingTransfer, setPendingTransfer] = useState<{ role: TransferableRole; holderId: string; holderName: string } | null>(null);
   const [predecessorNewRole, setPredecessorNewRole] = useState<'member' | 'officer'>('member');
   const [transferring, setTransferring] = useState(false);
+  const [roleSaving, setRoleSaving] = useState(false);
   // 役職履歴
   const [history, setHistory] = useState<UserRoleHistoryEntry[]>([]);
   const [showAddHistory, setShowAddHistory] = useState(false);
@@ -97,27 +155,39 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
 
   const formatDate = (isoDate: string) => new Date(`${isoDate}T00:00:00`).toLocaleDateString(language === 'ja' ? 'ja-JP' : 'en-US');
 
-  const handleRoleSelect = (value: UserRole) => {
+  const handleRoleSelect = async (value: UserRole) => {
     // 代表・副代表は同時に1人まで（DB のユニークインデックスでも強制）。
     // 別の保持者がいる場合はそのまま変更せず、引き継ぎ確認へ
     if ((TRANSFERABLE_ROLES as readonly string[]).includes(value)) {
       const holder = approvedMembers.find((m) => m.role === value && m.id !== user.id);
       if (holder) {
         setPredecessorNewRole('member');
-        setPendingTransfer({ role: value as TransferableRole, holderName: holder.name });
+        setPendingTransfer({ role: value as TransferableRole, holderId: holder.id, holderName: holder.name });
         return;
       }
     }
-    onSetRole?.(value);
+    if (!onSetRole) return;
+    setRoleSaving(true);
+    const { error } = await onSetRole(value);
+    setRoleSaving(false);
+    if (error) {
+      // 「変更できた」ように見せないこと。DB トリガー（032）や一意制約で弾かれることがある
+      toast.error(t.roleChangeFailed, { description: describeRoleFailure(error, USER_ROLE_LABELS[value][language], t), ...FAILURE_TOAST_OPTIONS });
+      return;
+    }
+    toast.success(t.roleChangeDone);
   };
 
   const executeTransfer = async () => {
     if (!pendingTransfer) return;
+    const roleLabel = USER_ROLE_LABELS[pendingTransfer.role][language];
     setTransferring(true);
     const { error } = await transferRole(user.id, pendingTransfer.role, predecessorNewRole);
     setTransferring(false);
     if (error) {
-      toast.error(t.transferFailed);
+      // 失敗の理由（権限切れ／保持者が複数／未適用のマイグレーション等）まで出す。
+      // モーダルは閉じずに残し、案内を読んでそのまま再試行できるようにする
+      toast.error(t.transferFailed, { description: describeRoleFailure(error, roleLabel, t), ...FAILURE_TOAST_OPTIONS });
       return;
     }
     toast.success(t.transferDone);
@@ -142,7 +212,7 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
     });
     setSavingHistory(false);
     if (error) {
-      toast.error(t.historyAddFailed);
+      toast.error(t.historyAddFailed, { description: describeRoleFailure(error, USER_ROLE_LABELS[newRole][language], t), ...FAILURE_TOAST_OPTIONS });
       return;
     }
     toast.success(t.historyAdded);
@@ -156,7 +226,11 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
 
   const handleDeleteHistory = async (id: number) => {
     const { error } = await deleteUserRoleHistoryRow(id);
-    if (error) return;
+    if (error) {
+      // 以前は黙って何も起きなかった。削除できなかったことと理由を必ず出す
+      toast.error(t.historyDeleteFailed, { description: describeRoleFailure(error, t.roleHistory, t), ...FAILURE_TOAST_OPTIONS });
+      return;
+    }
     toast.success(t.historyDeleted);
     setHistory((prev) => prev.filter((entry) => entry.id !== id));
   };
@@ -207,8 +281,8 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
               </div>
               <Select
                 value={user.role ?? 'member'}
-                onValueChange={(value) => handleRoleSelect(value as UserRole)}
-                disabled={isSelf || user.role === 'se'}
+                onValueChange={(value) => void handleRoleSelect(value as UserRole)}
+                disabled={isSelf || user.role === 'se' || roleSaving}
               >
                 <SelectTrigger className="w-full bg-white">
                   <SelectValue />
@@ -373,6 +447,10 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
                     <p className="text-[#3D3D4E] text-sm tracking-[-0.1504px] leading-relaxed">
                       {t.transferMessage(USER_ROLE_LABELS[pendingTransfer.role][language], pendingTransfer.holderName, user.name)}
                     </p>
+                    {/* 前任が自分自身なら、実行した瞬間に運営画面へ入れなくなる。実行前に伝える */}
+                    {pendingTransfer.holderId === currentAdminId && (
+                      <p className="text-xs text-amber-700 leading-relaxed">{t.transferSelfWarning}</p>
+                    )}
                   </div>
                   <button onClick={() => { if (!transferring) setPendingTransfer(null); }} className="text-[#3D3D4E] hover:text-[#1a1a24] transition-colors opacity-70"><X className="w-4 h-4" /></button>
                 </div>
