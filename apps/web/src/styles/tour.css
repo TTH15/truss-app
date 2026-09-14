@@ -13,12 +13,16 @@
   color: #3d3d4e;
   font-size: 1rem;
   font-weight: 700;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .driver-popover.truss-tour .driver-popover-description {
   color: #4a5565;
   font-size: 0.875rem;
   line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .driver-popover.truss-tour .driver-popover-progress-text {
@@ -44,7 +48,12 @@
   gap: 10px;
 }
 
-/* 最終ステップの LINE オープンチャットへの導線 */
+/* 最終ステップの LINE グループへの導線 */
+.driver-popover.truss-tour.truss-tour-announcement {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
 .driver-popover.truss-tour .truss-tour-link {
   display: block;
   margin-top: 12px;
@@ -56,6 +65,7 @@
   font-weight: 600;
   text-align: center;
   text-decoration: none;
+  overflow-wrap: anywhere;
 }
 
 .driver-popover.truss-tour .truss-tour-link:hover {

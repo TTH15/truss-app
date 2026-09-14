@@ -5,7 +5,7 @@
  * 対象要素は data-tour 属性で指定し、表示中の画面に存在するステップだけを実行する。
  */
 import '../styles/tour.css';
-import type { Language } from '@truss/core';
+import { DEFAULT_USER_TOUR_ANNOUNCEMENT, queryUserTourAnnouncement, type Language } from '@truss/core';
 
 const SEEN_KEY = 'truss-user-tour-seen-v1';
 
@@ -115,33 +115,40 @@ const STEPS: TourStep[] = [
       en: 'View and edit your profile or log out here. You can replay this guide anytime from "How to use".',
     },
   },
-  {
-    title: { ja: 'LINE オープンチャット', en: 'LINE Open Chat' },
-    description: {
-      ja: 'イベントの案内やお知らせは LINE のオープンチャットでも配信しています。よければ参加してください。',
-      en: 'We also share event news and announcements in our LINE open chat. Join us if you like.',
-    },
-    link: {
-      url: 'https://line.me/ti/g2/2HleWq8FutNdOnB7LobvVKzd34gPKRrRCbBhOA?utm_source=invitation&utm_medium=link_copy&utm_campaign=default',
-      label: { ja: 'オープンチャットを開く', en: 'Open the chat' },
-    },
-  },
 ];
 
-export async function startUserTour(language: Language) {
+/** driver.js は title / description を innerHTML に渡すため、運営の入力も必ずエスケープする。 */
+function escapeTourText(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character]!);
+}
+
+export async function startUserTour(language: Language, signal?: AbortSignal) {
+  if (signal?.aborted) return;
   // ツアーは初回か「使い方ガイド」を押したときだけなので、その時に読み込む
-  const [{ driver }] = await Promise.all([
+  const [{ driver }, , savedAnnouncement] = await Promise.all([
     import('driver.js'),
     import('driver.js/dist/driver.css'),
+    // DB 未適用・通信失敗でもツアーは既定の案内で継続する。
+    queryUserTourAnnouncement(AbortSignal.timeout(5000)).catch(() => null),
   ]);
-  const visibleSteps = STEPS.filter(
+  if (signal?.aborted) return;
+  const announcement = savedAnnouncement ?? DEFAULT_USER_TOUR_ANNOUNCEMENT;
+  const announcementStep: TourStep = {
+    title: announcement.title,
+    description: announcement.description,
+    link: { url: announcement.linkUrl, label: announcement.linkLabel },
+  };
+  const visibleSteps = [...STEPS, announcementStep].filter(
     (s) => !s.target || document.querySelector(`[data-tour="${s.target}"]`)
   );
   const steps = visibleSteps.map((s) => ({
     ...(s.target ? { element: `[data-tour="${s.target}"]` } : {}),
     popover: {
-      title: s.title[language],
-      description: s.description[language],
+      title: escapeTourText(s.title[language]),
+      description: escapeTourText(s.description[language]),
+      ...(s.link ? { popoverClass: 'truss-tour truss-tour-announcement' } : {}),
       ...(s.side ? { side: s.side } : {}),
     },
   }));

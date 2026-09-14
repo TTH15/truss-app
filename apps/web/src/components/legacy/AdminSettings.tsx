@@ -3,6 +3,7 @@
 import type { Language, User } from '@truss/core';
 import { PushNotificationSetting } from './PushNotificationSetting';
 import { AdminSiteDocuments } from './AdminSiteDocuments';
+import { AdminUserTourAnnouncement } from './AdminUserTourAnnouncement';
 import type { SiteDocumentId } from '../../lib/site-documents';
 
 interface AdminSettingsProps {
@@ -11,7 +12,7 @@ interface AdminSettingsProps {
   onAnnounce?: (docId: SiteDocumentId) => Promise<void>;
 }
 
-/** 運営画面の設定タブ。通知設定と規約・ポリシー管理をまとめる */
+/** 運営画面の設定タブ。通知・ガイドの案内・規約の管理をまとめる */
 export function AdminSettings({ language, user, onAnnounce }: AdminSettingsProps) {
   return (
     <div className="max-w-3xl space-y-8">
@@ -22,6 +23,13 @@ export function AdminSettings({ language, user, onAnnounce }: AdminSettingsProps
         <div className="max-w-sm">
           <PushNotificationSetting user={user} language={language} variant="admin" />
         </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold text-[#3D3D4E]">
+          {language === 'ja' ? 'ガイドツアーの最後の案内' : 'Guide: Final Announcement'}
+        </h2>
+        <AdminUserTourAnnouncement language={language} />
       </section>
 
       <section className="space-y-3">

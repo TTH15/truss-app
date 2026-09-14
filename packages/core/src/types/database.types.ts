@@ -153,6 +153,19 @@ export interface DbSiteDocument {
   updated_by: string | null;
 }
 
+export interface DbUserTourAnnouncement {
+  [key: string]: unknown;
+  id: number;
+  title_ja: string;
+  title_en: string;
+  description_ja: string;
+  description_en: string;
+  link_label_ja: string;
+  link_label_en: string;
+  link_url: string;
+  updated_at: string;
+}
+
 export interface DbUserRoleHistory {
   [key: string]: unknown;
   id: number;
@@ -476,6 +489,12 @@ export interface Database {
         Row: DbSiteDocument;
         Insert: Omit<DbSiteDocument, 'protected'> & { protected?: boolean };
         Update: Partial<DbSiteDocument>;
+        Relationships: [];
+      };
+      user_tour_announcement: {
+        Row: DbUserTourAnnouncement;
+        Insert: Omit<DbUserTourAnnouncement, 'updated_at'>;
+        Update: Partial<Omit<DbUserTourAnnouncement, 'id' | 'updated_at'>>;
         Relationships: [];
       };
       site_document_revisions: {

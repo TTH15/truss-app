@@ -55,7 +55,9 @@ WITH expected(migration, kind, object_name, detail) AS (
     ('043', 'table', 'user_role_history', null),
     ('043', 'function', 'transfer_role', null),
     -- 044: 学年の本人確認（年度ごと）
-    ('044', 'column', 'users', 'grade_confirmed_for')
+    ('044', 'column', 'users', 'grade_confirmed_for'),
+    -- 048: ガイドツアーの最後の案内
+    ('048', 'table', 'user_tour_announcement', null)
 )
 SELECT
   e.migration,

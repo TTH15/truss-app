@@ -185,8 +185,12 @@ export function Dashboard({
   // 承認済みユーザーの初回表示時に操作ガイドツアーを1回だけ自動起動
   useEffect(() => {
     if (!user.approved || currentPage !== 'home' || hasSeenUserTour()) return;
-    const timer = setTimeout(() => startUserTour(language), 800);
-    return () => clearTimeout(timer);
+    const controller = new AbortController();
+    const timer = setTimeout(() => startUserTour(language, controller.signal), 800);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [user.approved, currentPage, language]);
 
   const handleStartTour = () => {
