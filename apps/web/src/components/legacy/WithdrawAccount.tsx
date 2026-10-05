@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 import { toast } from 'sonner';
 import { withdrawOwnAccount } from '@truss/core';
 import type { Language } from '@truss/core';
@@ -54,6 +55,7 @@ export function WithdrawAccount({ language, onWithdrawn }: { language: Language;
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [busy, setBusy] = useState(false);
+  const confirmInputId = useId();
 
   const handleWithdraw = async () => {
     if (confirmText.trim() !== CONFIRM_WORD || busy) return;
@@ -78,26 +80,33 @@ export function WithdrawAccount({ language, onWithdrawn }: { language: Language;
         <CardTitle className="text-[#B01432]">{t.title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-[#6B6B7A]">{t.description}</p>
-        <p className="text-sm text-[#6B6B7A]">{t.retained}</p>
-        <p className="text-sm font-medium text-[#B01432]">{t.irreversible}</p>
-        <Button variant="outline" className="border-[#D4183D] text-[#D4183D] hover:bg-[#FEF2F2]" onClick={() => setOpen(true)}>
+        <Button variant="outline" className="border-[#D4183D] text-[#D4183D] hover:bg-[#FEF2F2]" onClick={() => { setConfirmText(''); setOpen(true); }}>
           {t.open}
         </Button>
       </CardContent>
 
       <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) setConfirmText(''); }}>
         <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
+          <DialogHeader className="text-left">
             <DialogTitle className="text-[#B01432]">{t.confirmTitle}</DialogTitle>
-            <DialogDescription>{t.confirmPrompt}</DialogDescription>
+            <DialogDescription asChild>
+              <div className="space-y-3">
+                <p>{t.description}</p>
+                <p>{t.retained}</p>
+                <p className="font-medium text-[#B01432]">{t.irreversible}</p>
+              </div>
+            </DialogDescription>
           </DialogHeader>
-          <Input
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            placeholder={CONFIRM_WORD}
-            autoComplete="off"
-          />
+          <div className="space-y-2">
+            <Label htmlFor={confirmInputId}>{t.confirmPrompt}</Label>
+            <Input
+              id={confirmInputId}
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={CONFIRM_WORD}
+              autoComplete="off"
+            />
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => setOpen(false)} disabled={busy}>
               {t.cancel}

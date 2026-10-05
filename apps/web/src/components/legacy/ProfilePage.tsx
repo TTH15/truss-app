@@ -206,7 +206,7 @@ export function ProfilePage({
 
       {/* 画面を閉じる導線は下部ナビが担うので、ここには置かない。
           編集中は「キャンセル / 保存する」の2つだけにして、×との三択にならないようにする */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[#3D3D4E] shrink-0">{t.title}</h1>
         {!isEditing ? (
           <Button className="bg-[#49B1E4] hover:bg-[#3A9FD3]" onClick={() => setIsEditing(true)}>
