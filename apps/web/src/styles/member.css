@@ -51,35 +51,14 @@
 .member-header > div { max-width: 1072px; padding-top: 8px; padding-bottom: 8px; }
 .member-wordmark { font-family: var(--font-truss-heading), serif; font-size: 1.75rem; line-height: 1; letter-spacing: -.045em; }
 .member-header [data-slot="button"] { min-height: 44px; min-width: 44px; }
-.member-main { max-width: 1072px; padding-top: 24px; padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
-.member-bottom-nav { padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); pointer-events: none; }
-.member-nav-panel { max-width: 800px; padding: 4px; margin: 0 auto; border: 1px solid #D5DEDF; border-radius: 28px; background: #FBFAF7; box-shadow: 0 7px 24px #3D475614, inset 0 1px 0 #FFFFFF; pointer-events: auto; }
-.member-nav-panel > div { display: flex; align-items: stretch; gap: 2px; }
-.member-nav-button { position: relative; display: flex; flex: 1; min-width: 0; min-height: 60px; align-items: center; justify-content: center; flex-direction: column; gap: 4px; padding: 8px 2px; color: var(--member-muted); font-size: 11px; line-height: 1.4; border-radius: 23px; }
-.member-nav-button > span:not(.member-nav-badge) { overflow-wrap: anywhere; }
+.member-main { max-width: 1072px; padding-top: 24px; padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+.member-bottom-nav { background: #F7F5F1F7; border-color: var(--member-line); box-shadow: 0 -3px 18px #3D475606; backdrop-filter: blur(12px); }
+.member-bottom-nav > div { max-width: 800px; }
+.member-nav-button { position: relative; display: flex; flex: 1; min-width: 0; min-height: 64px; align-items: center; justify-content: center; flex-direction: column; gap: 4px; padding: 9px 2px 6px; color: var(--member-muted); font-size: 11px; line-height: 1.4; border-radius: 8px; }
 .member-nav-button svg { width: 19px; height: 19px; }
-.member-nav-button[aria-current="page"] { color: var(--member-action); background: #E9F4FB; box-shadow: inset 0 0 0 1px #236B941A, inset 0 1px 0 #FFFFFF; }
+.member-nav-button[aria-current="page"] { color: var(--member-action); }
+.member-nav-button[aria-current="page"]::before { content: ''; position: absolute; top: 0; width: 24px; height: 3px; background: var(--member-action); border-radius: 0 0 3px 3px; }
 .member-nav-badge { position: absolute; top: 3px; left: calc(50% + 6px); min-width: 17px; height: 17px; padding: 0 3px; display: grid; place-items: center; border-radius: 20px; background: #B33F4A; color: #FFFFFF; font-size: 10px; }
-.member-glass-action, .member-theme [data-slot="button"].member-glass-action { min-height: 44px; border: 1px solid #D5DEDF; border-radius: 24px; background: #FBFAF7; box-shadow: 0 3px 10px #3D475612, inset 0 1px 0 #FFFFFF; }
-.member-theme [data-slot="button"].member-glass-action { color: var(--member-action); }
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .member-nav-panel, .member-glass-action, .member-theme [data-slot="button"].member-glass-action {
-    background: linear-gradient(155deg, #FFFFFF80, #FFFFFF00 55%), #FBFAF7DB;
-    -webkit-backdrop-filter: blur(18px) saturate(1.2);
-    backdrop-filter: blur(18px) saturate(1.2);
-  }
-}
-@media (hover: hover) {
-  .member-nav-button:hover { background-color: #E9F4FB; }
-  .member-glass-action:hover, .member-theme [data-slot="button"].member-glass-action:hover { background-color: #FFFFFF; }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .member-nav-panel, .member-glass-action, .member-theme [data-slot="button"].member-glass-action { background: #FBFAF7; -webkit-backdrop-filter: none; backdrop-filter: none; }
-}
-@media (forced-colors: active) {
-  .member-nav-panel, .member-glass-action, .member-theme [data-slot="button"].member-glass-action { background: Canvas; border-color: ButtonText; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .member-nav-button[aria-current="page"] { outline: 2px solid Highlight; outline-offset: -2px; box-shadow: none; }
-}
 .member-home { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
 .home-passport-column { min-width: 0; }
 .home-journal-column { min-width: 0; display: grid; gap: 28px; align-content: start; }

@@ -125,7 +125,7 @@ export function GalleryPage({ language, currentUser, openPhotoId, openUpload, on
 
   return (
     <div className="space-y-4 relative">
-      <div className="member-page-heading"><h1>{language === 'ja' ? '思い出のアルバム' : 'Memories'}</h1><Button className="member-glass-action" onClick={() => setIsAddPhotoOpen(true)}><Plus className="w-4 h-4" />{t.addPhoto}</Button></div>
+      <div className="member-page-heading"><h1>{language === 'ja' ? '思い出のアルバム' : 'Memories'}</h1><Button onClick={() => setIsAddPhotoOpen(true)}><Plus className="w-4 h-4" />{t.addPhoto}</Button></div>
       {homeLoadErrors.memories && photos.length === 0 && <HomeSectionState language={language} error retry={() => void retryHomeSection('memories')} emptyText="" />}
       {photos.length === 0 && !homeLoadErrors.memories && (
         <EmptyState
@@ -145,7 +145,7 @@ export function GalleryPage({ language, currentUser, openPhotoId, openUpload, on
                   <button type="button" className="block w-full" onClick={() => setSelectedPhotoId(photo.id)} aria-label={`${photo.eventName} ${language === 'ja' ? '写真を見る' : 'View photo'}`}>
                     <img src={typeof photo.image === 'string' ? photo.image : photo.image.src} alt="" loading="lazy" decoding="async" className="w-full h-auto block" />
                   </button>
-                  <button type="button" onClick={() => void toggleLike(photo.id)} aria-label={language === 'ja' ? (isLiked ? 'いいねを取り消す' : 'いいね') : (isLiked ? 'Unlike' : 'Like')} aria-pressed={isLiked} className={`member-glass-action absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1 ${isLiked ? 'text-pink-600' : 'text-gray-600'}`}>
+                  <button type="button" onClick={() => void toggleLike(photo.id)} aria-label={language === 'ja' ? (isLiked ? 'いいねを取り消す' : 'いいね') : (isLiked ? 'Unlike' : 'Like')} aria-pressed={isLiked} className={`absolute bottom-2 right-2 flex items-center gap-1 bg-white/95 rounded-full px-2 py-1 shadow-sm min-h-9 ${isLiked ? 'text-pink-600' : 'text-gray-600'}`}>
                     <Heart className={`w-4 h-4 ${poppingPhotoId === photo.id ? 'animate-truss-pop' : ''}`} onAnimationEnd={() => setPoppingPhotoId(null)} /><ReactionCount value={photo.likes} className="text-sm" />
                   </button>
                 </div>
