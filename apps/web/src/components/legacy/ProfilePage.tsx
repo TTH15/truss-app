@@ -7,6 +7,7 @@ import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ProfileLanguagePicker } from '../member/ProfileLanguagePicker';
 import { GRADE_OPTIONS, gradeLabel, profileLanguageLabel, uniqueProfileLanguages } from '../../lib/profile-options';
+import { formatDisplayDate } from '../../lib/display-date';
 import { Globe2, MapPin, Mail, Edit, Phone, Users, Save, GraduationCap, IdCard } from '../member/icons';
 import { toast } from 'sonner';
 import type { Language, User } from '@truss/core';
@@ -406,7 +407,7 @@ export function ProfilePage({
                     onChange={(e) => setEditedUser({ ...editedUser, birthday: e.target.value })}
                   />
                 ) : (
-                  <p className="text-gray-900 mt-1">{user.birthday || '-'}</p>
+                  <p className="text-gray-900 mt-1">{formatDisplayDate(user.birthday, language)}</p>
                 )}
               </div>
               <div>

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { toast } from 'sonner';
 import type { Language, GalleryPhoto } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
+import { formatDisplayDate } from '../../lib/display-date';
 
 interface AdminGalleryApprovalsProps { language: Language; }
 
@@ -60,7 +61,7 @@ export function AdminGalleryApprovals({ language }: AdminGalleryApprovalsProps) 
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-gray-600"><User className="w-4 h-4" /><span>{photo.userName}</span></div>
                 <div className="text-sm"><Badge variant="secondary">{photo.eventName}</Badge></div>
-                <div className="flex items-center gap-2 text-sm text-gray-500"><Calendar className="w-4 h-4" /><span>{photo.eventDate}</span></div>
+                <div className="flex items-center gap-2 text-sm text-gray-500"><Calendar className="w-4 h-4" /><span>{formatDisplayDate(photo.eventDate, language)}</span></div>
               </div>
               <div className="flex gap-2 mt-4">
                 <Button onClick={(e) => { e.stopPropagation(); handleApprove(photo.id); }} size="sm" disabled={isProcessing} className="flex-1 bg-green-600 hover:bg-green-700"><CheckCircle className="w-4 h-4 mr-2" />{t.approve}</Button>
@@ -79,7 +80,7 @@ export function AdminGalleryApprovals({ language }: AdminGalleryApprovalsProps) 
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-sm text-gray-600"><User className="w-4 h-4" /><span>{selectedPhoto.userName}</span></div>
-                  <div className="flex items-center gap-2 text-sm text-gray-500"><Calendar className="w-4 h-4" /><span>{selectedPhoto.eventDate}</span></div>
+                  <div className="flex items-center gap-2 text-sm text-gray-500"><Calendar className="w-4 h-4" /><span>{formatDisplayDate(selectedPhoto.eventDate, language)}</span></div>
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={() => handleApprove(selectedPhoto.id)} disabled={isProcessing} className="bg-green-600 hover:bg-green-700"><CheckCircle className="w-4 h-4 mr-2" />{t.approve}</Button>
