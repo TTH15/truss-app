@@ -8,25 +8,8 @@ import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import type { Language, User } from '@truss/core';
 import { currentAcademicYear } from '@truss/core';
+import { GRADE_OPTIONS, gradeLabel } from '../../lib/profile-options';
 
-/** users.grade の値 → 表示ラベル（InitialRegistration の選択肢と同じ体系） */
-const GRADE_OPTIONS: Array<{ value: string; ja: string; en: string }> = [
-  { value: '1', ja: 'B1 (学部1年)', en: 'B1 (1st Year)' },
-  { value: '2', ja: 'B2 (学部2年)', en: 'B2 (2nd Year)' },
-  { value: '3', ja: 'B3 (学部3年)', en: 'B3 (3rd Year)' },
-  { value: '4', ja: 'B4 (学部4年)', en: 'B4 (4th Year)' },
-  { value: 'M1', ja: 'M1 (修士1年)', en: 'M1 (Master 1st Year)' },
-  { value: 'M2', ja: 'M2 (修士2年)', en: 'M2 (Master 2nd Year)' },
-  { value: 'D1', ja: 'D1 (博士1年)', en: 'D1 (Doctoral 1st Year)' },
-  { value: 'D2', ja: 'D2 (博士2年)', en: 'D2 (Doctoral 2nd Year)' },
-  { value: 'D3', ja: 'D3 (博士3年)', en: 'D3 (Doctoral 3rd Year)' },
-  { value: 'other', ja: 'その他', en: 'Other' },
-];
-
-const gradeLabel = (value: string | undefined, language: Language) => {
-  const option = GRADE_OPTIONS.find((o) => o.value === value);
-  return option ? option[language] : value || '-';
-};
 
 interface GradeConfirmNudgeProps {
   language: Language;
