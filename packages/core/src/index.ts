@@ -56,6 +56,7 @@ export * from "./faculties";
 export * from "./chat-time";
 export * from "./linkify";
 export * from "./event-checkin";
+export * from "./member-checkin";
 export * from "./message-categories";
 export * from "./phone";
 export * from "./student-number";

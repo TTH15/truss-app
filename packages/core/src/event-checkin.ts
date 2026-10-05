@@ -3,7 +3,7 @@
  * 署名は付与しない: `event_participants.attended` の更新はRLSで管理者のみに制限済み
  * （supabase/migrations/015_truss_event_participants_attendance_paid.sql）のため、
  * QR自体は「eventIdとuserIdを運営端末に伝える手段」でしかなく、実際の確定権限は
- * DB側のRLSが担保する。対面でのスキャンという運用上、なりすまし対策としては十分。
+ * DB側のRLSが担保する。QRは複製可能なので、本人との照合は運営の確認画面で行う。
  */
 const QR_PREFIX = "truss-checkin";
 const QR_VERSION = "v1";

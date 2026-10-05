@@ -22,6 +22,7 @@ import { EventFormModal } from './admin-events/EventFormModal';
 import { ImageEditorModal } from './admin-events/ImageEditorModal';
 import { EventCalendar } from './admin-events/EventCalendar';
 import { EventDetailModal } from './admin-events/EventDetailModal';
+import { CheckinScanner } from './admin-events/CheckinScanner';
 import { ConfirmDialog } from './admin-events/ConfirmDialog';
 import { clearEventDraft, useEventDraft } from './admin-events/useEventDraft';
 import { useEventParticipants } from './admin-events/useEventParticipants';
@@ -58,6 +59,7 @@ export function AdminEvents({
   const calendar = useCalendarMonth(propsEvents, language);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<AdminEvent | null>(null);
+  const [showCheckin, setShowCheckin] = useState(false);
   const [showNewEventForm, setShowNewEventForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -351,12 +353,13 @@ export function AdminEvents({
         />
       )}
 
-      {selectedEvent && !editMode && (
+      {selectedEvent && !editMode && !showCheckin && (
         <EventDetailModal
           language={language}
           t={t}
           event={selectedEvent}
           participants={participants}
+          onCheckin={() => setShowCheckin(true)}
           viewCount={selectedEventViewCount}
           shareUrl={selectedEventShareUrl}
           onShare={() => void handleShareEventLink()}
@@ -371,6 +374,8 @@ export function AdminEvents({
           }}
         />
       )}
+
+      {selectedEvent && showCheckin && <CheckinScanner event={selectedEvent} participants={participants} members={approvedMembers} language={language} onClose={() => setShowCheckin(false)} />}
 
       {/* イベント編集フォーム */}
       {selectedEvent && editMode && (

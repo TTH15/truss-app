@@ -7,6 +7,8 @@ import { ParticipantList } from './ParticipantList';
 import type { AdminEventsCopy } from './translations';
 import type { AdminEvent } from './types';
 import type { EventParticipants } from './useEventParticipants';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faQrcode } from '@fortawesome/free-solid-svg-icons';
 
 interface EventDetailModalProps {
   language: Language;
@@ -21,6 +23,7 @@ interface EventDetailModalProps {
   onEdit: () => void;
   onClose: () => void;
   onSendEmail: () => void;
+  onCheckin: () => void;
 }
 
 export function EventDetailModal({
@@ -34,6 +37,7 @@ export function EventDetailModal({
   onEdit,
   onClose,
   onSendEmail,
+  onCheckin,
 }: EventDetailModalProps) {
   const locale = language === 'ja' ? 'ja' : 'en';
   const title = getEventText(event, 'title', locale);
@@ -52,6 +56,7 @@ export function EventDetailModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Button onClick={onCheckin} className="lg:col-span-2 w-fit"><FontAwesomeIcon icon={faQrcode} className="mr-2" />{language === 'ja' ? 'QR受付' : 'QR check-in'}</Button>
           {/* 左側：イベント情報 */}
           <div className="space-y-4">
             <div className="flex items-start justify-between">

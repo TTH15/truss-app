@@ -8,7 +8,7 @@ export function NextJourneyTicket({ event, language, registered, onOpen }: { eve
   const month = date.toLocaleDateString(language === 'ja' ? 'ja-JP' : 'en-US', { month: 'short' });
   const title = language === 'ja' ? event.title : (event.titleEn || event.title);
   return (
-    <button type="button" className="journey-ticket" onClick={onOpen} aria-label={`${title} ${language === 'ja' ? '詳細を見る' : 'View details'}`}>
+    <button type="button" className="journey-ticket" onClick={onOpen} aria-label={`${title} ${registered ? (language === 'ja' ? 'チケットを見る' : 'View ticket') : (language === 'ja' ? '詳細を見る' : 'View details')}`}>
       <span className="journey-ticket-date" aria-hidden="true"><span>{month}</span><strong>{date.getDate()}</strong><span>{date.toLocaleDateString(language === 'ja' ? 'ja-JP' : 'en-US', { weekday: 'short' })}</span></span>
       <span className="journey-ticket-body">
         <span className="journey-ticket-title">{title}</span>
@@ -16,7 +16,7 @@ export function NextJourneyTicket({ event, language, registered, onOpen }: { eve
         {event.location && <span className="journey-ticket-location"><FontAwesomeIcon icon={faLocationDot} />{language === 'ja' ? event.location : (event.locationEn || event.location)}</span>}
         <span className="journey-ticket-footer">
           {registered && <span className="journey-registered">{language === 'ja' ? '申し込み済み' : 'Registered'}</span>}
-          <span className="journey-ticket-action">{language === 'ja' ? '詳細を見る' : 'View details'}<FontAwesomeIcon icon={faChevronRight} /></span>
+          <span className="journey-ticket-action">{registered ? (language === 'ja' ? 'チケットを見る' : 'View ticket') : (language === 'ja' ? '詳細を見る' : 'View details')}<FontAwesomeIcon icon={faChevronRight} /></span>
         </span>
       </span>
     </button>

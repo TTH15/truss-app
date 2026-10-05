@@ -14,6 +14,8 @@ import { toast } from 'sonner';
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '@truss/core';
+import { ParticipationTicket } from '../member/ParticipationTicket';
+import { useData } from '../../contexts/DataContext';
 
 interface EventsPageProps {
   language: Language;
@@ -36,6 +38,7 @@ const translations = {
 
 export function EventsPage({ language, events, attendingEvents, likedEvents, onToggleAttending, onToggleLike, highlightEventId, openEventId, onOpenEventHandled, onAddEventParticipant, user }: EventsPageProps) {
   const t = translations[language];
+  const { eventParticipants } = useData();
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [lineGroupDialogOpen, setLineGroupDialogOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -428,12 +431,14 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
                   </div>
                 )}
               </div>
+              {attendingEvents.has(detailEvent.id) ? <ParticipationTicket event={detailEvent} user={user} language={language} participant={eventParticipants[detailEvent.id]?.find((participant) => participant.userId === user.id)} /> : <>
               <h3 className="text-xl font-bold text-[#3D3D4E]">{language === 'ja' ? detailEvent.title : (detailEvent.titleEn || detailEvent.title)}</h3>
               <div className="bg-[#F5F1E8] rounded-lg p-4 space-y-3">
                 <div className="flex items-center gap-3 text-[#3D3D4E]"><Calendar className="w-5 h-5 text-[#49B1E4]" /><span>{detailEvent.date}</span></div>
                 <div className="flex items-center gap-3 text-[#3D3D4E]"><Clock className="w-5 h-5 text-[#49B1E4]" /><span>{detailEvent.time}</span></div>
                 <div className="flex items-start gap-3 text-[#3D3D4E]"><MapPin className="w-5 h-5 text-[#49B1E4] shrink-0 mt-0.5" /><div><span>{language === 'ja' ? detailEvent.location : (detailEvent.locationEn || detailEvent.location)}</span>{detailMapsHref && <a href={detailMapsHref} target="_blank" rel="noopener noreferrer" className="block text-sm text-[#49B1E4] hover:underline mt-1"><ExternalLink className="w-3 h-3 inline mr-1" />{language === 'ja' ? 'Google Mapで開く' : 'Open in Google Maps'}</a>}</div></div>
               </div>
+              </>}
               <div className="flex items-center gap-6">
                 <button
                   type="button"
