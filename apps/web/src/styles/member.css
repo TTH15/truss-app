@@ -42,6 +42,7 @@
 .member-theme [class~="text-[#3D3D4E]"], .member-theme [class~="text-gray-900"], .member-theme [class~="text-gray-700"] { color: var(--member-ink); }
 .member-theme [class~="text-[#6B6B7A]"], .member-theme [class~="text-gray-500"], .member-theme [class~="text-gray-600"] { color: var(--member-muted); }
 .member-theme [class~="bg-[#49B1E4]"] { background-color: var(--member-action); }
+.member-theme [class~="bg-[#49B1E4]"] > [class~="border-l-[#49B1E4]"] { border-left-color: var(--member-action); }
 .member-theme [class~="from-[#49B1E4]"] { background-image: none; background-color: var(--member-action); }
 .member-theme [class~="bg-[#E0F3FB]"] { background-color: #E9F4FB; }
 .member-theme [class~="bg-[#F5F1E8]"] { background-color: var(--member-paper); }
