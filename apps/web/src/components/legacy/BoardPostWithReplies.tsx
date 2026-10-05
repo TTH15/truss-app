@@ -71,20 +71,20 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
   };
   const replyCount = post.replies?.length || 0;
   return (
-    <Card id={`board-post-${post.id}`} tabIndex={-1} className={`scroll-mt-24 p-4 hover:shadow-md transition-shadow ${isAnnouncement ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}>
-      <div className="flex gap-4">
-        {post.image && <div className="w-24 h-24 shrink-0"><img src={post.image} alt={post.title} className="w-full h-full object-cover rounded-lg" /></div>}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <Avatar className="w-8 h-8"><AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-xs">{post.authorAvatar}</AvatarFallback></Avatar>
-              <div><p className="text-sm text-[#3D3D4E]">{post.author}</p><p className="text-xs text-gray-500">{formatPostTime(post.time)}</p></div>
-            </div>
-            <div className={`px-2 py-1 rounded-full text-xs ${isAnnouncement ? 'bg-amber-500 text-white' : 'bg-linear-to-r from-[#49B1E4] to-[#49B1E4] text-white'}`}>
-              {isAnnouncement ? (language === 'ja' ? 'お知らせ' : 'Announcement') : (post.tag === 'languageExchange' ? t.languageExchange : post.tag === 'studyGroup' ? t.studyGroup : t.event)}
-            </div>
-          </div>
-          <h3 className="text-[#3D3D4E] mb-1">{post.title}</h3>
+    <Card id={`board-post-${post.id}`} tabIndex={-1} className={`board-post scroll-mt-24 p-4 gap-4 hover:shadow-md transition-shadow ${isAnnouncement ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}>
+      <div className="board-post-header">
+        <div className="board-post-author">
+          <Avatar className="w-8 h-8"><AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-xs">{post.authorAvatar}</AvatarFallback></Avatar>
+          <div className="min-w-0"><p className="text-sm text-[#3D3D4E] wrap-anywhere">{post.author}</p><p className="text-xs text-gray-500 wrap-anywhere">{formatPostTime(post.time)}</p></div>
+        </div>
+        <div className={`board-post-tag px-2 py-1 rounded-full text-xs ${isAnnouncement ? 'bg-amber-500 text-white' : 'bg-linear-to-r from-[#49B1E4] to-[#49B1E4] text-white'}`}>
+          {isAnnouncement ? (language === 'ja' ? 'お知らせ' : 'Announcement') : (post.tag === 'languageExchange' ? t.languageExchange : post.tag === 'studyGroup' ? t.studyGroup : t.event)}
+        </div>
+      </div>
+      <div className={`board-post-layout ${post.image ? 'board-post-has-image' : ''}`}>
+        {post.image && <div className="board-post-image"><img src={post.image} alt={post.title} loading="lazy" className="w-full h-full object-contain rounded-lg" /></div>}
+        <div className="min-w-0">
+          <h3 className="text-[#3D3D4E] mb-1 wrap-anywhere">{post.title}</h3>
           <p className={`text-sm text-gray-600 mb-1 whitespace-pre-line break-words [overflow-wrap:anywhere] ${isContentExpanded ? '' : 'line-clamp-2'}`}>{linkifyText(normalizedContent)}</p>
           {shouldShowExpandButton && (
             <Button
@@ -97,10 +97,10 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
             </Button>
           )}
           {!shouldShowExpandButton && <div className="mb-3" />}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-1"><Globe2 className="w-4 h-4" /><span>{post.language}</span></div>
-              <div>{post.peopleNeeded} {language === 'ja' ? '人募集' : 'people needed'}</div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600">
+              <div className="flex min-w-0 items-center gap-1"><Globe2 className="w-4 h-4 shrink-0" /><span className="wrap-anywhere">{post.language}</span></div>
+              {!isAnnouncement && <div>{post.peopleNeeded} {language === 'ja' ? '人募集' : 'people needed'}</div>}
               <Button
                 type="button"
                 variant="ghost"
@@ -122,7 +122,7 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
                   <ReactionCount value={post.interested} />
                 </div>
               </Button>
-              {post.expiryDate && <div className="flex items-center gap-1 text-xs text-[#49B1E4]"><Calendar className="w-3 h-3" /><span>{formatEventDateNoHyphen(post.expiryDate)} {t.until}</span></div>}
+              {post.expiryDate && <div className="flex min-w-0 items-center gap-1 text-xs text-[#49B1E4]"><Calendar className="w-3 h-3 shrink-0" /><span className="wrap-anywhere">{formatEventDateNoHyphen(post.expiryDate)} {t.until}</span></div>}
             </div>
             {canDelete && (
               <Button
@@ -137,41 +137,42 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
               </Button>
             )}
           </div>
-          <div className="border-t pt-3 mt-3">
-            <Button variant="ghost" size="sm" onClick={() => setShowReplies(!showReplies)} className="text-gray-600 hover:text-[#49B1E4] mb-2"><MessageCircle className="w-4 h-4 mr-2" />{replyCount} {t.replies}<ChevronDown className={`w-4 h-4 ml-2 transition-transform duration-200 ${showReplies ? "rotate-180" : ""}`} /></Button>
-            <div className="flex gap-2 mb-3">
-              <Avatar className="w-8 h-8 shrink-0"><AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-xs">{user.name.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-              <div className="flex-1 flex gap-2">
-                <Input
-                  placeholder={t.replyPlaceholder}
-                  value={replyInput}
-                  disabled={!canWrite}
-                  onChange={(e) => setReplyInput(e.target.value)}
-                  onKeyPress={(e) => { if (e.key === 'Enter') handleSendReply(); }}
-                  className="flex-1"
-                />
-                <Button
-                  onClick={handleSendReply}
-                  disabled={!canWrite || !replyInput.trim() || sendingReply}
-                  size="sm"
-                  className="bg-[#49B1E4] hover:bg-[#3A9FD3]"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-            {showReplies && post.replies && post.replies.length > 0 && (
-              <div className="space-y-3 mt-3">
-                {post.replies.map((reply) => (
-                  <div key={reply.id} className="flex gap-2 pl-4">
-                    <Avatar className="w-7 h-7 shrink-0"><AvatarFallback className="bg-linear-to-br from-purple-500 to-pink-500 text-white text-xs">{reply.authorAvatar}</AvatarFallback></Avatar>
-                    <div className="flex-1 bg-gray-50 rounded-lg p-3"><div className="flex items-center justify-between mb-1"><p className="text-sm text-[#3D3D4E] shrink-0">{reply.author}</p><p className="text-xs text-gray-500 shrink-0">{formatReplyTime(reply.time)}</p></div><p className="text-sm text-gray-700 whitespace-pre-line break-words [overflow-wrap:anywhere]">{linkifyText(normalizeBoardContent(reply.content))}</p></div>
-                  </div>
-                ))}
-              </div>
-            )}
+        </div>
+      </div>
+      <div className="min-w-0 border-t pt-3">
+        <Button variant="ghost" size="sm" onClick={() => setShowReplies(!showReplies)} aria-expanded={showReplies} className="h-auto min-h-11 max-w-full whitespace-normal text-left text-gray-600 hover:text-[#49B1E4] mb-2"><MessageCircle className="w-4 h-4 mr-2 shrink-0" /><span className="min-w-0">{replyCount} {t.replies}</span><ChevronDown className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${showReplies ? "rotate-180" : ""}`} /></Button>
+        <div className="flex min-w-0 items-center gap-2 mb-3">
+          <Avatar className="w-8 h-8 shrink-0"><AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-xs">{user.name.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <Input
+              placeholder={t.replyPlaceholder}
+              value={replyInput}
+              disabled={!canWrite}
+              onChange={(e) => setReplyInput(e.target.value)}
+              onKeyPress={(e) => { if (e.key === 'Enter') handleSendReply(); }}
+              className="flex-1 min-w-0 h-11"
+            />
+            <Button
+              onClick={handleSendReply}
+              disabled={!canWrite || !replyInput.trim() || sendingReply}
+              size="sm"
+              aria-label={t.sendReply}
+              className="shrink-0 h-11 w-11 p-0 bg-[#49B1E4] hover:bg-[#3A9FD3]"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
           </div>
         </div>
+        {showReplies && post.replies && post.replies.length > 0 && (
+          <div className="space-y-3 mt-3">
+            {post.replies.map((reply) => (
+              <div key={reply.id} className="flex min-w-0 gap-2 sm:pl-4">
+                <Avatar className="w-7 h-7 shrink-0"><AvatarFallback className="bg-linear-to-br from-purple-500 to-pink-500 text-white text-xs">{reply.authorAvatar}</AvatarFallback></Avatar>
+                <div className="flex-1 min-w-0 bg-gray-50 rounded-lg p-3"><div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-1"><p className="text-sm text-[#3D3D4E] min-w-0 wrap-anywhere">{reply.author}</p><p className="text-xs text-gray-500">{formatReplyTime(reply.time)}</p></div><p className="text-sm text-gray-700 whitespace-pre-line break-words [overflow-wrap:anywhere]">{linkifyText(normalizeBoardContent(reply.content))}</p></div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Card>
   );
