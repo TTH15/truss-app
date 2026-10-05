@@ -8,6 +8,7 @@ import type { Language, Event, User } from '@truss/core';
 import { getMissingProfileFields, describeMissingProfileFields } from '@truss/core';
 import { googleMapsHrefForEvent } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
+import { formatDisplayDate } from '../../lib/display-date';
 import { withLineEscapeParam } from '../../lib/in-app-browser';
 import { ReactionCount } from './ReactionCount';
 import { toast } from 'sonner';
@@ -434,7 +435,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
               {attendingEvents.has(detailEvent.id) ? <ParticipationTicket event={detailEvent} user={user} language={language} participant={eventParticipants[detailEvent.id]?.find((participant) => participant.userId === user.id)} /> : <>
               <h3 className="text-xl font-bold text-[#3D3D4E]">{language === 'ja' ? detailEvent.title : (detailEvent.titleEn || detailEvent.title)}</h3>
               <div className="bg-[#F5F1E8] rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-3 text-[#3D3D4E]"><Calendar className="w-5 h-5 text-[#49B1E4]" /><span>{detailEvent.date}</span></div>
+                <div className="flex items-center gap-3 text-[#3D3D4E]"><Calendar className="w-5 h-5 text-[#49B1E4]" /><span>{formatDisplayDate(detailEvent.date, language)}</span></div>
                 <div className="flex items-center gap-3 text-[#3D3D4E]"><Clock className="w-5 h-5 text-[#49B1E4]" /><span>{detailEvent.time}</span></div>
                 <div className="flex items-start gap-3 text-[#3D3D4E]"><MapPin className="w-5 h-5 text-[#49B1E4] shrink-0 mt-0.5" /><div><span>{language === 'ja' ? detailEvent.location : (detailEvent.locationEn || detailEvent.location)}</span>{detailMapsHref && <a href={detailMapsHref} target="_blank" rel="noopener noreferrer" className="block text-sm text-[#49B1E4] hover:underline mt-1"><ExternalLink className="w-3 h-3 inline mr-1" />{language === 'ja' ? 'Google Mapで開く' : 'Open in Google Maps'}</a>}</div></div>
               </div>
@@ -490,7 +491,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
             <>
               <DialogHeader><DialogTitle className="flex items-center gap-2"><Calendar className="w-5 h-5 text-[#49B1E4]" />{t.confirmRegistration}</DialogTitle><DialogDescription>{t.confirmRegistrationMessage}</DialogDescription></DialogHeader>
               <div className="space-y-4 py-2">
-                {selectedEvent && <div className="bg-[#F5F1E8] p-4 rounded-lg"><h3 className="font-medium text-[#3D3D4E] mb-1">{language === 'ja' ? selectedEvent.title : (selectedEvent.titleEn || selectedEvent.title)}</h3><p className="text-sm text-[#6B6B7A]">{selectedEvent.date} {selectedEvent.time}</p><p className="text-sm text-[#3D3D4E] mt-1">¥{Number(selectedEvent.participationFee ?? 0).toLocaleString()} ({t.participationFee})</p></div>}
+                {selectedEvent && <div className="bg-[#F5F1E8] p-4 rounded-lg"><h3 className="font-medium text-[#3D3D4E] mb-1">{language === 'ja' ? selectedEvent.title : (selectedEvent.titleEn || selectedEvent.title)}</h3><p className="text-sm text-[#6B6B7A]">{formatDisplayDate(selectedEvent.date, language)} {selectedEvent.time}</p><p className="text-sm text-[#3D3D4E] mt-1">¥{Number(selectedEvent.participationFee ?? 0).toLocaleString()} ({t.participationFee})</p></div>}
                 <div className="flex items-start space-x-3 bg-yellow-50 p-3 rounded-lg border border-yellow-200"><Checkbox id="photoRefusal" checked={photoRefusal} onCheckedChange={(checked) => setPhotoRefusal(checked === true)} className="mt-0.5" /><label htmlFor="photoRefusal" className="text-sm text-[#3D3D4E] leading-relaxed cursor-pointer">{t.photoRefusal}</label></div>
                 <Button className="w-full bg-[#49B1E4] hover:bg-[#3A9BD4] text-white" onClick={handleRegister} disabled={registering}>{registering ? (language === 'ja' ? '登録中...' : 'Registering...') : t.registerButton}</Button>
                 <Button variant="ghost" className="w-full text-[#6B6B7A]" onClick={handleLineDialogClose}>{t.close}</Button>

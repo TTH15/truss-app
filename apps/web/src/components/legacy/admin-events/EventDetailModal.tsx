@@ -2,6 +2,7 @@ import { Calendar as CalendarIcon, Clock, MapPin, Users, Edit2, Heart, Share2, E
 import type { Language } from '@truss/core';
 import { Button } from '../../ui/button';
 import { linkifyText } from '../../../lib/linkify';
+import { formatDisplayDate } from '../../../lib/display-date';
 import { getEventText, parseEventTime } from './event-form';
 import { ParticipantList } from './ParticipantList';
 import type { AdminEventsCopy } from './translations';
@@ -87,7 +88,7 @@ export function EventDetailModal({
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
                 <CalendarIcon className="w-4 h-4" />
-                <span>{event.date}</span>
+                <span>{formatDisplayDate(event.date, language)}</span>
               </div>
               <div className="flex items-center gap-2 text-[#3D3D4E] text-sm">
                 <Clock className="w-4 h-4" />

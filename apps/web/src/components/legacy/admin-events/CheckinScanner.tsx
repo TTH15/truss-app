@@ -8,6 +8,7 @@ import { parseEventCheckinPayload, parseMemberCheckinPayload, supabase, toLocalD
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { Button } from '../../ui/button';
 import { UserAvatarImage } from '../UserAvatarImage';
+import { formatDisplayDate } from '../../../lib/display-date';
 import { getParticipantUserId } from './participants';
 import type { AdminEvent, AdminEventParticipant } from './types';
 import type { EventParticipants } from './useEventParticipants';
@@ -139,7 +140,7 @@ export function CheckinScanner({ event, participants, members, language, onClose
   return <Dialog open onOpenChange={(open) => { if (!open && !busy) { sessionRef.current += 1; stopCamera(); onClose(); } }}>
     <DialogContent aria-describedby={undefined} className="sm:max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto" onEscapeKeyDown={(e) => { if (busy) e.preventDefault(); }} onPointerDownOutside={(e) => { if (busy) e.preventDefault(); }}>
       <DialogHeader><DialogTitle><FontAwesomeIcon icon={faQrcode} className="mr-2" />{ja ? 'QR受付' : 'QR check-in'}</DialogTitle></DialogHeader>
-      <div className="rounded-lg border bg-slate-50 p-3"><strong>{ja ? event.title : event.titleEn || event.title}</strong><p className="text-sm text-slate-600">{event.date} {event.time}</p></div>
+      <div className="rounded-lg border bg-slate-50 p-3"><strong>{ja ? event.title : event.titleEn || event.title}</strong><p className="text-sm text-slate-600">{formatDisplayDate(event.date, language)} {event.time}</p></div>
       {notToday && <p className="text-sm text-amber-800 rounded-lg bg-amber-50 p-3">{ja ? '本日の開催ではありません。受付するイベントを確認してください' : 'This event is not today. Check the selected event'}</p>}
       <video ref={videoRef} autoPlay muted playsInline className={`w-full aspect-[4/3] rounded-lg bg-slate-950 object-cover ${active ? '' : 'hidden'}`} aria-label={ja ? 'QR読み取りカメラ' : 'QR scanner camera'} />
       {lookup && <p role="status">{ja ? '会員・申込情報を確認中…' : 'Checking membership and registration…'}</p>}

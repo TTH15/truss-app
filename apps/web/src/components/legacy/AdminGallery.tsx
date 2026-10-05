@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { GALLERY_PHOTO_ACCEPT, isGalleryPhotoMimeAllowed, toLocalDateKey } from '@truss/core';
 import { applyMosaicAtPoint } from '../../lib/mosaicCanvas';
 import { AdminGalleryApprovals } from './AdminGalleryApprovals';
+import { formatDisplayDate } from '../../lib/display-date';
 
 interface AdminGalleryProps {
   language: Language;
@@ -341,7 +342,7 @@ export function AdminGallery({ language }: AdminGalleryProps) {
             <label className="text-[#3D3D4E] text-sm font-medium block mb-2">{t.selectEvent}</label>
             <select value={selectedEventId} onChange={(e) => setSelectedEventId(e.target.value)} className="w-full bg-[#EEEBE3] border-0 rounded-[8px] px-4 py-2 text-[#3D3D4E]">
               <option value="">{t.selectEventPlaceholder}</option>
-              {events.map((event) => <option key={event.id} value={event.id}>{language === 'ja' ? event.titleJa : event.titleEn} ({event.date})</option>)}
+              {events.map((event) => <option key={event.id} value={event.id}>{language === 'ja' ? event.titleJa : event.titleEn} ({formatDisplayDate(event.date, language)})</option>)}
             </select>
           </div>
           <div>

@@ -10,6 +10,7 @@ import { Textarea } from '../ui/textarea';
 import type { Language, BoardPost, CreateBoardPostInput } from '@truss/core';
 import { normalizeBoardContent, getBoardPostEndedReason, formatEventDateNoHyphen } from '@truss/core';
 import { linkifyText } from '../../lib/linkify';
+import { formatDisplayDate } from '../../lib/display-date';
 import { ImageDropUpload } from './ImageDropUpload';
 
 interface AdminBoardsProps {
@@ -300,7 +301,7 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
                 <div className="flex items-center gap-1"><User className="w-4 h-4" />{post.author}</div>
                 <Badge className={getCategoryColor(post.category ?? 'other')}>{getCategoryLabel(post.category ?? 'other')}</Badge>
-                <div className="flex items-center gap-1"><MessageSquare className="w-4 h-4" />{post.date}</div>
+                <div className="flex items-center gap-1"><MessageSquare className="w-4 h-4" />{post.date && /^\d{4}-\d{2}-\d{2}$/.test(post.date) ? formatDisplayDate(post.date, language) : post.date}</div>
                 {post.expiryDate && !endedReasonOf(post) && (
                   <div className="flex items-center gap-1 text-[#49B1E4]"><Calendar className="w-4 h-4" />{t.expiresOn} {formatEventDateNoHyphen(post.expiryDate)}</div>
                 )}

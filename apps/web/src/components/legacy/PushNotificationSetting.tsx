@@ -16,7 +16,6 @@ import {
 const translations = {
   ja: {
     title: 'プッシュ通知',
-    description: 'イベントの案内や運営からの連絡を、アプリを開いていないときも受け取れます。',
     enable: '通知をオンにする',
     disable: '通知をオフにする',
     working: '設定中...',
@@ -31,7 +30,6 @@ const translations = {
   },
   en: {
     title: 'Push notifications',
-    description: 'Get event news and messages from the staff even when the app is closed.',
     enable: 'Turn on notifications',
     disable: 'Turn off notifications',
     working: 'Working...',
@@ -131,18 +129,16 @@ export function PushNotificationSetting({
         <CardTitle>{t.title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-[#6B6B7A]">
-          {variant === 'admin'
-            ? (language === 'ja'
-                ? '入会申請や会員からのメッセージを、この端末で受け取れます。'
-                : 'Get notified on this device about new applications and member messages.')
-            : t.description}
-        </p>
+        {variant === 'admin' && <p className="text-sm text-[#6B6B7A]">
+          {language === 'ja'
+            ? '入会申請や会員からのメッセージを、この端末で受け取れます。'
+            : 'Get notified on this device about new applications and member messages.'}
+        </p>}
 
         {/* 種類ごとの受信設定。ブラウザの許可は「全部か無しか」しか持てないので、
             細かい制御はアプリ側で持ち、送信時に絞り込む */}
         {variant === 'member' && (
-        <div className="space-y-2 border-t border-[#E8E4DB] pt-3">
+        <div className="space-y-2">
           {([
             { key: 'notifyMessage' as const, label: language === 'ja' ? '運営からのメッセージ' : 'Messages from staff' },
             { key: 'notifyEvent' as const, label: language === 'ja' ? 'イベントの案内' : 'Event news' },

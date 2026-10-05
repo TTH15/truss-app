@@ -1,9 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
+import { useId, useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { ProfileLanguagePicker } from '../member/ProfileLanguagePicker';
+import { GRADE_OPTIONS, gradeLabel, profileLanguageLabel, uniqueProfileLanguages } from '../../lib/profile-options';
+import { formatDisplayDate } from '../../lib/display-date';
 import { Globe2, MapPin, Mail, Edit, Phone, Users, Save, GraduationCap, IdCard } from '../member/icons';
 import { toast } from 'sonner';
 import type { Language, User } from '@truss/core';
@@ -106,6 +110,7 @@ export function ProfilePage({
   const [saving, setSaving] = useState(false);
   const [cropOpen, setCropOpen] = useState(false);
   const isComposingRef = useRef(false);
+  const gradeInputId = useId();
 
   useEffect(() => {
     setEditedUser(user);
@@ -134,7 +139,7 @@ export function ProfilePage({
         furigana: editedUser.furigana,
         nickname: editedUser.nickname,
         birthday: editedUser.birthday,
-        languages: editedUser.languages,
+        languages: uniqueProfileLanguages(editedUser.languages ?? []),
         birthCountry: editedUser.birthCountry,
         phone: editedUser.phone,
         organizations: editedUser.organizations,
@@ -206,7 +211,7 @@ export function ProfilePage({
 
       {/* 画面を閉じる導線は下部ナビが担うので、ここには置かない。
           編集中は「キャンセル / 保存する」の2つだけにして、×との三択にならないようにする */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[#3D3D4E] shrink-0">{t.title}</h1>
         {!isEditing ? (
           <Button className="bg-[#49B1E4] hover:bg-[#3A9FD3]" onClick={() => setIsEditing(true)}>
@@ -353,13 +358,21 @@ export function ProfilePage({
                 )}
               </div>
             )}
-            {user.grade && (
+            {(user.grade || isEditing) && (
               <div>
-                <Label className="text-gray-600 text-sm mb-1">{t.grade}</Label>
+                <Label htmlFor={gradeInputId} className="text-gray-600 text-sm mb-1">{t.grade}</Label>
                 {isEditing ? (
-                  <Input value={editedUser.grade} onChange={(e) => setEditedUser({ ...editedUser, grade: e.target.value })} />
+                  <Select value={editedUser.grade || ''} onValueChange={grade => setEditedUser({ ...editedUser, grade })}>
+                    <SelectTrigger id={gradeInputId} className="w-full min-h-11">
+                      <SelectValue placeholder={language === 'ja' ? '学年を選択' : 'Select grade'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {editedUser.grade && !GRADE_OPTIONS.some(option => option.value === editedUser.grade) && <SelectItem value={editedUser.grade}>{editedUser.grade}</SelectItem>}
+                      {GRADE_OPTIONS.map(option => <SelectItem key={option.value} value={option.value}>{option[language]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 ) : (
-                  <p className="text-gray-900 mt-1">{user.grade}</p>
+                  <p className="text-gray-900 mt-1">{gradeLabel(user.grade, language)}</p>
                 )}
               </div>
             )}
@@ -394,7 +407,7 @@ export function ProfilePage({
                     onChange={(e) => setEditedUser({ ...editedUser, birthday: e.target.value })}
                   />
                 ) : (
-                  <p className="text-gray-900 mt-1">{user.birthday || '-'}</p>
+                  <p className="text-gray-900 mt-1">{formatDisplayDate(user.birthday, language)}</p>
                 )}
               </div>
               <div>
@@ -414,17 +427,14 @@ export function ProfilePage({
               <div>
                 <Label className="text-gray-600 text-sm mb-1">{t.languages}</Label>
                 {isEditing ? (
-                  <Input
-                    value={editedUser.languages?.join(', ') || ''}
-                    onChange={(e) => setEditedUser({ ...editedUser, languages: e.target.value.split(',').map((s) => s.trim()) })}
-                  />
+                  <ProfileLanguagePicker value={editedUser.languages ?? []} onChange={languages => setEditedUser({ ...editedUser, languages })} language={language} />
                 ) : (
                   <div className="flex gap-2 flex-wrap mt-1">
                     {user.languages && user.languages.length > 0 ? (
                       user.languages.map((lang, index) => (
                         <Badge key={index} variant="secondary" className="flex items-center gap-1">
                           <Globe2 className="w-3 h-3" />
-                          {lang}
+                          {profileLanguageLabel(lang, language)}
                         </Badge>
                       ))
                     ) : (
