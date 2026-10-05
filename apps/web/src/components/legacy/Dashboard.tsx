@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Home, Calendar, Users, Image, Mail, Bell, LogOut, X, Check, Clock, AlertCircle, Upload, FileText, CreditCard, MessageCircle, ShieldCheck } from 'lucide-react';
+import { Home, Calendar, Users, Image, Mail, Bell, LogOut, X, Check, AlertCircle, Upload, FileText, CreditCard, MessageCircle, ShieldCheck } from '../member/icons';
 import { Button } from '../ui/button';
 import { UserAvatarImage } from './UserAvatarImage';
 import { Badge } from '../ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
+import { MemberTheme } from '../member/MemberTheme';
 import { HomePage } from './HomePage';
 import { EventsPage } from './EventsPage';
 import { MembersPage } from './MembersPage';
@@ -95,7 +96,7 @@ const translations = {
     bulletin: '掲示板',
     boards: '掲示板',
     gallery: 'ギャラリー',
-    messages: 'メッセジ',
+    messages: 'メッセージ',
     logout: 'ログアウト',
   },
   en: {
@@ -177,6 +178,9 @@ export function Dashboard({
     }
   };
   const [pendingOpenEventId, setPendingOpenEventId] = useState<number | undefined>(undefined);
+  const [pendingPhotoId, setPendingPhotoId] = useState<number>();
+  const [pendingPostId, setPendingPostId] = useState<number>();
+  const [openGalleryUpload, setOpenGalleryUpload] = useState(false);
   const [uploadingStudentId, setUploadingStudentId] = useState(false);
   const studentIdReuploadInputRef = useRef<HTMLInputElement | null>(null);
   const t = translations[language];
@@ -339,6 +343,7 @@ export function Dashboard({
 
   const handleNavigateToEvent = (eventId: number) => {
     setHighlightEventId(eventId);
+    setPendingOpenEventId(eventId);
     setCurrentPage('events');
     setTimeout(() => setHighlightEventId(undefined), 3000);
   };
@@ -367,8 +372,9 @@ export function Dashboard({
   const isChatPage = currentPage === 'messages';
 
   return (
-    <div className={isChatPage ? 'h-dvh flex flex-col overflow-hidden bg-[#F5F1E8]' : 'min-h-screen bg-[#F5F1E8]'}>
-      <header className={`bg-[#F5F1E8] border-b z-50 ${isChatPage ? 'shrink-0' : 'sticky top-0'}`}>
+    <MemberTheme>
+    <div className={`member-theme member-shell ${isChatPage ? 'h-dvh flex flex-col overflow-hidden' : 'min-h-screen'}`}>
+      <header className={`member-header border-b z-50 ${isChatPage ? 'shrink-0' : 'sticky top-0'}`}>
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-col gap-3">
             <div className="flex justify-between items-center">
@@ -383,7 +389,7 @@ export function Dashboard({
                   alt="Logo"
                   className="w-8 h-8 object-contain"
                 />
-                <span className="text-[#3D3D4E] text-2xl" style={{ fontFamily: "'Island Moments', cursive" }}>{t.appName}</span>
+                <span className="member-wordmark">{t.appName}</span>
               </button>
               <div className="flex items-center gap-2">
                 <Button
@@ -414,6 +420,7 @@ export function Dashboard({
                       variant="ghost"
                       size="sm"
                       className="relative hover:bg-[#E8E4DB] p-2 w-8 h-8 flex items-center justify-center"
+                      aria-label={language === 'ja' ? '通知' : 'Notifications'}
                       data-tour="notifications"
                     >
                       <Bell className="w-5 h-5 text-[#3D3D4E]" />
@@ -424,15 +431,15 @@ export function Dashboard({
                       )}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0" align="end">
+                  <PopoverContent className="member-theme w-80 p-0" align="end">
                     <div className="p-4 border-b flex items-center justify-between">
                       <h3 className="font-semibold text-[#3D3D4E]">
                         {language === 'ja' ? '通知' : 'Notifications'}
                       </h3>
                       <button
                         onClick={() => setNotificationOpen(false)}
-                        className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
-                        aria-label="Close"
+                        aria-label={language === 'ja' ? '通知を閉じる' : 'Close notifications'}
+                        className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
                       >
                         <X className="w-4 h-4 text-gray-600" />
                       </button>
@@ -508,6 +515,7 @@ export function Dashboard({
                       variant="ghost"
                       size="sm"
                       className="rounded-full p-0 hover:bg-[#E8E4DB]"
+                      aria-label={language === 'ja' ? 'プロフィールメニュー' : 'Profile menu'}
                       data-tour="profile"
                     >
                       <UserAvatarImage
@@ -518,7 +526,7 @@ export function Dashboard({
                       />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0 bg-white border border-[#E5E7EB] shadow-lg" align="end">
+                  <PopoverContent className="member-theme w-80 p-0 bg-white border border-[#E5E7EB] shadow-lg" align="end">
                     <ProfilePage
                       language={language}
                       user={user}
@@ -561,13 +569,13 @@ export function Dashboard({
         </div>
       </header>
 
-      <main className={isChatPage ? 'flex-1 min-h-0' : 'container mx-auto px-4 py-8 pb-32 min-h-screen'}>
+      <main className={isChatPage ? 'flex-1 min-h-0' : 'member-main container mx-auto px-4 min-h-screen'}>
         {user.registrationStep === 'waiting_approval' && currentPage !== 'messages' && (
           <div className="mb-6 space-y-4">
             {user.studentIdReuploadRequested && (
-              <div className="border-2 rounded-lg p-5 shadow-md" style={{ backgroundColor: '#E0F3FB', borderColor: '#49B1E4' }}>
+              <div className="border-2 rounded-lg p-5 shadow-md" style={{ backgroundColor: '#E9F4FB', borderColor: 'var(--member-blue)' }}>
                 <div className="flex items-start gap-3">
-                  <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#49B1E4' }}>
+                  <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--member-action)' }}>
                     <AlertCircle className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
@@ -584,16 +592,11 @@ export function Dashboard({
                         </p>
                       </div>
                     )}
-                    <p className="text-sm mb-3" style={{ color: '#3D3D4E' }}>
-                      {language === 'ja'
-                        ? '運営チームから学生証の再アップロードが依頼されました。以下のボタンから学生証を再度アップロードしてください。'
-                        : 'The administration team has requested you to re-upload your student ID. Please re-upload it using the button below.'}
-                    </p>
                     <Button
                       onClick={() => studentIdReuploadInputRef.current?.click()}
                       disabled={uploadingStudentId}
                       className="text-white hover:opacity-90"
-                      style={{ backgroundColor: '#49B1E4' }}
+                      style={{ backgroundColor: 'var(--member-action)' }}
                     >
                       <Upload className="w-4 h-4 mr-2" />
                       {uploadingStudentId
@@ -612,120 +615,32 @@ export function Dashboard({
               </div>
             )}
 
-            <div className="bg-white rounded-lg p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col items-center flex-1">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center mb-2 bg-[#49B1E4] text-white">
-                    <Check className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs text-center font-medium text-green-600">
-                    {language === 'ja' ? '認証' : 'Verified'}
-                  </p>
-                </div>
-                <div className="flex-1 h-1 bg-gray-200 mx-2 relative top-[-20px]">
-                  <div className="h-full bg-[#49B1E4] transition-all duration-500" style={{ width: '100%' }} />
-                </div>
-                <div className="flex flex-col items-center flex-1">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center mb-2 bg-[#49B1E4] text-white">
-                    <Check className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs text-center font-medium text-green-600">
-                    {language === 'ja' ? '初期登録' : 'Registration'}
-                  </p>
-                </div>
-                <div className="flex-1 h-1 bg-gray-200 mx-2 relative top-[-20px]">
-                  <div className="h-full bg-gray-200 transition-all duration-500" style={{ width: '0%' }} />
-                </div>
-                <div className="flex flex-col items-center flex-1">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center mb-2 bg-[#49B1E4] text-white animate-pulse">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs text-center font-medium text-[#49B1E4]">
-                    {language === 'ja' ? '承認待ち' : 'Awaiting Approval'}
-                  </p>
-                </div>
-              </div>
-              <p className="text-center text-sm text-gray-600 mt-4">
-                {language === 'ja'
-                  ? '承認されると、アプリのメッセージでお知らせします。'
-                  : 'We will notify you with an in-app message once approved.'}
-              </p>
+            <div className="member-required-action">
+              <span>{language === 'ja' ? '承認待ち' : 'Awaiting approval'}</span>
+              <span>{language === 'ja' ? '承認後にメッセージでお知らせします' : 'You will receive a message once approved'}</span>
             </div>
           </div>
         )}
 
-        {/* fee_payment はプロフィール完了後の会費待ち状態。案内が途切れないようここでも表示する */}
-        {(user.registrationStep === 'approved_limited' || user.registrationStep === 'fee_payment') && (!profileDone || !user.feePaid) && (
-          <div className="mb-6 bg-linear-to-r from-[#49B1E4] to-[#3A9BD4] rounded-lg p-6 shadow-lg text-white">
-            <div className="flex items-start gap-4">
-              <div className="flex-1">
-                <h3 className="text-2xl font-bold mb-3">
-                  {language === 'ja' ? '運営による承認が完了しました。以下のステップを完了してください。' : 'Your registration has been approved. Please complete the following steps.'}
-                </h3>
-                <div className="space-y-3">
-                  <div className={`flex items-center gap-3 p-3 rounded-lg ${profileDone ? 'bg-white/20' : 'bg-white/30'}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${profileDone ? 'bg-green-500' : 'bg-white'}`}>
-                      {profileDone ? (
-                        <Check className="w-5 h-5 text-white" />
-                      ) : (
-                        <FileText className="w-5 h-5 text-[#49B1E4]" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">
-                        {language === 'ja' ? 'プロフィール登録' : 'Profile Registration'}
-                      </p>
-                      {!profileDone && (
-                        <button
-                          onClick={onOpenProfile}
-                          className="text-sm underline hover:no-underline mt-1"
-                        >
-                          {language === 'ja' ? '今すぐ登録 →' : 'Register Now →'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {user.category === 'japanese' && (
-                    <div className={`flex items-center gap-3 p-3 rounded-lg ${user.feePaid ? 'bg-white/30' : 'bg-yellow-400/90'}`}>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${user.feePaid ? 'bg-green-500' : 'bg-white'}`}>
-                        {user.feePaid ? (
-                          <Check className="w-5 h-5 text-white" />
-                        ) : (
-                          <CreditCard className="w-5 h-5 text-[#3D3D4E]" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <p className={`font-medium ${user.feePaid ? 'text-white' : 'text-[#3D3D4E]'}`}>
-                          {user.isRenewal
-                            ? (language === 'ja' ? '継続手続き（年会費）' : 'Renewal (Annual Fee)')
-                            : (language === 'ja' ? '入会手続き（入会金＋年会費）' : 'Registration (Entry Fee + Annual Fee)')
-                          }
-                        </p>
-                        {!user.feePaid && (
-                          <button
-                            onClick={() => setFeePaymentDialogOpen(true)}
-                            className="text-sm font-bold text-[#3D3D4E] underline hover:no-underline mt-1"
-                          >
-                            {language === 'ja' ? '支払い手続きへ →' : 'Proceed to payment →'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+        {(user.registrationStep === 'approved_limited' || user.registrationStep === 'fee_payment') && (!profileDone || (user.category === 'japanese' && !user.feePaid)) && currentPage !== 'messages' && (
+          <div className="member-required-action mb-6">
+            <span>{!profileDone ? (language === 'ja' ? 'プロフィール登録が必要です' : 'Complete your profile') : (language === 'ja' ? (user.isRenewal ? '継続手続き（年会費）' : '入会手続き（入会金・年会費）') : (user.isRenewal ? 'Membership renewal' : 'Membership fee'))}</span>
+            <button type="button" onClick={!profileDone ? onOpenProfile : () => setFeePaymentDialogOpen(true)}>
+              {language === 'ja' ? '手続きへ' : 'Continue'}
+            </button>
           </div>
         )}
 
-        {currentPage === 'home' && <HomePage language={language} user={user} events={events} onNavigateToEvent={handleNavigateToEvent} onOpenProfile={onOpenProfile} onReopenInitialRegistration={onReopenInitialRegistration} onDismissReuploadNotification={onDismissReuploadNotification} onOpenFeePayment={() => setFeePaymentDialogOpen(true)} onUpdateProfile={onUpdateProfile} />}
+        {currentPage === 'home' && <HomePage language={language} user={user} events={events} attendingEvents={attendingEvents} onNavigateToEvent={handleNavigateToEvent}
+          onNavigateToEvents={() => setCurrentPage('events')}
+          onNavigateToGallery={(photoId, upload) => { setPendingPhotoId(photoId); setOpenGalleryUpload(Boolean(upload)); setCurrentPage('gallery'); }}
+          onNavigateToBoard={(postId) => { setPendingPostId(postId); setCurrentPage('bulletin'); }} onOpenProfile={() => setCurrentPage('profile')} onReopenInitialRegistration={onReopenInitialRegistration} onDismissReuploadNotification={onDismissReuploadNotification} onOpenFeePayment={() => setFeePaymentDialogOpen(true)} onUpdateProfile={onUpdateProfile} />}
         {currentPage === 'events' && <EventsPage language={language} events={events} attendingEvents={attendingEvents} likedEvents={likedEvents} onToggleAttending={onToggleAttending} onToggleLike={onToggleLike} highlightEventId={highlightEventId} openEventId={pendingOpenEventId} onOpenEventHandled={() => setPendingOpenEventId(undefined)} onAddEventParticipant={onAddEventParticipant} user={user} />}
         {/* 運営メンバーも会員なので名簿に出す（2026-08-08 方針決定）。
             隠すのはシステム行（運営受信箱）と、役職を持たない is_admin = 移行前の専用アカウントだけ */}
         {currentPage === 'members' && <MembersPage language={language} members={approvedMembers.filter((member) => !isSystemUser(member) && (!member.isAdmin || isPrivilegedRole(member.role)))} />}
-        {currentPage === 'bulletin' && <BulletinBoard language={language} user={user} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onAddReply={onAddReply} onToggleInterest={onToggleInterest} onDeleteBoardPost={onDeleteBoardPost} />}
-        {currentPage === 'gallery' && <GalleryPage language={language} currentUser={user} />}
+        {currentPage === 'bulletin' && <BulletinBoard language={language} user={user} boardPosts={boardPosts} onUpdateBoardPosts={onUpdateBoardPosts} onCreateBoardPost={onCreateBoardPost} onAddReply={onAddReply} onToggleInterest={onToggleInterest} onDeleteBoardPost={onDeleteBoardPost} openPostId={pendingPostId} onOpenPostHandled={() => setPendingPostId(undefined)} />}
+        {currentPage === 'gallery' && <GalleryPage language={language} currentUser={user} openPhotoId={pendingPhotoId} openUpload={openGalleryUpload} onOpenPhotoHandled={() => setPendingPhotoId(undefined)} onOpenUploadHandled={() => setOpenGalleryUpload(false)} />}
         {currentPage === 'profile' && (
           <ProfilePage
             language={language}
@@ -754,7 +669,7 @@ export function Dashboard({
         )}
       </main>
 
-      <nav className={`bg-[#F5F1E8] border-t z-50 shadow-lg pb-[env(safe-area-inset-bottom)] ${isChatPage ? 'shrink-0' : 'fixed bottom-0 left-0 right-0'}`}>
+      <nav className={`member-bottom-nav border-t z-50 pb-[env(safe-area-inset-bottom)] ${isChatPage ? 'shrink-0' : 'fixed bottom-0 left-0 right-0'}`}>
         <div className="container mx-auto px-4 pb-2">
           <div className="flex justify-around items-end">
               <NavButton
@@ -779,7 +694,7 @@ export function Dashboard({
                 dataTour="nav-gallery"
               />
               <NavButton
-                icon={<Users className="w-5 h-5" />}
+                icon={<FileText className="w-5 h-5" />}
                 label={t.bulletin}
                 active={currentPage === 'bulletin'}
                 onClick={() => setCurrentPage('bulletin')}
@@ -895,6 +810,7 @@ export function Dashboard({
         </DialogContent>
       </Dialog>
     </div>
+    </MemberTheme>
   );
 }
 
@@ -914,29 +830,10 @@ function NavButton({
   dataTour?: string;
 }) {
   return (
-    <button
-      onClick={onClick}
-      data-tour={dataTour}
-      className={`relative flex flex-col items-center justify-center py-3 px-4 transition-all duration-300 group ${active
-        ? 'text-[#3D3D4E]'
-        : 'text-[#6B6B7A] hover:text-[#3D3D4E]'
-        }`}
-    >
-      <div className={`
-        transition-all duration-300 ease-out
-        flex items-center justify-center relative
-        ${active
-          ? 'bg-[#3D3D4E] text-white rounded-full w-14 h-14 -translate-y-4 shadow-xl'
-          : 'group-hover:bg-[#E8E4DB] group-hover:rounded-full group-hover:w-12 group-hover:h-12 group-hover:-translate-y-2 group-hover:shadow-lg w-10 h-10'
-        }
-      `}>
-        {icon}
-        {badgeCount !== undefined && badgeCount > 0 && (
-          <div className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 border-2 border-[#F5F1E8] flex items-center justify-center">
-            <span className="text-white text-xs font-medium">{badgeCount}</span>
-          </div>
-        )}
-      </div>
+    <button type="button" onClick={onClick} data-tour={dataTour} className="member-nav-button" aria-current={active ? 'page' : undefined}>
+      {icon}
+      <span>{label}</span>
+      {badgeCount !== undefined && badgeCount > 0 && <span className="member-nav-badge">{badgeCount > 99 ? '99+' : badgeCount}</span>}
     </button>
   );
 }

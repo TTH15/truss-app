@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
-import { Plus, X, MessageCircle, Send } from 'lucide-react';
+import { Plus, X, MessageCircle, Send } from '../member/icons';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -20,6 +20,8 @@ import { linkifyText } from '../../lib/linkify';
 interface BulletinBoardProps {
   language: Language;
   user: User;
+  openPostId?: number;
+  onOpenPostHandled?: () => void;
   onInterested?: (post: { author: string; authorAvatar: string; title: string }) => void;
   boardPosts: BoardPost[];
   onUpdateBoardPosts: (posts: BoardPost[]) => void;
@@ -35,7 +37,7 @@ const translations = {
 };
 const presetTags = { ja: ['English', '日本語', '中国語', '韓国語'], en: ['English', 'Japanese', 'Chinese', 'Korean'] };
 
-export function BulletinBoard({ language, user, onInterested, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onAddReply, onToggleInterest, onDeleteBoardPost }: BulletinBoardProps) {
+export function BulletinBoard({ language, user, onInterested, boardPosts, onUpdateBoardPosts, onCreateBoardPost, onAddReply, onToggleInterest, onDeleteBoardPost, openPostId, onOpenPostHandled }: BulletinBoardProps) {
   const t = translations[language];
   const { interestedPostIds, boardPostsLoading } = useData();
   const [submitting, setSubmitting] = useState(false);
@@ -52,6 +54,15 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
   const [customTagInput, setCustomTagInput] = useState('');
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
   const [newPost, setNewPost] = useState({ title: '', content: '', tags: [] as string[], peopleNeeded: 1, displayType: 'story' as 'story' | 'board', expiryDate: '' });
+
+  useEffect(() => {
+    if (!openPostId) return;
+    const target = document.getElementById(`board-post-${openPostId}`);
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: 'start', behavior: 'instant' });
+    onOpenPostHandled?.();
+  }, [openPostId, boardPosts, onOpenPostHandled]);
 
   const addTag = (tag: string) => {
     const normalized = tag.trim();
@@ -124,7 +135,7 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-gray-900">{t.title}</h1><p className="text-gray-600 mt-1 text-sm">{t.subtitle}</p></div>
+        <h1>{t.title}</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -135,11 +146,11 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
               {t.createPost}
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <DialogHeader><DialogTitle>{t.createPost}</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2"><Label htmlFor="post-title">{t.postTitle}</Label><Input id="post-title" value={newPost.title} onChange={(e) => setNewPost({ ...newPost, title: e.target.value })} /></div>
-              <div className="space-y-2"><Label htmlFor="post-content">{t.postContent}</Label><Textarea id="post-content" value={newPost.content} onChange={(e) => setNewPost({ ...newPost, content: e.target.value })} rows={4} /></div>
+              <div className="space-y-2"><Label htmlFor="post-content">{t.postContent}</Label><Textarea id="post-content" value={newPost.content} onChange={(e) => setNewPost({ ...newPost, content: e.target.value })} rows={4} className="field-sizing-fixed min-h-32 max-h-64 resize-y" /></div>
               <div className="space-y-2">
                 <Label>{t.tags}</Label>
                 <p className="text-xs text-gray-500">{t.tagsHint}</p>
@@ -285,7 +296,7 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
           }
         />
       )}
-      {boardPostsList.length > 0 && <div className="space-y-4">{boardPostsList.map((post) => <BoardPostWithReplies key={post.id} post={post} language={language} user={user} onAddReply={handleAddReply} onToggleInterest={() => handleToggleInterest(post)} isInterested={interestedPostIds.has(post.id)} onDeletePost={handleDeletePost} canDelete={canDeletePost(post)} translations={t} />)}</div>}
+      {boardPostsList.length > 0 && <div className="space-y-4">{boardPostsList.map((post) => <BoardPostWithReplies key={post.id} post={post} initialExpanded={post.id === openPostId} language={language} user={user} onAddReply={handleAddReply} onToggleInterest={() => handleToggleInterest(post)} isInterested={interestedPostIds.has(post.id)} onDeletePost={handleDeletePost} canDelete={canDeletePost(post)} translations={t} />)}</div>}
 
       {currentStory && (
         <div className="fixed inset-0 bg-black z-100 flex items-center justify-center">

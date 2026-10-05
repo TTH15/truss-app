@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, type Dispatch, type SetStateAction } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Send, Images, Calendar, Clock, MapPin, X, FileText } from 'lucide-react';
+import { Send, Images, Calendar, Clock, MapPin, X, FileText } from '../member/icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faImage, faFileLines, faCalendarDays, faImages, faPlus } from '@fortawesome/free-solid-svg-icons';
 import type { Language, User, Message as AppMessage, MessageMention, MessageThread, ChatThreadMetadata, Event, GalleryPhoto } from '@truss/core';

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Heart, Calendar, Plus, Upload } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Heart, Plus, Upload } from '../member/icons';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Input } from '../ui/input';
@@ -11,6 +11,8 @@ import { useData } from '../../contexts/DataContext';
 import { ReactionCount } from './ReactionCount';
 import { EmptyState } from './EmptyState';
 import { GallerySkeleton } from './LoadingSkeletons';
+import { formatHomeDate } from '../member/home-content';
+import { HomeSectionState } from '../member/HomePreviews';
 import { faImages } from '@fortawesome/free-solid-svg-icons';
 import {
   GALLERY_PHOTO_ACCEPT,
@@ -18,21 +20,37 @@ import {
   isGalleryPhotoMimeAllowed,
 } from '@truss/core';
 
-interface GalleryPageProps { language: Language; currentUser?: User | null; }
+interface GalleryPageProps {
+  language: Language;
+  currentUser?: User | null;
+  openPhotoId?: number;
+  openUpload?: boolean;
+  onOpenPhotoHandled?: () => void;
+  onOpenUploadHandled?: () => void;
+}
 const translations = {
   ja: { addPhoto: '写真を追加', selectEvent: 'イベントを選択', cancel: 'キャンセル', add: '追加する' },
   en: { addPhoto: 'Add Photo', selectEvent: 'Select Event', cancel: 'Cancel', add: 'Add' }
 };
 
-export function GalleryPage({ language, currentUser }: GalleryPageProps) {
+export function GalleryPage({ language, currentUser, openPhotoId, openUpload, onOpenPhotoHandled, onOpenUploadHandled }: GalleryPageProps) {
   const t = translations[language];
-  const { galleryPhotos, events: supabaseEvents, uploadGalleryPhoto, toggleGalleryPhotoLike, likedGalleryPhotoIds, galleryPhotosLoading } = useData();
+  const { galleryPhotos, events: supabaseEvents, uploadGalleryPhoto, toggleGalleryPhotoLike, likedGalleryPhotoIds, galleryPhotosLoading, homeLoadErrors, retryHomeSection } = useData();
   const [poppingPhotoId, setPoppingPhotoId] = useState<number | null>(null);
-  const [isAddPhotoOpen, setIsAddPhotoOpen] = useState(false);
+  const [isAddPhotoOpen, setIsAddPhotoOpen] = useState(Boolean(openUpload && currentUser?.approved));
+  const [selectedPhotoId, setSelectedPhotoId] = useState(openPhotoId);
   const [selectedEvent, setSelectedEvent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  const detailPhoto = currentUser?.approved ? galleryPhotos.find((photo) => photo.id === selectedPhotoId && photo.approved) : undefined;
+  useEffect(() => {
+    if (openPhotoId && detailPhoto) onOpenPhotoHandled?.();
+  }, [openPhotoId, detailPhoto, onOpenPhotoHandled]);
+  useEffect(() => {
+    if (openUpload) onOpenUploadHandled?.();
+  }, [openUpload, onOpenUploadHandled]);
 
   // 未承認ユーザーはギャラリーを閲覧不可にする
   if (currentUser && !currentUser.approved) {
@@ -107,15 +125,12 @@ export function GalleryPage({ language, currentUser }: GalleryPageProps) {
 
   return (
     <div className="space-y-4 relative">
-      {photos.length === 0 && (
+      <div className="member-page-heading"><h1>{language === 'ja' ? '思い出のアルバム' : 'Memories'}</h1><Button onClick={() => setIsAddPhotoOpen(true)}><Plus className="w-4 h-4" />{t.addPhoto}</Button></div>
+      {homeLoadErrors.memories && photos.length === 0 && <HomeSectionState language={language} error retry={() => void retryHomeSection('memories')} emptyText="" />}
+      {photos.length === 0 && !homeLoadErrors.memories && (
         <EmptyState
           icon={faImages}
           title={language === 'ja' ? 'まだ写真がありません' : 'No photos yet'}
-          description={
-            language === 'ja'
-              ? 'イベントで撮った写真を投稿して、みんなと思い出を共有しましょう。'
-              : 'Share photos from an event and keep the memories together.'
-          }
         />
       )}
       {/* 列数はウィンドウ幅に追従させる。以前は描画時に一度 window.innerWidth を読むだけで、
@@ -125,31 +140,30 @@ export function GalleryPage({ language, currentUser }: GalleryPageProps) {
           {photos.map((photo) => {
             const isLiked = likedGalleryPhotoIds.has(photo.id);
             return (
-              <div key={photo.id} className="w-full overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer break-inside-avoid rounded-lg">
-                {/* 高さは画像の比率に任せる（これが Pinterest 風に段差が付く条件）。
-                    以前は全カードを固定 200px + object-cover で切り抜いており、
-                    Masonry を使っていても実質ただの等高グリッドになっていた。
-                    読み込み前に真っ白な隙間ができないよう、背景に下地の色を敷いておく */}
-                <div className="relative w-full bg-[#EEEBE3]">
-                  <img
-                    src={typeof photo.image === 'string' ? photo.image : photo.image.src}
-                    alt={photo.eventName}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-auto block"
-                  />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"><div className="absolute bottom-0 left-0 right-0 p-3 text-white"><p className="text-sm truncate">{photo.eventName}</p><div className="flex items-center gap-1 text-xs mt-1"><Calendar className="w-3 h-3" />{photo.eventDate}</div></div></div>
-                  <button onClick={(e) => { e.stopPropagation(); toggleLike(photo.id); }} className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/90 backdrop-blur-sm text-pink-600 hover:text-pink-700 rounded-full px-2 py-1 shadow-lg active:scale-90 transition-transform"><Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''} ${poppingPhotoId === photo.id ? 'animate-truss-pop' : ''}`} onAnimationEnd={() => setPoppingPhotoId(null)} /><ReactionCount value={photo.likes} className="text-sm" /></button>
+              <div key={photo.id} className="member-gallery-item w-full break-inside-avoid">
+                <div className="relative">
+                  <button type="button" className="block w-full" onClick={() => setSelectedPhotoId(photo.id)} aria-label={`${photo.eventName} ${language === 'ja' ? '写真を見る' : 'View photo'}`}>
+                    <img src={typeof photo.image === 'string' ? photo.image : photo.image.src} alt="" loading="lazy" decoding="async" className="w-full h-auto block" />
+                  </button>
+                  <button type="button" onClick={() => void toggleLike(photo.id)} aria-label={language === 'ja' ? (isLiked ? 'いいねを取り消す' : 'いいね') : (isLiked ? 'Unlike' : 'Like')} aria-pressed={isLiked} className={`absolute bottom-2 right-2 flex items-center gap-1 bg-white/95 rounded-full px-2 py-1 shadow-sm min-h-9 ${isLiked ? 'text-pink-600' : 'text-gray-600'}`}>
+                    <Heart className={`w-4 h-4 ${poppingPhotoId === photo.id ? 'animate-truss-pop' : ''}`} onAnimationEnd={() => setPoppingPhotoId(null)} /><ReactionCount value={photo.likes} className="text-sm" />
+                  </button>
                 </div>
+                <button type="button" onClick={() => setSelectedPhotoId(photo.id)} className="member-gallery-caption"><span>{photo.eventName}</span><small>{formatHomeDate(photo.eventDate, language)}</small></button>
               </div>
             );
           })}
         </Masonry>
       </ResponsiveMasonry>
 
-      <button onClick={() => setIsAddPhotoOpen(true)} className="fixed right-6 bottom-24 bg-[#49B1E4] hover:bg-[#3A9FD3] text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl z-40" aria-label={t.addPhoto}><Plus className="w-6 h-6" /></button>
+      <Dialog open={Boolean(detailPhoto)} onOpenChange={(open) => { if (!open) setSelectedPhotoId(undefined); }}>
+        <DialogContent className="sm:max-w-[720px] member-photo-detail" aria-describedby={undefined}>
+          <DialogHeader><DialogTitle>{detailPhoto?.eventName}</DialogTitle></DialogHeader>
+          {detailPhoto && <><img src={typeof detailPhoto.image === 'string' ? detailPhoto.image : detailPhoto.image.src} alt={detailPhoto.eventName} /><p className="text-sm text-muted-foreground">{formatHomeDate(detailPhoto.eventDate, language)} · {detailPhoto.userName}</p></>}
+        </DialogContent>
+      </Dialog>
       <Dialog open={isAddPhotoOpen} onOpenChange={setIsAddPhotoOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px]" aria-describedby={undefined}>
           <DialogHeader><DialogTitle>{t.addPhoto}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <Select value={selectedEvent} onValueChange={setSelectedEvent}><SelectTrigger className="w-full"><SelectValue placeholder={t.selectEvent} /></SelectTrigger><SelectContent>{events.map((event) => <SelectItem key={event.id} value={event.name}>{event.name}</SelectItem>)}</SelectContent></Select>

@@ -1,11 +1,11 @@
 # Truss モバイル対応 移行計画
 
-デザインコンセプトは [`design-concept.md`](./design-concept.md) を参照。本ドキュメントは「本番運用中のNext.jsアプリを壊さずに、モノレポ + React Native (Expo) 構成へ作り変える」ための技術計画。
+デザインコンセプトは [`design-concept.md`](./design-concept.md)、ネイティブ版に先行するPWAの画面設計は [`pwa-design-plan.md`](./pwa-design-plan.md) を参照。本ドキュメントは「本番運用中のNext.jsアプリを壊さずに、モノレポ + React Native (Expo) 構成へ作り変える」ための技術計画。
 
 ## 0. 前提・ゴール
 
 - **運営（Admin）画面**: 現行どおり Next.js のまま。`src/app/admin-z8x4m2q9r7` を中心に、Vercel でホストし続ける。
-- **一般メンバー向けアプリ**: React Native (Expo) でネイティブアプリ化する。デザインコンセプト（Passport / Journey / Connections / Memories / Bottom Nav 5タブ）はネイティブ側で新規実装する。
+- **一般メンバー向けアプリ**: React Native (Expo) でネイティブアプリ化する。2026-10-05の方針更新により、C案のPassport・Journey・Memoriesの世界観をPWAのホームと共通デザインへ先行導入する。Connectionsやスタンプなどの機能拡張、ネイティブの5タブ計画は引き続き別段階で進める。
 - **本番を壊さない**: 現在 `trussapp-alpha.vercel.app` で稼働中。移行の各フェーズはデプロイ可能な状態を維持し、ロールバック可能な単位でPRを分割する。
 - Web版の一般メンバー向け画面（`dashboard`配下、`LegacyApp` SPA）は、モバイルアプリのリリース後にどう扱うか（残す/縮小/リダイレクト）は本計画のフェーズ4以降で判断する。今は「共存」を前提にする。
 
@@ -65,7 +65,7 @@ truss-app/
 ### Mobile専用になるもの
 
 - Expo Router によるナビゲーション（Bottom Tab: **確定** — Home / Journey / Memories / Connections / Passport の5タブ。ムードボード案（Home/Journey/Passport/Members/Menu）は採用しない）
-- デザインコンセプトのPassport UI（スタンプ演出、水彩・手書き風ビジュアル）。ムードボードにより1ページ目=プロフィール、2ページ目以降=スタンプグリッド（1ページ最大10個）、間に写真/メモページを挟む構成が具体化されている（`design-concept.md`のビジュアルリファレンス参照）
+- ネイティブ版のPassport UI（スタンプ演出、ページ送り、写真/メモページ）。水彩・文字・配色・情報構成はPWAにも先行導入する。ムードボードにより1ページ目=プロフィール、2ページ目以降=スタンプグリッド（1ページ最大10個）、間に写真/メモページを挟む構成が具体化されている（`design-concept.md`のビジュアルリファレンス参照）
 - 将来: BLEスタンプ連携（`react-native-ble-plx` 等のネイティブモジュール）→ **Expo Go では動かないため、EAS の Custom Dev Client / Bare化が必要になる点は要注意**（フェーズ5でネイティブ機能の要否を確認してから判断する）
 
 ## 3. 認証まわりの移行方針

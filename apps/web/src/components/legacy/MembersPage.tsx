@@ -3,7 +3,7 @@ import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { UserAvatarImage } from './UserAvatarImage';
-import { Search, Globe2 } from 'lucide-react';
+import { Search, Globe2 } from '../member/icons';
 import type { Language, User } from '@truss/core';
 import { RoleBadge } from './RoleBadge';
 import { EmptyState } from './EmptyState';

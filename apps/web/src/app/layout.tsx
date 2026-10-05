@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono, Island_Moments } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono, Island_Moments, Noto_Sans_JP, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import "../styles/globals.css";
+import "../styles/member.css";
 import { Providers } from "./providers";
 
 const geistSans = Geist({
@@ -19,6 +20,11 @@ const islandMoments = Island_Moments({
   weight: "400",
   subsets: ["latin"],
 });
+
+const trussBody = Noto_Sans_JP({ variable: "--font-truss-body", weight: ["400", "500", "600", "700"], preload: false, display: "swap" });
+const trussHeading = Playfair_Display({ variable: "--font-truss-heading", subsets: ["latin"], display: "swap" });
+
+export const viewport: Viewport = { themeColor: "#F7F5F1", viewportFit: "cover" };
 
 export const metadata: Metadata = {
   // OAuth 同意画面のアプリ名「Truss公式アプリ」と一致させる（Google ブランド審査が title を照合する）
@@ -43,7 +49,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${islandMoments.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${islandMoments.variable} ${trussBody.variable} ${trussHeading.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { recordEventViewRow } from '@truss/core';
 import { Button } from '../ui/button';
-import { Heart, Users, Calendar, Camera, MapPin, Clock, MessageCircle, ExternalLink, Share2 } from 'lucide-react';
+import { Heart, Users, Calendar, Camera, MapPin, Clock, MessageCircle, ExternalLink, Share2 } from '../member/icons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Checkbox } from '../ui/checkbox';
 import type { Language, Event, User } from '@truss/core';
@@ -11,6 +11,7 @@ import { linkifyText } from '../../lib/linkify';
 import { withLineEscapeParam } from '../../lib/in-app-browser';
 import { ReactionCount } from './ReactionCount';
 import { toast } from 'sonner';
+import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '@truss/core';
 
@@ -314,30 +315,27 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
   return (
     <div className="space-y-6">
       <h1 className="text-gray-900">{t.title}</h1>
-      <p className="text-sm text-[#6B6B7A]">{t.tapIconHint}</p>
 
-      <div className="bg-white rounded-[14px] border border-[rgba(61,61,78,0.15)] p-6 pb-8">
+      <div className="member-calendar bg-white rounded-xl border border-border p-3 sm:p-6 pb-6">
         <div className="flex items-center justify-between mb-4">
           <button
             type="button"
+            aria-label={language === 'ja' ? '前の月' : 'Previous month'}
             onClick={() => slideToMonth(-1)}
-            className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors p-1 hover:bg-[#F5F1E8] rounded"
+            className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors w-11 h-11 hover:bg-[#F5F1E8] rounded"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            <FontAwesomeIcon icon={faChevronLeft} className="w-4 h-4" />
           </button>
           <h2 className="text-[#3D3D4E] text-base font-semibold">
             {calendarYear}{language === 'ja' ? '年' : ''} {monthNames[calendarMonth]}
           </h2>
           <button
             type="button"
+            aria-label={language === 'ja' ? '次の月' : 'Next month'}
             onClick={() => slideToMonth(1)}
-            className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors p-1 hover:bg-[#F5F1E8] rounded"
+            className="text-[#3D3D4E] hover:text-[#49B1E4] transition-colors w-11 h-11 hover:bg-[#F5F1E8] rounded"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <FontAwesomeIcon icon={faChevronRight} className="w-4 h-4" />
           </button>
         </div>
 
@@ -374,7 +372,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
               return (
                 <div
                   key={`cell-${index}`}
-                  className={`p-2 flex flex-col relative overflow-hidden min-h-[88px] ${isSunday ? 'bg-red-50/35' : isSaturday ? 'bg-blue-50/35' : 'bg-white'}`}
+                  className={`p-1 sm:p-2 flex flex-col relative overflow-hidden min-h-[72px] sm:min-h-[88px] ${isSunday ? 'bg-red-50/35' : isSaturday ? 'bg-blue-50/35' : 'bg-white'}`}
                 >
                   {day && (
                     <>
