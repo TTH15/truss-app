@@ -65,21 +65,24 @@
 .passport-cover { position: relative; width: 100%; min-height: 160px; overflow: hidden; border: 1px solid #CEDBDD; border-radius: 12px; background: #FBFAF7; text-align: left; padding: 16px 18px; isolation: isolate; box-shadow: 0 4px 16px #3D47560A; }
 .passport-cover::before { content: ''; position: absolute; inset: 6px; border: 1px solid #6DB9E72B; border-radius: 8px; pointer-events: none; }
 .passport-profile-trigger { display: block; width: 100%; text-align: left; border-radius: 4px; }
-.passport-profile-trigger:focus-visible, .passport-qr-trigger:focus-visible, .member-card-sides button:focus-visible { outline: 2px solid var(--member-action); outline-offset: 3px; }
+.passport-profile-trigger:focus-visible, .passport-qr-trigger:focus-visible, .member-card-flip:focus-visible { outline: 2px solid var(--member-action); outline-offset: 3px; }
 .passport-footer-details { display: flex; min-width: 0; align-items: flex-start; flex-direction: column; }
 .passport-qr-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; color: var(--member-action); font-size: 13px; white-space: nowrap; border-radius: 5px; }
 .passport-qr-trigger svg { width: 15px; height: 15px; }
-.member-card-sides { display: flex; padding: 4px; border: 1px solid var(--member-line); border-radius: 8px; gap: 4px; }
-.member-card-sides button { display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1; min-height: 44px; border-radius: 5px; color: var(--member-muted); }
-.member-card-sides button[aria-pressed=true] { background: #E9F4FB; color: var(--member-action); }
-.member-card-sides svg { width: 16px; height: 16px; }
-.member-card-face { display: flex; align-items: center; flex-direction: column; gap: 16px; padding: 20px 12px; min-height: 320px; background: #FBFAF7; border: 1px solid #CEDBDD; border-radius: 12px; }
+.member-card-stage { min-width: 0; perspective: 1200px; }
+.member-card-flip { display: grid; width: 100%; border-radius: 12px; text-align: center; transform-style: preserve-3d; transform: rotateY(0deg); transition: transform 600ms cubic-bezier(.22,.68,.22,1); }
+.member-card-flip[data-side=back] { transform: rotateY(180deg); }
+.member-card-face { grid-area: 1 / 1; display: flex; min-width: 0; align-items: center; justify-content: center; flex-direction: column; gap: 16px; padding: 20px 12px; min-height: 360px; background: #FBFAF7; border: 1px solid #CEDBDD; border-radius: 12px; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.member-card-face-back { transform: rotateY(180deg); }
 .member-card-brand { font-family: var(--font-truss-heading), serif; font-size: 23px; color: var(--member-ink); }
 .member-card-qr { background: #FFFFFF; padding: 4px; max-width: 100%; }
 .member-card-qr svg { display: block; max-width: 100%; height: auto; }
 .member-card-name { overflow-wrap: anywhere; text-align: center; }
 .member-card-portrait { height: 140px; width: 112px; border: 4px solid #FFFFFF; border-radius: 6px; }
 .member-card-year { font-size: 13px; color: var(--member-muted); }
+.member-card-turn { display: inline-flex; align-items: center; gap: 7px; color: var(--member-action); font-size: 13px; min-height: 24px; }
+.member-card-turn svg { width: 14px; height: 14px; }
+@media (prefers-reduced-motion: reduce) { .member-card-flip { transition: none; } }
 .participation-ticket { background: #FFFFFF; border: 1px solid #B6CFDA; border-radius: 12px; overflow: hidden; }
 .participation-ticket-top { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px; background: #E9F4FB; color: var(--member-action); font-size: 12px; }
 .participation-ticket-top > span { display: inline-flex; align-items: center; gap: 6px; }
