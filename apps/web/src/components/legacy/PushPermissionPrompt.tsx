@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, X } from 'lucide-react';
+import { Bell, X } from '../member/icons';
 import { Button } from '../ui/button';
 import { toast } from 'sonner';
 import { savePushSubscriptionRow } from '@truss/core';

@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from 'react';
-import { ImagePlus, X } from 'lucide-react';
+import { ImagePlus, X } from '../member/icons';
 
 interface ImageDropUploadProps {
   label: string;

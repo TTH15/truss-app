@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useLocalStorageDismissal } from '../../lib/use-local-storage-dismissal';
-import { X } from 'lucide-react';
+import { X } from '../member/icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faMobileScreenButton,

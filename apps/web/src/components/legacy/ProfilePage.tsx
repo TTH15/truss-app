@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
-import { Globe2, MapPin, Mail, Edit, Phone, Users, Save, GraduationCap, IdCard } from 'lucide-react';
+import { Globe2, MapPin, Mail, Edit, Phone, Users, Save, GraduationCap, IdCard } from '../member/icons';
 import { toast } from 'sonner';
 import type { Language, User } from '@truss/core';
 import { UserAvatarImage } from './UserAvatarImage';

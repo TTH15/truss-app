@@ -1,21 +1,25 @@
-import { AlertCircle, Check, Clock, FileText, Upload, X } from 'lucide-react';
-import { useRef, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPeopleGroup } from '@fortawesome/free-solid-svg-icons';
+import { faChevronDown, faChevronRight, faXmark } from '@fortawesome/free-solid-svg-icons';
+import { currentAcademicYear, type Language, type User, type Event } from '@truss/core';
+import { useData } from '../../contexts/DataContext';
+import { useLocalStorageDismissal } from '../../lib/use-local-storage-dismissal';
 import { PwaInstallBanner } from './PwaInstallBanner';
 import { PushPermissionPrompt } from './PushPermissionPrompt';
 import { GradeConfirmNudge } from './GradeConfirmNudge';
-import { useLocalStorageDismissal } from '../../lib/use-local-storage-dismissal';
-import { MembershipCard } from './MembershipCard';
-import { Button } from '../ui/button';
-import type { Language, User, Event } from '@truss/core';
+import { PassportCover } from '../member/PassportCover';
+import { NextJourneyTicket } from '../member/NextJourneyTicket';
+import { BoardPreview, HomeSectionHeading, HomeSectionState, MemoryPreview } from '../member/HomePreviews';
+import { selectHomeBoardPosts, selectNextEvent, selectRecentMemories } from '../member/home-content';
 
 interface HomePageProps {
   language: Language;
   user: User;
   events: Event[];
+  attendingEvents?: Set<number>;
   onNavigateToEvent: (eventId: number) => void;
-  isProfileComplete?: boolean;
+  onNavigateToEvents: () => void;
+  onNavigateToGallery: (photoId?: number, upload?: boolean) => void;
+  onNavigateToBoard: (postId?: number) => void;
   onOpenProfile?: () => void;
   onReopenInitialRegistration?: () => void;
   onDismissReuploadNotification?: () => void;
@@ -23,173 +27,53 @@ interface HomePageProps {
   onUpdateProfile?: (updates: Partial<User>) => Promise<{ error: Error | null }>;
 }
 
-const translations = {
-  ja: {
-    renewalRequired: '継続手続きをお願いします',
-    renewalMessage: '今年度の会費をお支払いいただくと、すべての機能をご利用いただけます。',
-    proceedToPayment: '支払い手続きへ →',
-    newMemberPaymentRequired: '入会手続きをお願いします',
-    newMemberMessage: '入会金と年会費をお支払いいただくと、すべての機能をご利用いただけます。',
-    organizationsNudgeTitle: '「他の所属団体」を教えてください',
-    organizationsNudgeMessage: '兼部・兼サーの状況把握のため、プロフィールの「他の所属団体」欄の記入にご協力ください（ない場合は「なし」と記入）。',
-    organizationsNudgeAction: 'プロフィールを開く →',
-  },
-  en: {
-    renewalRequired: 'Membership Renewal Required',
-    renewalMessage: 'Please pay your annual fee to unlock all features.',
-    proceedToPayment: 'Proceed to Payment →',
-    newMemberPaymentRequired: 'Registration Required',
-    newMemberMessage: 'Please pay the entry fee and annual fee to unlock all features.',
-    organizationsNudgeTitle: 'Tell us your other organizations',
-    organizationsNudgeMessage: 'Please fill in the "Other Organizations" field in your profile so we can understand overlapping club memberships (write "None" if you have none).',
-    organizationsNudgeAction: 'Open Profile →',
-  }
-};
-
-const ORGANIZATIONS_NUDGE_DISMISSED_KEY = 'truss-organizations-nudge-dismissed-v1';
-
-export function HomePage({ language, user, events, onNavigateToEvent, onOpenFeePayment, onOpenProfile, onUpdateProfile }: HomePageProps) {
-  const t = translations[language];
-  const [organizationsNudgeDismissed, dismissOrganizationsNudge] = useLocalStorageDismissal(
-    ORGANIZATIONS_NUDGE_DISMISSED_KEY
-  );
-  const showOrganizationsNudge =
-    user.approved && !user.organizations?.trim() && !organizationsNudgeDismissed && !!onOpenProfile;
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const isScrollingRef = useRef(false);
-  const autoScrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const isDraggingRef = useRef(false);
-  const startXRef = useRef(0);
-  const scrollLeftRef = useRef(0);
-  // ここは「これから開催されるイベント」を伝える場所。
-  // 画像未設定のものは空のバナーになるだけなので出さない。過去のイベントも対象外。
-  const bannerEvents = events.filter((event) => event.status === 'upcoming' && event.image?.trim());
-  const duplicatedEvents = [...bannerEvents, ...bannerEvents, ...bannerEvents, ...bannerEvents, ...bannerEvents];
-
-  const startAutoScroll = () => {
-    if (autoScrollIntervalRef.current) clearInterval(autoScrollIntervalRef.current);
-    autoScrollIntervalRef.current = setInterval(() => {
-      if (!scrollContainerRef.current || isDraggingRef.current) return;
-      scrollContainerRef.current.scrollBy({ left: 1, behavior: 'auto' });
-    }, 20);
-  };
-  const stopAutoScroll = () => {
-    if (autoScrollIntervalRef.current) clearInterval(autoScrollIntervalRef.current);
-    autoScrollIntervalRef.current = null;
-  };
-
-  useEffect(() => {
-    if (!scrollContainerRef.current || bannerEvents.length === 0) return;
-    const container = scrollContainerRef.current;
-    const singleSetWidth = container.scrollWidth / 5;
-    container.scrollTo({ left: singleSetWidth * 2, behavior: 'auto' });
-  }, [bannerEvents.length]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!scrollContainerRef.current || isScrollingRef.current) return;
-      const container = scrollContainerRef.current;
-      const singleSetWidth = container.scrollWidth / 5;
-      const scrollLeft = container.scrollLeft;
-      if (scrollLeft >= singleSetWidth * 4) {
-        isScrollingRef.current = true;
-        container.scrollTo({ left: singleSetWidth * 2, behavior: 'auto' });
-        setTimeout(() => { isScrollingRef.current = false; }, 10);
-      } else if (scrollLeft <= singleSetWidth) {
-        isScrollingRef.current = true;
-        container.scrollTo({ left: singleSetWidth * 3, behavior: 'auto' });
-        setTimeout(() => { isScrollingRef.current = false; }, 10);
-      }
-    };
-    const container = scrollContainerRef.current;
-    if (container) container.addEventListener('scroll', handleScroll);
-    return () => container?.removeEventListener('scroll', handleScroll);
-  }, [bannerEvents.length]);
-
-  useEffect(() => { startAutoScroll(); return () => stopAutoScroll(); }, []);
+export function HomePage({ language, user, events, attendingEvents, onNavigateToEvent, onNavigateToEvents, onNavigateToGallery, onNavigateToBoard, onOpenProfile, onOpenFeePayment, onUpdateProfile }: HomePageProps) {
+  const { boardPosts, galleryPhotos, loading, galleryPhotosLoading, boardPostsLoading, homeLoadErrors, retryHomeSection } = useData();
+  const [organizationsDismissed, dismissOrganizations] = useLocalStorageDismissal('truss-organizations-nudge-dismissed-v1');
+  const nextEvent = selectNextEvent(events);
+  const memories = user.approved ? selectRecentMemories(galleryPhotos) : [];
+  const posts = selectHomeBoardPosts(boardPosts);
+  const needsGradeConfirmation = user.approved && !!user.grade?.trim() && (user.gradeConfirmedFor ?? 0) < currentAcademicYear();
+  const all = language === 'ja' ? 'すべて見る' : 'View all';
+  const renewalRequired = user.category === 'japanese' && !user.feePaid && user.registrationStep === 'fully_active';
 
   return (
-    <div className="flex flex-col h-full">
-      {/* 年度リセット後の継続会員向け（fully_active のまま fee_paid だけ false になる）。
-          入会フロー中（approved_limited / fee_payment）は Dashboard の承認後ステップバナーが案内する */}
-      {user.category === 'japanese' && !user.feePaid && user.registrationStep === 'fully_active' && onOpenFeePayment && (
-        <div className="bg-linear-to-r from-[#3D3D4E] to-[#5A5A6E] text-white p-4 rounded-xl mb-4 shadow-lg border border-[#49B1E4]">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-[#49B1E4] rounded-full flex items-center justify-center shrink-0"><AlertCircle className="w-5 h-5 text-white" /></div>
-            <div className="flex-1"><h4 className="font-bold">{user.isRenewal ? t.renewalRequired : t.newMemberPaymentRequired}</h4><p className="text-sm opacity-90 mt-1">{user.isRenewal ? t.renewalMessage : t.newMemberMessage}</p><button onClick={onOpenFeePayment} className="mt-2 text-sm font-medium underline hover:no-underline">{t.proceedToPayment}</button></div>
-          </div>
-        </div>
-      )}
-      <PwaInstallBanner language={language} />
-      {user.approved && <PushPermissionPrompt user={user} language={language} />}
-      {/* 年度ごとの学年確認（3月登録で前年度の学年が混ざった対策 + 毎年4月の恒例） */}
-      {onUpdateProfile && (
-        <GradeConfirmNudge language={language} user={user} onUpdateProfile={onUpdateProfile} />
-      )}
-      {showOrganizationsNudge && (
-        <div className="relative bg-white border border-[#49B1E4]/40 p-4 rounded-xl mb-4 shadow-sm">
-          <button
-            onClick={dismissOrganizationsNudge}
-            className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-4 h-4 text-gray-500" />
-          </button>
-          <div className="flex items-start gap-3 pr-6">
-            <div className="w-10 h-10 bg-[#E0F3FB] rounded-full flex items-center justify-center shrink-0">
-              <FontAwesomeIcon icon={faPeopleGroup} className="w-5 h-5 text-[#49B1E4]" />
-            </div>
-            <div className="flex-1">
-              <h4 className="font-bold text-[#3D3D4E]">{t.organizationsNudgeTitle}</h4>
-              <p className="text-sm text-[#4A5565] mt-1">{t.organizationsNudgeMessage}</p>
-              <button
-                onClick={onOpenProfile}
-                className="mt-2 text-sm font-medium text-[#49B1E4] underline hover:no-underline"
-              >
-                {t.organizationsNudgeAction}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      <div className="mb-4">
-        <MembershipCard user={user} language={language} />
+    <div className="member-home">
+      <div className="home-passport-column">
+        <PassportCover user={user} language={language} onOpen={onOpenProfile} />
       </div>
-      {bannerEvents.length > 0 && (
-        <>
-      <div className="h-px bg-[#E8E4DB] my-4" />
-      <section className="shrink-0">
-        <div className="mb-3"><h3 className="text-[#3D3D4E] text-sm">{language === 'ja' ? 'イベント情報' : 'Event Information'}</h3></div>
-        <div ref={scrollContainerRef} className="flex gap-3 overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing select-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          onMouseDown={(e) => { if (!scrollContainerRef.current) return; isDraggingRef.current = true; startXRef.current = e.pageX - scrollContainerRef.current.offsetLeft; scrollLeftRef.current = scrollContainerRef.current.scrollLeft; stopAutoScroll(); }}
-          onMouseMove={(e) => { if (!isDraggingRef.current || !scrollContainerRef.current) return; e.preventDefault(); const x = e.pageX - scrollContainerRef.current.offsetLeft; const walk = (x - startXRef.current) * 2; scrollContainerRef.current.scrollLeft = scrollLeftRef.current - walk; }}
-          onMouseUp={() => { isDraggingRef.current = false; setTimeout(() => startAutoScroll(), 2000); }}
-          onMouseLeave={() => { if (isDraggingRef.current) { isDraggingRef.current = false; setTimeout(() => startAutoScroll(), 2000); } }}
-          onTouchStart={(e) => { if (!scrollContainerRef.current) return; isDraggingRef.current = true; startXRef.current = e.touches[0].pageX - scrollContainerRef.current.offsetLeft; scrollLeftRef.current = scrollContainerRef.current.scrollLeft; stopAutoScroll(); }}
-          onTouchMove={(e) => { if (!isDraggingRef.current || !scrollContainerRef.current) return; const x = e.touches[0].pageX - scrollContainerRef.current.offsetLeft; const walk = (x - startXRef.current) * 2; scrollContainerRef.current.scrollLeft = scrollLeftRef.current - walk; }}
-          onTouchEnd={() => { isDraggingRef.current = false; setTimeout(() => startAutoScroll(), 2000); }}>
-          {duplicatedEvents.map((event, index) => {
-            const displayTitle = language === 'ja' ? event.title : (event.titleEn || event.title);
-            return (
-              <div key={`${event.id}-${index}`} onClick={() => onNavigateToEvent(event.id)} className="shrink-0 w-40 h-28 md:w-52 md:h-36 rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer relative group">
-                {event.image?.trim() ? (
-                  <img src={event.image.trim()} alt={displayTitle} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                ) : (
-                  <div className="w-full h-full bg-linear-to-br from-blue-100 to-purple-100" />
-                )}
-                <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="absolute bottom-0 left-0 right-0 p-2">
-                    <p className="text-white text-xs truncate">{displayTitle}</p>
-                    <p className="text-white/80 text-xs">{event.date}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-        </>
-      )}
+      <div className="home-journal-column">
+        {renewalRequired && onOpenFeePayment && <div className="member-required-action">
+          <span>{language === 'ja' ? (user.isRenewal ? '継続手続き' : '会費のお支払い') : (user.isRenewal ? 'Membership renewal' : 'Membership fee')}</span>
+          <button type="button" onClick={onOpenFeePayment}>{language === 'ja' ? '手続きへ' : 'Continue'}<FontAwesomeIcon icon={faChevronRight} /></button>
+        </div>}
+        <section className="home-section home-next-journey" aria-label={language === 'ja' ? '次のJourney' : 'Next journey'}>
+          <HomeSectionHeading title={language === 'ja' ? '次のJourney' : 'Next journey'} action={all} onClick={onNavigateToEvents} />
+          {nextEvent ? <NextJourneyTicket event={nextEvent} language={language} registered={attendingEvents?.has(nextEvent.id) ?? false} onOpen={() => onNavigateToEvent(nextEvent.id)} /> : <HomeSectionState language={language} loading={loading} error={homeLoadErrors.events} retry={() => void retryHomeSection('events')} emptyText={language === 'ja' ? '次のイベントは準備中' : 'The next event is being planned'} />}
+        </section>
+        {user.approved && <section className="home-section" aria-label={language === 'ja' ? '最近の思い出' : 'Recent memories'}>
+          <HomeSectionHeading title={language === 'ja' ? '最近の思い出' : 'Recent memories'} action={all} onClick={() => onNavigateToGallery()} />
+          {memories.length ? <MemoryPreview photos={memories} language={language} onOpen={onNavigateToGallery} /> : <HomeSectionState language={language} loading={galleryPhotosLoading} error={homeLoadErrors.memories} retry={() => void retryHomeSection('memories')} emptyText={language === 'ja' ? 'まだ写真がありません' : 'No photos yet'} />}
+          {!memories.length && !galleryPhotosLoading && !homeLoadErrors.memories && <button type="button" className="home-text-action" onClick={() => onNavigateToGallery(undefined, true)}>{language === 'ja' ? '写真を投稿' : 'Add a photo'}<FontAwesomeIcon icon={faChevronRight} /></button>}
+        </section>}
+        <section className="home-section" aria-label={language === 'ja' ? '掲示板' : 'Bulletin board'}>
+          <HomeSectionHeading title={language === 'ja' ? '掲示板' : 'Bulletin board'} action={all} onClick={() => onNavigateToBoard()} />
+          {posts.length ? <BoardPreview posts={posts} language={language} onOpen={onNavigateToBoard} /> : <HomeSectionState language={language} loading={boardPostsLoading} error={homeLoadErrors.board} retry={() => void retryHomeSection('board')} emptyText={language === 'ja' ? 'まだ投稿がありません' : 'No posts yet'} />}
+        </section>
+        <details className="home-settings">
+          <summary><span>{language === 'ja' ? 'プロフィールとアプリ設定' : 'Profile and app settings'}{needsGradeConfirmation && <span className="home-settings-notice">{language === 'ja' ? '学年確認' : 'Confirm grade'}</span>}</span><FontAwesomeIcon icon={faChevronDown} /></summary>
+          <div className="home-settings-content">
+            {onUpdateProfile && <GradeConfirmNudge language={language} user={user} onUpdateProfile={onUpdateProfile} />}
+            {user.approved && !user.organizations?.trim() && !organizationsDismissed && onOpenProfile && <div className="home-profile-nudge">
+              <span>{language === 'ja' ? '他の所属団体を教えてください' : 'Add your other organizations'}</span>
+              <button type="button" onClick={onOpenProfile}>{language === 'ja' ? 'プロフィール' : 'Profile'}</button>
+              <button type="button" onClick={dismissOrganizations} aria-label={language === 'ja' ? '閉じる' : 'Close'}><FontAwesomeIcon icon={faXmark} /></button>
+            </div>}
+            <PwaInstallBanner language={language} />
+            {user.approved && <PushPermissionPrompt user={user} language={language} />}
+          </div>
+        </details>
+      </div>
     </div>
   );
 }

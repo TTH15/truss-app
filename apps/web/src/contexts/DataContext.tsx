@@ -75,6 +75,8 @@ import type {
   ChatThreadMetadata, Notification, BoardPost, BoardPostReply, GalleryPhoto, MessageCategory, MessageMention
 } from '@truss/core';
 
+export type HomeDataSection = 'events' | 'memories' | 'board';
+
 interface DataContextType {
   events: Event[];
   pendingUsers: User[];
@@ -91,6 +93,8 @@ interface DataContextType {
   usersLoading: boolean;
   boardPostsLoading: boolean;
   galleryPhotosLoading: boolean;
+  homeLoadErrors: Record<HomeDataSection, boolean>;
+  retryHomeSection: (section: HomeDataSection) => Promise<void>;
   createEvent: (event: Omit<Event, 'id' | 'currentParticipants' | 'likes'>) => Promise<void>;
   updateEvent: (eventId: number, updates: Partial<Event>) => Promise<void>;
   deleteEvent: (eventId: number) => Promise<void>;
@@ -232,6 +236,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // 初回取得が終わるまで true。取得中の白紙とスケルトンを出し分けるために画面ごとに持つ
   const [boardPostsLoading, setBoardPostsLoading] = useState(true);
   const [galleryPhotosLoading, setGalleryPhotosLoading] = useState(true);
+  const [homeLoadErrors, setHomeLoadErrors] = useState<Record<HomeDataSection, boolean>>({ events: false, memories: false, board: false });
   const eventsFetchInFlight = useRef<Promise<void> | null>(null);
   const usersFetchInFlight = useRef<Promise<void> | null>(null);
 
@@ -240,6 +245,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const cached = readCache<Event[]>(EVENTS_CACHE_KEY);
       if (cached) {
         setEvents(withPendingDeltas(cached, pendingCountDeltas.current.events, 'likes'));
+        setHomeLoadErrors((previous) => ({ ...previous, events: false }));
         return;
       }
     }
@@ -250,8 +256,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const next = await queryEvents();
         setEvents(withPendingDeltas(next, pendingCountDeltas.current.events, 'likes'));
         writeCache(EVENTS_CACHE_KEY, next);
+        setHomeLoadErrors((previous) => ({ ...previous, events: false }));
       } catch (error) {
         console.error('Error fetching events:', error);
+        setHomeLoadErrors((previous) => ({ ...previous, events: true }));
       } finally {
         eventsFetchInFlight.current = null;
         const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -343,24 +351,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const fetchBoardPosts = useCallback(async () => {
+    setBoardPostsLoading(true);
     try {
       setBoardPosts(
         withPendingDeltas(await queryBoardPostsWithReplies(), pendingCountDeltas.current.posts, 'interested')
       );
+      setHomeLoadErrors((previous) => ({ ...previous, board: false }));
     } catch (error) {
       console.error('Error fetching board posts:', error);
+      setHomeLoadErrors((previous) => ({ ...previous, board: true }));
     } finally {
       setBoardPostsLoading(false);
     }
   }, []);
 
   const fetchGalleryPhotos = useCallback(async () => {
+    setGalleryPhotosLoading(true);
     try {
       setGalleryPhotos(
         withPendingDeltas(await queryGalleryPhotos(), pendingCountDeltas.current.photos, 'likes')
       );
+      setHomeLoadErrors((previous) => ({ ...previous, memories: false }));
     } catch (error) {
       console.error('Error fetching gallery photos:', error);
+      setHomeLoadErrors((previous) => ({ ...previous, memories: true }));
     } finally {
       setGalleryPhotosLoading(false);
     }
@@ -1109,6 +1123,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const value: DataContextType = {
     events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading, boardPostsLoading, galleryPhotosLoading,
+    homeLoadErrors,
+    retryHomeSection: async (section) => {
+      if (section === 'board') await fetchBoardPosts();
+      else if (section === 'memories') await fetchGalleryPhotos();
+      else {
+        setLoading(true);
+        try { await fetchEvents(true); } finally { setLoading(false); }
+      }
+    },
     createEvent, updateEvent, deleteEvent, registerForEvent, unregisterFromEvent, toggleEventLike,
     approveUser, rejectUser, requestReupload, confirmFeePayment, confirmRenewal, setRenewalStatus, setUserRole, transferRole, resetMembershipForNewYear, deleteUser,
     sendMessage, sendBulkMessages, sendBroadcast, cancelBroadcast, notifyMembersByPush, loadOlderThreadMessages, markMessageAsRead, markAllMessagesAsReadForUser, markMemberMessagesAsRead, uploadChatAttachment, updateChatMetadata,

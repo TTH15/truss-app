@@ -196,11 +196,11 @@ export function AdminBoards({ language, adminUserId = 'admin', adminName, boardP
               {t.createPost}
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <DialogHeader><DialogTitle>{t.createPost}</DialogTitle></DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-2"><Input placeholder={t.postTitle} value={newPost.title} onChange={(e) => setNewPost((prev) => ({ ...prev, title: e.target.value }))} /></div>
-              <div className="space-y-2"><Textarea placeholder={t.postContent} value={newPost.content} rows={5} onChange={(e) => setNewPost((prev) => ({ ...prev, content: e.target.value }))} /></div>
+              <div className="space-y-2"><Textarea placeholder={t.postContent} value={newPost.content} rows={5} onChange={(e) => setNewPost((prev) => ({ ...prev, content: e.target.value }))} className="field-sizing-fixed min-h-32 max-h-64 resize-y" /></div>
               <ImageDropUpload
                 label={t.uploadImage}
                 hint={t.uploadImageHint}

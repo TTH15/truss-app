@@ -3,7 +3,7 @@ import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Input } from '../ui/input';
-import { Globe2, Calendar, MessageCircle, Send, ChevronDown, Trash2 } from 'lucide-react';
+import { Globe2, Calendar, MessageCircle, Send, ChevronDown, Trash2 } from '../member/icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHand } from '@fortawesome/free-solid-svg-icons';
 import { ReactionCount } from './ReactionCount';
@@ -14,13 +14,13 @@ import { linkifyText } from '../../lib/linkify';
 
 interface Reply { id: number; author: string; authorAvatar: string; content: string; time: string; }
 interface Post { id: number; author: string; authorAvatar: string; title: string; content: string; language: string; peopleNeeded: number; interested: number; tag: 'languageExchange' | 'studyGroup' | 'event'; time: string; image?: string; expiryDate?: string; replies?: Reply[]; authorId?: string; }
-interface BoardPostWithRepliesProps { post: Post; language: Language; user: User; onAddReply: (postId: number, content: string) => Promise<void> | void; onToggleInterest?: (postId: number) => void; isInterested?: boolean; onDeletePost?: (postId: number) => void; canDelete?: boolean; translations: { until: string; replies: string; replyPlaceholder: string; sendReply: string; viewReplies: string; languageExchange: string; studyGroup: string; event: string; }; }
+interface BoardPostWithRepliesProps { post: Post; language: Language; user: User; onAddReply: (postId: number, content: string) => Promise<void> | void; onToggleInterest?: (postId: number) => void; isInterested?: boolean; onDeletePost?: (postId: number) => void; canDelete?: boolean; initialExpanded?: boolean; translations: { until: string; replies: string; replyPlaceholder: string; sendReply: string; viewReplies: string; languageExchange: string; studyGroup: string; event: string; }; }
 
-export function BoardPostWithReplies({ post, language, user, onAddReply, onToggleInterest, isInterested = false, onDeletePost, canDelete = false, translations: t }: BoardPostWithRepliesProps) {
+export function BoardPostWithReplies({ post, language, user, onAddReply, onToggleInterest, isInterested = false, onDeletePost, canDelete = false, initialExpanded = false, translations: t }: BoardPostWithRepliesProps) {
   const [handRaising, setHandRaising] = useState(false);
   const [sendingReply, setSendingReply] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
-  const [isContentExpanded, setIsContentExpanded] = useState(false);
+  const [isContentExpanded, setIsContentExpanded] = useState(initialExpanded);
   const [replyInput, setReplyInput] = useState('');
   const canWrite = user.approved === true;
   const isAnnouncement = post.tag === 'event' && post.peopleNeeded === 0;
@@ -71,7 +71,7 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
   };
   const replyCount = post.replies?.length || 0;
   return (
-    <Card className={`p-4 hover:shadow-md transition-shadow ${isAnnouncement ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}>
+    <Card id={`board-post-${post.id}`} tabIndex={-1} className={`scroll-mt-24 p-4 hover:shadow-md transition-shadow ${isAnnouncement ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}>
       <div className="flex gap-4">
         {post.image && <div className="w-24 h-24 shrink-0"><img src={post.image} alt={post.title} className="w-full h-full object-cover rounded-lg" /></div>}
         <div className="flex-1 min-w-0">
