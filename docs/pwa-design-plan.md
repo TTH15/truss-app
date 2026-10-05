@@ -166,3 +166,5 @@ C案の方向性、現在の5タブを維持する方針、専用ブランチで
 - iOS・Androidのインストール済みPWAにおける起動・キーボード・安全領域の実機確認は今後の確認事項。
 
 関連資料: [世界観](./design-concept.md)、[移行計画](./plan.md)、[進捗](./tasks.md)。
+
+次の更新: [会員証・参加チケット・QR受付](./pwa-member-checkin.md)、[SVG素材仕様](./design/pwa-svg-brief.md)、[部活・イベント企画メモ](./community-ideas.md)。

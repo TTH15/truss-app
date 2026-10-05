@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { supabase, type Language } from '@truss/core';
+import { confirmEventAttendance, supabase, type Language } from '@truss/core';
 import {
   filterParticipantsByName,
   getParticipantStatusRaw,
@@ -78,6 +78,17 @@ export function useEventParticipants({
 
   const clearSelection = () => setSelectedIds(new Set());
 
+  const confirmAttendance = async (participant: AdminEventParticipant): Promise<{ error: Error | null }> => {
+    if (!selectedEvent) return { error: new Error('No event selected') };
+    const userId = getParticipantUserId(participant);
+    const { error } = await confirmEventAttendance(selectedEvent.id, userId);
+    if (!error) {
+      const key = participantStatusKey(selectedEvent.id, userId);
+      setStatusOverrides((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), attended: true } }));
+    }
+    return { error };
+  };
+
   const changeStatus = async (
     participant: AdminEventParticipant,
     field: 'attended' | 'paid',
@@ -93,13 +104,14 @@ export function useEventParticipants({
     const previous = getStatus(participant, field);
     setStatusOverrides((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), [field]: checked } }));
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('event_participants')
       .update((field === 'attended' ? { attended: checked } : { paid: checked }) as never)
       .eq('event_id', selectedEvent.id)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .select('id');
 
-    if (error) {
+    if (error || !data?.length) {
       setStatusOverrides((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), [field]: previous } }));
       toast.error(language === 'ja' ? '参加者ステータスの更新に失敗しました' : 'Failed to update participant status');
     }
@@ -119,6 +131,7 @@ export function useEventParticipants({
     clearSelection,
     getStatus,
     changeStatus,
+    confirmAttendance,
     furiganaByUserId,
   };
 }
