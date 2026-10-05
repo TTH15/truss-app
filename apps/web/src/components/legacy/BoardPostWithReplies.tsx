@@ -81,10 +81,10 @@ export function BoardPostWithReplies({ post, language, user, onAddReply, onToggl
           {isAnnouncement ? (language === 'ja' ? 'お知らせ' : 'Announcement') : (post.tag === 'languageExchange' ? t.languageExchange : post.tag === 'studyGroup' ? t.studyGroup : t.event)}
         </div>
       </div>
-      <div className={`board-post-layout ${post.image ? 'board-post-has-image' : ''}`}>
+      <div className="board-post-layout">
+        <h3 className="text-[#3D3D4E] wrap-anywhere">{post.title}</h3>
         {post.image && <div className="board-post-image"><img src={post.image} alt={post.title} loading="lazy" className="w-full h-full object-contain rounded-lg" /></div>}
         <div className="min-w-0">
-          <h3 className="text-[#3D3D4E] mb-1 wrap-anywhere">{post.title}</h3>
           <p className={`text-sm text-gray-600 mb-1 whitespace-pre-line break-words [overflow-wrap:anywhere] ${isContentExpanded ? '' : 'line-clamp-2'}`}>{linkifyText(normalizedContent)}</p>
           {shouldShowExpandButton && (
             <Button
