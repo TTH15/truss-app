@@ -139,7 +139,7 @@ export function BulletinBoard({ language, user, onInterested, boardPosts, onUpda
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
-              className="bg-[#49B1E4] hover:bg-[#3A9FD3]"
+              className="member-glass-action"
               disabled={!canWrite}
             >
               <Plus className="w-4 h-4 mr-2" />

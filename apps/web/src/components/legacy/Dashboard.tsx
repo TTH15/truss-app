@@ -669,9 +669,9 @@ export function Dashboard({
         )}
       </main>
 
-      <nav className={`member-bottom-nav border-t z-50 pb-[env(safe-area-inset-bottom)] ${isChatPage ? 'shrink-0' : 'fixed bottom-0 left-0 right-0'}`}>
-        <div className="container mx-auto px-4 pb-2">
-          <div className="flex justify-around items-end">
+      <nav className={`member-bottom-nav z-50 ${isChatPage ? 'shrink-0' : 'fixed bottom-0 left-0 right-0'}`} aria-label={language === 'ja' ? 'メインナビゲーション' : 'Main navigation'}>
+        <div className="member-nav-panel">
+          <div>
               <NavButton
                 icon={<Home className="w-5 h-5" />}
                 label={t.home}
