@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Eye, Pencil, ExternalLink, History, Lock, RotateCcw, Plus, Trash2 } from 'lucide-react';
+import { Eye, Pencil, ExternalLink, History, Lock, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Checkbox } from '../ui/checkbox';
 import {
   querySiteDocument,
-  querySiteDocumentRevisions,
   upsertSiteDocumentRow,
   isSeniorRole,
 } from '@truss/core';
 import type { Language, User, SiteDocumentRevision } from '@truss/core';
+import { AdminDocumentHistory } from './AdminDocumentHistory';
 import { PolicyArticles } from '../policy/PolicyDocument';
 import {
   DEFAULT_SITE_DOCUMENTS,
@@ -52,7 +52,8 @@ interface AdminSiteDocumentsProps {
 export function AdminSiteDocuments({ language, user, onAnnounce, documentId, embedded = false }: AdminSiteDocumentsProps) {
   const [activeId, setActiveId] = useState<SiteDocumentId>(documentId ?? 'terms-of-service');
   const [docs, setDocs] = useState<Partial<Record<SiteDocumentId, DocumentState>>>({});
-  const [revisions, setRevisions] = useState<Partial<Record<SiteDocumentId, SiteDocumentRevision[]>>>({});
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const [mode, setMode] = useState<ViewMode>('edit');
   const [announceChange, setAnnounceChange] = useState(false);
@@ -65,36 +66,25 @@ export function AdminSiteDocuments({ language, user, onAnnounce, documentId, emb
     if (docs[activeId] !== undefined) return;
     let cancelled = false;
     void (async () => {
-      const record = await querySiteDocument(activeId);
-      if (cancelled) return;
-      const content = record?.content?.trim() ? record.content : DEFAULT_SITE_DOCUMENTS[activeId];
-      setDocs((prev) => ({
-        ...prev,
-        [activeId]: {
-          draft: splitSiteDocument(content),
-          protected: record?.protected ?? true,
-          updatedAt: record?.content?.trim() ? record.updatedAt : null,
-        },
-      }));
+      try {
+        const record = await querySiteDocument(activeId);
+        if (cancelled) return;
+        const content = record?.content?.trim() ? record.content : DEFAULT_SITE_DOCUMENTS[activeId];
+        setDocs((prev) => ({
+          ...prev,
+          [activeId]: {
+            draft: splitSiteDocument(content),
+            protected: record?.protected ?? true,
+            updatedAt: record?.content?.trim() ? record.updatedAt : null,
+          },
+        }));
+        setLoadError(false);
+      } catch { if (!cancelled) setLoadError(true); }
     })();
     return () => {
       cancelled = true;
     };
-  }, [activeId, docs]);
-
-  // 履歴表示に切り替えたら取得（表示のたびに取り直して保存直後の履歴も反映する）
-  useEffect(() => {
-    if (mode !== 'history') return;
-    let cancelled = false;
-    void (async () => {
-      const rows = await querySiteDocumentRevisions(activeId);
-      if (cancelled) return;
-      setRevisions((prev) => ({ ...prev, [activeId]: rows }));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [mode, activeId]);
+  }, [activeId, docs, loadAttempt]);
 
   const canEdit = !doc?.protected || isSeniorRole(user.role);
   const draft = doc?.draft ?? { preamble: '', sections: [] };
@@ -124,7 +114,7 @@ export function AdminSiteDocuments({ language, user, onAnnounce, documentId, emb
       return;
     }
     setSaving(true);
-    const { error } = await upsertSiteDocumentRow(activeId, joinedDraft, user.id);
+    const { error, updatedAt } = await upsertSiteDocumentRow(activeId, joinedDraft, user.id);
     setSaving(false);
     if (error) {
       console.error('Failed to save site document:', error);
@@ -138,7 +128,7 @@ export function AdminSiteDocuments({ language, user, onAnnounce, documentId, emb
     setDocs((prev) => {
       const current = prev[activeId];
       if (!current) return prev;
-      return { ...prev, [activeId]: { ...current, updatedAt: new Date().toISOString() } };
+      return { ...prev, [activeId]: { ...current, updatedAt: updatedAt ?? null } };
     });
     toast.success(
       language === 'ja'
@@ -215,37 +205,12 @@ export function AdminSiteDocuments({ language, user, onAnnounce, documentId, emb
         </div>
       )}
 
-      {loading ? (
+      {loading && loadError ? <div role="alert" className="space-y-2 text-sm"><p>{language === 'ja' ? '文書を取得できませんでした' : 'Could not load document'}</p><Button variant="outline" onClick={() => { setLoadError(false); setLoadAttempt((v) => v + 1); }}>{language === 'ja' ? '再試行' : 'Retry'}</Button></div> : loading ? (
         <div className="py-16 text-center text-sm text-[#6B6B7A]">
           {language === 'ja' ? '読み込み中...' : 'Loading...'}
         </div>
       ) : mode === 'history' ? (
-        <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
-          {(revisions[activeId] ?? []).length === 0 ? (
-            <p className="p-4 text-sm text-[#6B6B7A]">
-              {language === 'ja'
-                ? '改定履歴はまだありません'
-                : 'No revision history yet.'}
-            </p>
-          ) : (
-            (revisions[activeId] ?? []).map((revision) => (
-              <div key={revision.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-[#3D3D4E]">{formatDateTime(revision.savedAt)}</p>
-                  <p className="text-xs text-[#6B6B7A] truncate">
-                    {revision.content.replace(/\s+/g, ' ').slice(0, 60)}
-                  </p>
-                </div>
-                {canEdit && (
-                  <Button size="sm" variant="outline" onClick={() => handleRestore(revision)}>
-                    <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                    {language === 'ja' ? '復元' : 'Restore'}
-                  </Button>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+        <AdminDocumentHistory key={activeId} documentId={activeId} language={language} canEdit={canEdit} onRestore={handleRestore} />
       ) : mode === 'preview' || !canEdit ? (
         <div className="rounded-lg border border-gray-200 bg-[#F5F1E8] p-4 text-[#3D3D4E]">
           <PolicyArticles content={joinedDraft} />

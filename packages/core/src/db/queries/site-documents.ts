@@ -2,7 +2,7 @@ import { supabase } from "../../supabase";
 
 export interface SiteDocumentRecord {
   content: string;
-  updatedAt: string;
+  updatedAt: string | null;
   /** 保護文書（上位役職のみ編集可）。RLS でも強制されるが UI の出し分けにも使う */
   protected: boolean;
 }
@@ -11,7 +11,9 @@ export interface SiteDocumentRevision {
   id: number;
   content: string;
   /** その版が保存された日時（退避された日時ではない） */
-  savedAt: string;
+  savedAt: string | null;
+  isInitialVersion: boolean;
+  publishedAt: string | null;
   savedBy: string | null;
 }
 
@@ -21,33 +23,40 @@ export async function querySiteDocument(
 ): Promise<SiteDocumentRecord | null> {
   const { data, error } = await supabase
     .from("site_documents")
-    .select("content, protected, updated_at")
+    .select("content, protected, updated_at, is_initial_version")
     .eq("id", id)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw error;
+  if (!data) return null;
   return {
     content: data.content,
-    updatedAt: data.updated_at,
+    updatedAt: data.is_initial_version ? null : data.updated_at,
     protected: data.protected,
   };
 }
 
-/** 改定履歴（新しい順）。RLS により運営のみ取得できる */
-export async function querySiteDocumentRevisions(
-  documentId: string,
-  limit = 20
-): Promise<SiteDocumentRevision[]> {
-  const { data, error } = await supabase
-    .from("site_document_revisions")
-    .select("id, content, saved_at, saved_by")
-    .eq("document_id", documentId)
-    .order("archived_at", { ascending: false })
-    .limit(limit);
-  if (error || !data) return [];
-  return data.map((row) => ({
-    id: row.id,
-    content: row.content,
-    savedAt: row.saved_at,
-    savedBy: row.saved_by,
-  }));
+/** Private audit history; public status is obtained from the separate snapshot table. */
+export async function querySiteDocumentRevisionPage(documentId: string, beforeId?: number) {
+  let query = supabase.from("site_document_revisions")
+    .select("id,content,saved_at,saved_by,is_initial_version")
+    .eq("document_id", documentId).order("id", { ascending: false }).limit(21);
+  if (beforeId) query = query.lt("id", beforeId);
+  const { data, error } = await query;
+  if (error) throw error;
+  const rows = (data ?? []).slice(0, 20);
+  const publications = rows.length ? await supabase.from("site_document_published_revisions")
+    .select("revision_id,published_at").in("revision_id", rows.map((r) => r.id)) : { data: [], error: null };
+  if (publications.error) throw publications.error;
+  const published = new Map((publications.data ?? []).map((r) => [r.revision_id, r.published_at]));
+  return {
+    hasMore: (data?.length ?? 0) > 20,
+    revisions: rows.map((row): SiteDocumentRevision => ({
+      id: row.id, content: row.content, savedAt: row.saved_at, savedBy: row.saved_by,
+      isInitialVersion: row.is_initial_version, publishedAt: published.get(row.id) ?? null,
+    })),
+  };
+}
+
+export async function querySiteDocumentRevisions(documentId: string): Promise<SiteDocumentRevision[]> {
+  return (await querySiteDocumentRevisionPage(documentId)).revisions;
 }

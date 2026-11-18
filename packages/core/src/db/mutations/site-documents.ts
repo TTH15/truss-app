@@ -9,12 +9,19 @@ export async function upsertSiteDocumentRow(
   id: string,
   content: string,
   updatedBy: string
-): Promise<{ error: Error | null }> {
-  const { error } = await supabase.from("site_documents").upsert({
+): Promise<{ error: Error | null; updatedAt?: string | null }> {
+  const { data, error } = await supabase.from("site_documents").upsert({
     id,
     content,
     updated_at: new Date().toISOString(),
     updated_by: updatedBy,
-  });
-  return { error: toErrorOrNull(error) };
+  }).select("id,updated_at,is_initial_version").single();
+  return { error: toErrorOrNull(error), updatedAt: data?.is_initial_version ? null : data?.updated_at };
+}
+
+
+export async function setSiteDocumentRevisionPublished(revisionId: number, published: boolean): Promise<void> {
+  const { data, error } = await supabase.rpc("set_site_document_revision_published", { p_revision_id: revisionId, p_published: published });
+  if (error) throw error;
+  if (data !== published) throw new Error("Publication update was not confirmed");
 }

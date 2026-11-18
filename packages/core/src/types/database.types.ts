@@ -146,6 +146,7 @@ export interface DbEventView {
 }
 
 export interface DbSiteDocument {
+  is_initial_version?: boolean;
   [key: string]: unknown;
   id: string;
   content: string;
@@ -180,11 +181,12 @@ export interface DbUserRoleHistory {
 }
 
 export interface DbSiteDocumentRevision {
+  is_initial_version: boolean;
   [key: string]: unknown;
   id: number;
   document_id: string;
   content: string;
-  saved_at: string;
+  saved_at: string | null;
   saved_by: string | null;
   archived_at: string;
 }
@@ -514,6 +516,12 @@ export interface Database {
         Update: Partial<Omit<DbUserTourAnnouncement, 'id' | 'updated_at'>>;
         Relationships: [];
       };
+      site_document_published_revisions: {
+        Row: { [key: string]: unknown; revision_id: number; document_id: string; content: string; saved_at: string | null; is_initial_version: boolean; published_at: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       site_document_revisions: {
         Row: DbSiteDocumentRevision;
         Insert: never;
@@ -613,6 +621,7 @@ export interface Database {
     };
     Views: {};
     Functions: {
+      set_site_document_revision_published: { Args: { p_revision_id: number; p_published: boolean }; Returns: boolean };
       admin_chat_reply_status: { Args: Record<string, never>; Returns: { user_id: string; needs_reply: boolean; latest_message: DbMessage }[] };
       is_admin: {
         Args: Record<string, never>;

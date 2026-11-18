@@ -16,6 +16,7 @@ export default async function TermsOfServicePage() {
       intro="本規約は、Truss公式アプリの利用条件を定めるものです。"
       content={content}
       updatedAt={updatedAt}
+      historyHref="/terms-of-service/history"
     />
   );
 }

@@ -123,12 +123,14 @@ export function PolicyPage({
   intro,
   content,
   updatedAt,
+  historyHref,
 }: {
   title: string;
   intro: string;
   content: string;
   /** 最終改定日時（DB で改定されている場合のみ。既定文面のときは null） */
   updatedAt?: string | null;
+  historyHref?: string;
 }) {
   return (
     <div className="min-h-screen bg-[#F5F1E8] text-[#3D3D4E]">
@@ -151,6 +153,7 @@ export function PolicyPage({
         )}
         {!updatedAt && <div className="mb-6" />}
         <PolicyArticles content={content} />
+        {historyHref && <Link href={historyHref} prefetch={false} className="mt-10 inline-block text-sm text-[#49B1E4] underline underline-offset-4">変更履歴</Link>}
       </main>
     </div>
   );
