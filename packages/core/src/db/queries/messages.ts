@@ -58,9 +58,10 @@ export async function queryOlderThreadMessages(
   };
 }
 
-export async function queryMessageThreadsAndMetadata(): Promise<{
+export async function queryMessageThreadsAndMetadata(adminOverview = false): Promise<{
   threads: MessageThread;
   metadata: ChatThreadMetadata;
+  replyStatusUnavailable: boolean;
 }> {
   const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
   // PostgREST は上限（Supabase の既定は 1000 行）を超える分を黙って切り捨てる。
@@ -140,5 +141,19 @@ export async function queryMessageThreadsAndMetadata(): Promise<{
       };
     });
   }
-  return { threads, metadata };
+  let replyStatusUnavailable = false;
+  if (adminOverview) {
+    const { data: statuses, error: statusError } = await supabase.rpc('admin_chat_reply_status');
+    if (statusError) replyStatusUnavailable = true;
+    else for (const status of statuses ?? []) {
+      const userId = status.user_id;
+      metadata[userId] = { ...metadata[userId], replyNeeded: status.needs_reply };
+      const latest = mapDbMessageRowToMessage(status.latest_message);
+      if (!(threads[userId] ?? []).some((message) => message.id === latest.id)) {
+        pushThread(userId, latest);
+        threads[userId].sort(compareMessagesByTimeThenId);
+      }
+    }
+  }
+  return { threads, metadata, replyStatusUnavailable };
 }

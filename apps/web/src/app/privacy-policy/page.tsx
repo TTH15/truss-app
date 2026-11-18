@@ -16,6 +16,7 @@ export default async function PrivacyPolicyPage() {
       intro="本ポリシーは、本サービス利用に伴う個人情報の取扱いについて定めるものです。"
       content={content}
       updatedAt={updatedAt}
+      historyHref="/privacy-policy/history"
     />
   );
 }

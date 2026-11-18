@@ -10,10 +10,14 @@ import { MemberAttributeBadges } from './MemberAttributeBadges';
 import { MemberDetailModal } from './MemberDetailModal';
 import { MessageCircle, Send, Pin, Flag, ArrowLeft, Image as ImageIcon, Images, Calendar, Clock, MapPin, X, FileText, IdCard } from 'lucide-react';
 import type { Language, MessageThread, User as UserType, Message, ChatThreadMetadata } from '@truss/core';
-import { formatDateLabel, formatMessageTime, formatRelativeListTime, getChatAttachmentSignedUrl, getMessageCategoryLabel, parseMessageDate, splitTextWithUrls, toDateKey, updateMessageFlagsRow } from '@truss/core';
+import { formatDateLabel, formatMessageTime, formatRelativeListTime, getChatAttachmentSignedUrl, getMessageCategoryLabel, parseMessageDate, splitTextWithUrls, toDateKey, updateMessageFlagsRow, needsChatReply } from '@truss/core';
 import { toast } from 'sonner';
 import { linkifyText } from '../../lib/linkify';
 import { LinkPreviewCard } from './LinkPreviewCard';
+import { ChatReplyMark } from './ChatReplyMark';
+import { ChatAttentionSettings } from './ChatAttentionSettings';
+import { useAdminChatAttention } from '../../hooks/useAdminChatAttention';
+import { unrepliedDays } from '@truss/core';
 
 interface AdminChatMessagesProps {
   language: Language;
@@ -44,6 +48,7 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
   const t = translations[language];
   const [selectedUserId, setSelectedUserId] = useState<string | null>(selectedChatUserId || null);
   const [newMessage, setNewMessage] = useState('');
+  const [replyFilter, setReplyFilter] = useState<'all' | 'pending'>('all');
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -51,8 +56,9 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
-  const { loadOlderThreadMessages, confirmFeePayment, setUserRole } = useData();
+  const { loadOlderThreadMessages, confirmFeePayment, setUserRole, chatReplyStatusUnavailable, refreshMessages } = useData();
   const { user: currentAdmin } = useAuth();
+  const attention = useAdminChatAttention(currentAdmin?.id);
   /** チャットから開くメンバー詳細（会費確認・役職変更ができる） */
   const [detailMember, setDetailMember] = useState<UserType | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -119,9 +125,10 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
 
   const usersWithMessages = Array.from(allUserIds).map((userId) => {
     const messages = messageThreads[userId] || [];
-    const lastMessage = messages[messages.length - 1];
     const user = memberById.get(userId);
     const metadata = chatThreadMetadata[userId] || {};
+    const replyNeeded = metadata.replyNeeded ?? needsChatReply(messages);
+    const lastMessage = (replyNeeded ? [...messages].reverse().find((message) => !message.isAdmin) : undefined) ?? messages[messages.length - 1];
     const rawTime = lastMessage?.time || '';
     const parsedTime = rawTime ? Date.parse(rawTime) : NaN;
     return {
@@ -139,6 +146,10 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
       lastMessage: lastMessage?.text || '',
       lastMessageTime: rawTime ? formatRelativeListTime(rawTime, language) : '',
       unreadCount: messages.filter((m) => !m.isAdmin && !m.read).length,
+      replyNeeded,
+      replyMessageId: replyNeeded ? lastMessage?.id : undefined,
+      replyDays: unrepliedDays(rawTime, attention.now),
+      dismissed: replyNeeded && attention.dismissals[userId] === lastMessage?.id,
       pinned: metadata.pinned || false,
       flagged: metadata.flagged || false,
       flaggedMessageCount: messages.filter((m) => m.flagged).length,
@@ -151,9 +162,21 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
     if (a.lastMessageAt !== b.lastMessageAt) return b.lastMessageAt - a.lastMessageAt;
     return a.userName.localeCompare(b.userName, 'ja');
   });
+  const pendingReplyCount = usersWithMessages.filter((user) => user.replyNeeded && !user.dismissed).length;
+  const visibleUsers = replyFilter === 'pending' ? sortedUsers.filter((user) => user.replyNeeded && !user.dismissed) : sortedUsers;
   const selectedUser = selectedUserId ? usersWithMessages.find((u) => u.userId === selectedUserId) : null;
   const currentMessages = selectedUserId ? (messageThreads[selectedUserId] || []) : [];
   const pinnedMessages = currentMessages.filter((m) => m.pinned);
+
+  const replyMark = (user: typeof usersWithMessages[number]) => {
+    if (!attention.ready || !attention.preferences.showReplyMarks || !user.replyNeeded || user.dismissed || !user.replyMessageId || user.replyDays < attention.preferences.highlightAfterDays) return null;
+    return <ChatReplyMark days={user.replyDays} language={language} disabled={attention.busy} onDismiss={async () => {
+      try {
+        await attention.dismiss(user.userId, user.replyMessageId!);
+        toast.success(language === 'ja' ? '印を消しました' : 'Mark dismissed', { action: { label: language === 'ja' ? '元に戻す' : 'Undo', onClick: () => { void attention.restore(user.userId).catch(() => toast.error(language === 'ja' ? '印を戻せませんでした' : 'Could not restore mark')); } } });
+      } catch { toast.error(language === 'ja' ? '印を消せませんでした' : 'Could not dismiss mark'); }
+    }} />;
+  };
 
   const handleSelectUser = (userId: string) => {
     setSelectedUserId(userId);
@@ -396,10 +419,17 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
   return (
     <div className="flex h-[600px] gap-4">
       <div className={`w-full md:w-80 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col ${selectedUserId ? 'hidden md:flex' : 'flex'}`}>
-        <div className="flex-1 overflow-hidden">
+        <div className="flex gap-2 p-2 border-b border-gray-200" role="group" aria-label={language === 'ja' ? '返信状況で絞り込み' : 'Filter by reply status'}>
+          <Button size="sm" variant={replyFilter === 'all' ? 'secondary' : 'ghost'} aria-pressed={replyFilter === 'all'} onClick={() => setReplyFilter('all')}>{language === 'ja' ? 'すべて' : 'All'}</Button>
+          <Button size="sm" variant={replyFilter === 'pending' ? 'secondary' : 'ghost'} aria-pressed={replyFilter === 'pending'} onClick={() => setReplyFilter('pending')}>{language === 'ja' ? '未返信' : 'Awaiting reply'} <span>{pendingReplyCount}</span></Button>
+          <ChatAttentionSettings language={language} adminId={currentAdmin?.id} preferences={attention.preferences} ready={attention.ready} busy={attention.busy} save={attention.save} restore={attention.restore} />
+        </div>
+        {attention.error && <div className="p-2 text-xs" role="alert"><p>{language === 'ja' ? '自分の未返信設定を取得できませんでした' : 'Could not load your reply settings'}</p><Button size="sm" variant="ghost" onClick={() => void attention.reload()}>{language === 'ja' ? '再試行' : 'Retry'}</Button></div>}
+        {chatReplyStatusUnavailable && <div className="p-2 text-xs" role="alert"><p>{language === 'ja' ? '返信状況を取得できませんでした' : 'Could not load reply status'}</p><Button size="sm" variant="ghost" onClick={() => void refreshMessages()}>{language === 'ja' ? '再試行' : 'Retry'}</Button></div>}
+        <div className="flex-1 min-h-0 overflow-hidden">
           <ScrollFade fadeColor="#ffffff">
-            {sortedUsers.length === 0 ? <div className="p-4 text-center text-gray-500 text-sm">{t.noMessages}</div> : (
-              <div>{sortedUsers.map((user) => (
+            {visibleUsers.length === 0 ? <div className="p-4 text-center text-gray-500 text-sm">{replyFilter === 'pending' ? (language === 'ja' ? '未返信のチャットはありません' : 'No chats awaiting a reply') : t.noMessages}</div> : (
+              <div>{visibleUsers.map((user) => (
                 <div key={user.userId} className={`relative w-full text-left hover:bg-gray-50 transition-colors border-b border-gray-200 group ${selectedUserId === user.userId ? 'bg-blue-50 border-l-4 border-[#49B1E4]' : ''}`}>
                   <button type="button" onClick={() => handleSelectUser(user.userId)} className="w-full p-4 pr-12 text-left relative">
                     <div className="flex items-start gap-3">
@@ -416,19 +446,20 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                           本文の折り返し位置が決まり、端まで届いて切れることがなくなる */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-2">
-                          <p className="font-medium text-gray-900 truncate">{user.userName}</p>
+                          <p className="font-medium text-[14px] leading-5 text-gray-900 truncate">{user.userName}</p>
                           <MemberAttributeBadges member={user.member} language={language} />
                           {user.feeUnpaid && <FeeUnpaidWalletIcon tooltip={language === 'ja' ? '会費が未払いです' : 'Membership fee unpaid'} />}
                           <p className="ml-auto shrink-0 text-xs text-gray-400">{user.lastMessageTime}</p>
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           <p className="flex-1 min-w-0 text-xs text-gray-500 truncate">{user.lastMessage}</p>
-                          {user.unreadCount > 0 && <div className="shrink-0 bg-red-500 text-white text-xs rounded-full h-4 min-w-[16px] px-1.5 flex items-center justify-center font-medium">{user.unreadCount}</div>}
+                          {user.unreadCount > 0 && <div aria-label={language === 'ja' ? `未読${user.unreadCount}件` : `${user.unreadCount} unread messages`} className="shrink-0 bg-red-500 text-white text-xs rounded-full h-4 min-w-[16px] px-1.5 flex items-center justify-center font-medium">{user.unreadCount}</div>}
                           {user.flaggedMessageCount > 0 && <div className="shrink-0 flex items-center gap-0.5 bg-red-100 text-red-600 text-xs rounded-full h-4 px-1.5 font-medium"><Flag className="w-2.5 h-2.5 fill-red-600" />{user.flaggedMessageCount}</div>}
                         </div>
                       </div>
                     </div>
                   </button>
+                  <div className="absolute bottom-1 right-1">{replyMark(user)}</div>
                   <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 transition-opacity pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100">
                     <button type="button" onClick={(e) => toggleThreadPin(user.userId, e)} className="p-1 rounded hover:bg-gray-200 text-gray-600 hover:text-yellow-600 transition-colors" title={user.pinned ? t.unpinThread : t.pinThread}><Pin className="w-3.5 h-3.5" /></button>
                     <button type="button" onClick={(e) => toggleThreadFlag(user.userId, e)} className="p-1 rounded hover:bg-gray-200 text-gray-600 hover:text-red-600 transition-colors" title={user.flagged ? t.unflagThread : t.flagThread}><Flag className="w-3.5 h-3.5" /></button>
@@ -451,10 +482,11 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
                 className="w-10 h-10"
                 fallbackClassName="bg-[#49B1E4] text-white"
               />
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <h3 className="font-medium text-gray-900 truncate">{selectedUser.userName}</h3>
+              <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
+                <h3 className="font-medium text-[17px] leading-6 text-gray-900 truncate max-w-full">{selectedUser.userName}</h3>
                 <MemberAttributeBadges member={selectedUser.member} language={language} />
                 {selectedUser.feeUnpaid && <FeeUnpaidWalletIcon tooltip={language === 'ja' ? '会費が未払いです' : 'Membership fee unpaid'} />}
+                {replyMark(selectedUser)}
               </div>
               {/* チャットで「振り込みました」と来たら、その場で詳細を開いて会費確認できるようにする */}
               {selectedUser.member && (
@@ -560,8 +592,8 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
           language={language}
           user={detailMember}
           isSelf={currentAdmin?.id === detailMember.id}
-          onConfirmFeePayment={(isRenewal) => {
-            void confirmFeePayment(detailMember.id, isRenewal);
+          onConfirmFeePayment={async (isRenewal) => {
+            await confirmFeePayment(detailMember.id, isRenewal);
             // 一覧の再取得を待たずに表示へ反映する（役職も 035 のトリガーで member に上がる）
             setDetailMember({ ...detailMember, feePaid: true, role: detailMember.role === 'non_member' ? 'member' : detailMember.role });
           }}

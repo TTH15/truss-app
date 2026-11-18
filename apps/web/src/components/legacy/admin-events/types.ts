@@ -31,6 +31,7 @@ export interface EventFormValues {
   participationFee: string;
   maxParticipants: string;
   lineGroupUrl: string;
+  instagramGroupUrl: string;
   image: string | null;
   eventColor: string;
   eventIconKey: string;

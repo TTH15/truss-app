@@ -86,6 +86,7 @@ export interface Event {
   status: "upcoming" | "past";
   photos?: number;
   lineGroupLink?: string;
+  instagramGroupLink?: string;
   lineGroupUrl?: string;
   shareToken?: string;
   participants?: Array<{ id: string; name: string; email: string; attended?: boolean; paid?: boolean }>;
@@ -135,6 +136,7 @@ export interface Message {
   pinned?: boolean;
   flagged?: boolean;
   isBroadcast?: boolean;
+  isAutomated?: boolean;
   broadcastSubject?: string;
   broadcastSubjectEn?: string;
   category?: MessageCategory;
@@ -153,6 +155,7 @@ export interface ChatThreadMetadata {
     pinned?: boolean;
     flagged?: boolean;
     unreadCount?: number;
+    replyNeeded?: boolean;
   };
 }
 

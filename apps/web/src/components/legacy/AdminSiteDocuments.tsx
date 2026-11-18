@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Eye, Pencil, ExternalLink, History, Lock, RotateCcw, Plus, Trash2 } from 'lucide-react';
+import { Eye, Pencil, ExternalLink, History, Lock, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Checkbox } from '../ui/checkbox';
 import {
   querySiteDocument,
-  querySiteDocumentRevisions,
   upsertSiteDocumentRow,
   isSeniorRole,
 } from '@truss/core';
 import type { Language, User, SiteDocumentRevision } from '@truss/core';
+import { AdminDocumentHistory } from './AdminDocumentHistory';
 import { PolicyArticles } from '../policy/PolicyDocument';
 import {
   DEFAULT_SITE_DOCUMENTS,
@@ -36,21 +36,24 @@ interface DocumentState {
 interface AdminSiteDocumentsProps {
   language: Language;
   user: User;
+  documentId?: SiteDocumentId;
+  embedded?: boolean;
   /** 「会員に告知する」チェック時に呼ばれる（既存の一斉通知経路に接続） */
   onAnnounce?: (docId: SiteDocumentId) => Promise<void>;
 }
 
 /**
- * 利用規約・プライバシーポリシーの閲覧・改定（運営画面の設定タブに組み込むインラインパネル）。
+ * 利用規約・プライバシーポリシーの閲覧・改定（設定モーダルと単独パネルで共用）。
  * - 条文（第N条 / N.）ごとに入力を分けて編集する。保存時に1つの文書に結合して site_documents へ
  * - 公開ページは ISR のため最大5分で反映される
  * - 保護文書は上位役職（代表・副代表・顧問・SE）のみ編集可（RLS でも強制。UI は閲覧のみに）
  * - 保存のたびに旧内容が改定履歴へ自動退避され、履歴からドラフトに復元できる
  */
-export function AdminSiteDocuments({ language, user, onAnnounce }: AdminSiteDocumentsProps) {
-  const [activeId, setActiveId] = useState<SiteDocumentId>('terms-of-service');
+export function AdminSiteDocuments({ language, user, onAnnounce, documentId, embedded = false }: AdminSiteDocumentsProps) {
+  const [activeId, setActiveId] = useState<SiteDocumentId>(documentId ?? 'terms-of-service');
   const [docs, setDocs] = useState<Partial<Record<SiteDocumentId, DocumentState>>>({});
-  const [revisions, setRevisions] = useState<Partial<Record<SiteDocumentId, SiteDocumentRevision[]>>>({});
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const [mode, setMode] = useState<ViewMode>('edit');
   const [announceChange, setAnnounceChange] = useState(false);
@@ -63,36 +66,25 @@ export function AdminSiteDocuments({ language, user, onAnnounce }: AdminSiteDocu
     if (docs[activeId] !== undefined) return;
     let cancelled = false;
     void (async () => {
-      const record = await querySiteDocument(activeId);
-      if (cancelled) return;
-      const content = record?.content?.trim() ? record.content : DEFAULT_SITE_DOCUMENTS[activeId];
-      setDocs((prev) => ({
-        ...prev,
-        [activeId]: {
-          draft: splitSiteDocument(content),
-          protected: record?.protected ?? true,
-          updatedAt: record?.content?.trim() ? record.updatedAt : null,
-        },
-      }));
+      try {
+        const record = await querySiteDocument(activeId);
+        if (cancelled) return;
+        const content = record?.content?.trim() ? record.content : DEFAULT_SITE_DOCUMENTS[activeId];
+        setDocs((prev) => ({
+          ...prev,
+          [activeId]: {
+            draft: splitSiteDocument(content),
+            protected: record?.protected ?? true,
+            updatedAt: record?.content?.trim() ? record.updatedAt : null,
+          },
+        }));
+        setLoadError(false);
+      } catch { if (!cancelled) setLoadError(true); }
     })();
     return () => {
       cancelled = true;
     };
-  }, [activeId, docs]);
-
-  // 履歴表示に切り替えたら取得（表示のたびに取り直して保存直後の履歴も反映する）
-  useEffect(() => {
-    if (mode !== 'history') return;
-    let cancelled = false;
-    void (async () => {
-      const rows = await querySiteDocumentRevisions(activeId);
-      if (cancelled) return;
-      setRevisions((prev) => ({ ...prev, [activeId]: rows }));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [mode, activeId]);
+  }, [activeId, docs, loadAttempt]);
 
   const canEdit = !doc?.protected || isSeniorRole(user.role);
   const draft = doc?.draft ?? { preamble: '', sections: [] };
@@ -122,7 +114,7 @@ export function AdminSiteDocuments({ language, user, onAnnounce }: AdminSiteDocu
       return;
     }
     setSaving(true);
-    const { error } = await upsertSiteDocumentRow(activeId, joinedDraft, user.id);
+    const { error, updatedAt } = await upsertSiteDocumentRow(activeId, joinedDraft, user.id);
     setSaving(false);
     if (error) {
       console.error('Failed to save site document:', error);
@@ -136,7 +128,7 @@ export function AdminSiteDocuments({ language, user, onAnnounce }: AdminSiteDocu
     setDocs((prev) => {
       const current = prev[activeId];
       if (!current) return prev;
-      return { ...prev, [activeId]: { ...current, updatedAt: new Date().toISOString() } };
+      return { ...prev, [activeId]: { ...current, updatedAt: updatedAt ?? null } };
     });
     toast.success(
       language === 'ja'
@@ -169,15 +161,15 @@ export function AdminSiteDocuments({ language, user, onAnnounce }: AdminSiteDocu
     new Date(iso).toLocaleString(language === 'ja' ? 'ja-JP' : 'en-US');
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 space-y-4">
+    <div className={embedded ? "space-y-4" : "bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 space-y-4"}>
       <p className="text-sm text-[#6B6B7A] leading-relaxed">
         {language === 'ja'
-          ? '保存すると公開ページ（最大5分で反映）に掲載され、旧版は履歴に残ります。条文ごとに編集できます（本文の行頭「1. 」は号、「(1) 」は小見出し、「・」は箇条書きになります）。'
-          : 'Saved content is published to the public pages (within 5 minutes); previous versions are kept in history. Edit article by article — in bodies, lines starting with "1. " become numbered clauses, "(1) " sub-headings, "・" bullets.'}
+          ? '保存すると公開ページに最大5分で反映されます。'
+          : 'Saved content is published within 5 minutes.'}
       </p>
 
       <div className="flex items-center gap-2 flex-wrap">
-        {DOCUMENT_IDS.map((id) => (
+        {!documentId && DOCUMENT_IDS.map((id) => (
           <Button
             key={id}
             size="sm"
@@ -213,37 +205,12 @@ export function AdminSiteDocuments({ language, user, onAnnounce }: AdminSiteDocu
         </div>
       )}
 
-      {loading ? (
+      {loading && loadError ? <div role="alert" className="space-y-2 text-sm"><p>{language === 'ja' ? '文書を取得できませんでした' : 'Could not load document'}</p><Button variant="outline" onClick={() => { setLoadError(false); setLoadAttempt((v) => v + 1); }}>{language === 'ja' ? '再試行' : 'Retry'}</Button></div> : loading ? (
         <div className="py-16 text-center text-sm text-[#6B6B7A]">
           {language === 'ja' ? '読み込み中...' : 'Loading...'}
         </div>
       ) : mode === 'history' ? (
-        <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
-          {(revisions[activeId] ?? []).length === 0 ? (
-            <p className="p-4 text-sm text-[#6B6B7A]">
-              {language === 'ja'
-                ? 'まだ改定履歴はありません（保存すると旧版がここに残ります）'
-                : 'No revision history yet (previous versions appear here after you save).'}
-            </p>
-          ) : (
-            (revisions[activeId] ?? []).map((revision) => (
-              <div key={revision.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-[#3D3D4E]">{formatDateTime(revision.savedAt)}</p>
-                  <p className="text-xs text-[#6B6B7A] truncate">
-                    {revision.content.replace(/\s+/g, ' ').slice(0, 60)}
-                  </p>
-                </div>
-                {canEdit && (
-                  <Button size="sm" variant="outline" onClick={() => handleRestore(revision)}>
-                    <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                    {language === 'ja' ? '復元' : 'Restore'}
-                  </Button>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+        <AdminDocumentHistory key={activeId} documentId={activeId} language={language} canEdit={canEdit} onRestore={handleRestore} />
       ) : mode === 'preview' || !canEdit ? (
         <div className="rounded-lg border border-gray-200 bg-[#F5F1E8] p-4 text-[#3D3D4E]">
           <PolicyArticles content={joinedDraft} />
@@ -315,7 +282,7 @@ export function AdminSiteDocuments({ language, user, onAnnounce }: AdminSiteDocu
               {formatDateTime(doc.updatedAt)}
             </span>
           )}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
             <Button
               variant="outline"
               size="sm"

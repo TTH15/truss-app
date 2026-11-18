@@ -15,6 +15,7 @@ export async function sendMessageRow(input: {
   text: string;
   isAdmin: boolean;
   isBroadcast?: boolean;
+  isAutomated?: boolean;
   broadcastSubject?: string;
   broadcastSubjectEn?: string;
   category?: MessageCategory;
@@ -31,6 +32,7 @@ export async function sendMessageRow(input: {
     text: input.text,
     is_admin: input.isAdmin,
     is_broadcast: input.isBroadcast ?? false,
+    ...(input.isAutomated ? { is_automated: true } : {}),
     broadcast_subject: input.broadcastSubject ?? null,
     broadcast_subject_en: input.broadcastSubjectEn ?? null,
     category: input.category ?? null,

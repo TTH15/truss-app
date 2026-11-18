@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useId, useState, useRef, useEffect, useMemo } from 'react';
 import { recordEventViewRow } from '@truss/core';
 import { Button } from '../ui/button';
 import { Heart, Users, Calendar, Camera, MapPin, Clock, MessageCircle, ExternalLink, Share2 } from '../member/icons';
@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getEventIconDefinition, DEFAULT_EVENT_ICON_KEY } from '@truss/core';
+import { EventChatLinks } from '../member/EventChatLinks';
 import { ParticipationTicket } from '../member/ParticipationTicket';
 import { useData } from '../../contexts/DataContext';
 
@@ -33,14 +34,16 @@ interface EventsPageProps {
 }
 
 const translations = {
-  ja: { title: 'イベント', viewPhotos: '写真を見る', attend: '参加する', registered: '申し込み済み', likes: 'いいね', participants: '参加者', participationFee: '参加費', registrationComplete: '参加登録完了', registrationCompleteMessage: 'イベントへの参加登録が完了しました！', lineGroupDescription: '以下のボタンからイベント用のLINEグループに参加できます。', photoRefusal: '顔が写っている写真のアップロードを拒否する。', openLine: 'LINEで開く', close: '閉じる', noLineGroup: 'このイベントにはLINEグループはありません。', confirmRegistration: '参加登録', confirmRegistrationMessage: '以下の内容を確認して、参加登録してください。', registerButton: '参加する', eventDetails: 'イベント詳細', description: '説明', noDescription: '説明はありません', tapIconHint: '日付のイベントアイコンをタップして詳細を表示できます。' },
-  en: { title: 'Events', viewPhotos: 'View Photos', attend: 'Attend', registered: 'Registered', likes: 'Likes', participants: 'Participants', participationFee: 'Participation fee', registrationComplete: 'Registration Complete', registrationCompleteMessage: 'Your event registration is complete!', lineGroupDescription: 'You can join the event LINE group using the button below.', photoRefusal: 'I refuse to have photos of my face uploaded.', openLine: 'Open in LINE', close: 'Close', noLineGroup: 'This event does not have a LINE group.', confirmRegistration: 'Event Registration', confirmRegistrationMessage: 'Please confirm the following and register.', registerButton: 'Register', eventDetails: 'Event Details', description: 'Description', noDescription: 'No description available', tapIconHint: 'Tap an event icon on the calendar to see details.' },
+  ja: { title: 'イベント', viewPhotos: '写真を見る', attend: '参加する', registered: '申し込み済み', likes: 'いいね', participants: '参加者', participationFee: '参加費', registrationComplete: '参加登録完了', photoRefusal: '顔が写っている写真のアップロードを拒否する。', close: '閉じる', confirmRegistration: '参加登録', confirmRegistrationMessage: '以下の内容を確認して、参加登録してください。', registerButton: '参加する', eventDetails: 'イベント詳細', description: '説明', noDescription: '説明はありません', tapIconHint: '日付のイベントアイコンをタップして詳細を表示できます。' },
+  en: { title: 'Events', viewPhotos: 'View Photos', attend: 'Attend', registered: 'Registered', likes: 'Likes', participants: 'Participants', participationFee: 'Participation fee', registrationComplete: 'Registration Complete', photoRefusal: 'I refuse to have photos of my face uploaded.', close: 'Close', confirmRegistration: 'Event Registration', confirmRegistrationMessage: 'Please confirm the following and register.', registerButton: 'Register', eventDetails: 'Event Details', description: 'Description', noDescription: 'No description available', tapIconHint: 'Tap an event icon on the calendar to see details.' },
 };
 
 export function EventsPage({ language, events, attendingEvents, likedEvents, onToggleAttending, onToggleLike, highlightEventId, openEventId, onOpenEventHandled, onAddEventParticipant, user }: EventsPageProps) {
   const t = translations[language];
+  const registrationDescriptionId = useId();
   const { eventParticipants } = useData();
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedEventSnapshot, setSelectedEvent] = useState<Event | null>(null);
+  const selectedEvent = selectedEventSnapshot ? events.find((event) => event.id === selectedEventSnapshot.id) ?? selectedEventSnapshot : null;
   const [lineGroupDialogOpen, setLineGroupDialogOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   // 開いた時点のコピーを表示し続けると、いいねや参加者数を更新しても
@@ -279,10 +282,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
     setPhotoRefusal(false);
     setRegistrationStep('confirm');
   };
-  const handleOpenLineGroup = () => {
-    if (selectedEvent?.lineGroupLink) window.open(selectedEvent.lineGroupLink, '_blank');
-    handleLineDialogClose();
-  };
+
 
   const handleCalendarEventClick = (event: Event) => {
     // 月送りスワイプの終わりに発火するクリックは無視する
@@ -485,11 +485,11 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
         </DialogContent>
       </Dialog>
 
-      <Dialog open={lineGroupDialogOpen} onOpenChange={setLineGroupDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+      <Dialog open={lineGroupDialogOpen} onOpenChange={(open) => { if (!open) handleLineDialogClose(); }}>
+        <DialogContent aria-describedby={registrationStep === 'confirm' ? registrationDescriptionId : undefined} className="sm:max-w-[425px] max-h-[calc(100dvh-2rem)] overflow-y-auto">
           {registrationStep === 'confirm' ? (
             <>
-              <DialogHeader><DialogTitle className="flex items-center gap-2"><Calendar className="w-5 h-5 text-[#49B1E4]" />{t.confirmRegistration}</DialogTitle><DialogDescription>{t.confirmRegistrationMessage}</DialogDescription></DialogHeader>
+              <DialogHeader><DialogTitle className="flex items-center gap-2"><Calendar className="w-5 h-5 text-[#49B1E4]" />{t.confirmRegistration}</DialogTitle><DialogDescription id={registrationDescriptionId}>{t.confirmRegistrationMessage}</DialogDescription></DialogHeader>
               <div className="space-y-4 py-2">
                 {selectedEvent && <div className="bg-[#F5F1E8] p-4 rounded-lg"><h3 className="font-medium text-[#3D3D4E] mb-1">{language === 'ja' ? selectedEvent.title : (selectedEvent.titleEn || selectedEvent.title)}</h3><p className="text-sm text-[#6B6B7A]">{formatDisplayDate(selectedEvent.date, language)} {selectedEvent.time}</p><p className="text-sm text-[#3D3D4E] mt-1">¥{Number(selectedEvent.participationFee ?? 0).toLocaleString()} ({t.participationFee})</p></div>}
                 <div className="flex items-start space-x-3 bg-yellow-50 p-3 rounded-lg border border-yellow-200"><Checkbox id="photoRefusal" checked={photoRefusal} onCheckedChange={(checked) => setPhotoRefusal(checked === true)} className="mt-0.5" /><label htmlFor="photoRefusal" className="text-sm text-[#3D3D4E] leading-relaxed cursor-pointer">{t.photoRefusal}</label></div>
@@ -499,10 +499,10 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
             </>
           ) : (
             <>
-              <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageCircle className="w-5 h-5 text-[#49B1E4]" />{t.registrationComplete}</DialogTitle><DialogDescription>{t.registrationCompleteMessage}</DialogDescription></DialogHeader>
+              <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageCircle className="w-5 h-5 text-[#49B1E4]" />{t.registrationComplete}</DialogTitle></DialogHeader>
               <div className="space-y-4 py-2">
                 {/* Journey Stamp の予告は、電子スタンプ（ハード）の方針が決まるまで非表示 */}
-                {selectedEvent?.lineGroupLink ? <><div className="bg-[#F5F1E8] p-4 rounded-lg"><p className="text-sm text-[#3D3D4E] text-center">{t.lineGroupDescription}</p></div><Button className="w-full bg-[#06C755] hover:bg-[#05B04E] text-white" onClick={handleOpenLineGroup}><MessageCircle className="w-4 h-4 mr-2" />{t.openLine}</Button></> : <div className="bg-gray-50 p-4 rounded-lg"><p className="text-sm text-[#6B6B7A] text-center">{t.noLineGroup}</p></div>}
+                {selectedEvent && <EventChatLinks event={selectedEvent} language={language} />}
                 <Button variant="outline" className="w-full" onClick={handleLineDialogClose}>{t.close}</Button>
               </div>
             </>

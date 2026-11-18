@@ -2,6 +2,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faClock, faLocationDot, faTicket, faArrowUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
 import { googleMapsHrefForEvent, type Event, type EventParticipant, type Language, type User } from '@truss/core';
 import { formatHomeDate } from './home-content';
+import { EventChatLinks } from './EventChatLinks';
 import { MemberQrCard } from './MemberQrCard';
 
 export function ParticipationTicket({ event, user, participant, language }: {
@@ -18,6 +19,7 @@ export function ParticipationTicket({ event, user, participant, language }: {
       <span><FontAwesomeIcon icon={faLocationDot} />{ja ? event.location : event.locationEn || event.location}</span>
       {maps && <a href={maps} target="_blank" rel="noopener noreferrer">{ja ? '地図' : 'Map'}<FontAwesomeIcon icon={faArrowUpRightFromSquare} /></a>}
     </div>
+    <div className="px-4 pb-4"><EventChatLinks event={event} language={language} /></div>
     <div className="participation-ticket-stub"><div><strong>{user.name}</strong>{participant?.photoRefusal && <span>{ja ? '顔写真の掲載不可' : 'No face photos'}</span>}</div><MemberQrCard user={user} language={language} /></div>
   </section>;
 }

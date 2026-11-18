@@ -85,6 +85,7 @@ interface DataContextType {
   staffInboxUserId: string | null;
   messageThreads: MessageThread;
   chatThreadMetadata: ChatThreadMetadata;
+  chatReplyStatusUnavailable: boolean;
   notifications: Notification[];
   boardPosts: BoardPost[];
   eventParticipants: { [eventId: number]: EventParticipant[] };
@@ -117,7 +118,7 @@ interface DataContextType {
     receiverId: string,
     text: string,
     isAdmin?: boolean,
-    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention; suppressPush?: boolean }
+    options?: { isAutomated?: boolean; category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention; suppressPush?: boolean }
   ) => Promise<void>;
   /** 複数人へのプッシュ通知を1回で送る（種類ごとの受信設定はサーバー側で絞り込み） */
   notifyMembersByPush: (userIds: string[], input: { title: string; body?: string; category: 'message' | 'event' | 'announcement'; tag?: string }) => Promise<void>;
@@ -330,10 +331,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
   }, [user?.id, user?.approved, user?.isAdmin]);
 
+  const [chatReplyStatusUnavailable, setChatReplyStatusUnavailable] = useState(false);
+
   const fetchMessages = useCallback(async () => {
     if (!user) return;
     try {
-      const { threads, metadata } = await queryMessageThreadsAndMetadata();
+      const { threads, metadata, replyStatusUnavailable } = await queryMessageThreadsAndMetadata(!!user.isAdmin);
+      setChatReplyStatusUnavailable(replyStatusUnavailable);
       setMessageThreads(threads);
       setChatThreadMetadata(metadata);
     } catch (error) {
@@ -635,6 +639,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await fetchUsers(true);
     } catch (error) {
       console.error('Error confirming fee payment:', error);
+      throw error;
     }
   };
 
@@ -702,7 +707,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     receiverId: string,
     text: string,
     isAdmin: boolean = false,
-    options?: { category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention; suppressPush?: boolean }
+    options?: { isAutomated?: boolean; category?: MessageCategory; attachmentPath?: string; attachmentType?: string; mention?: MessageMention; suppressPush?: boolean }
   ) => {
     if (!user) return;
     try {
@@ -712,6 +717,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         receiverId,
         text,
         isAdmin,
+        isAutomated: options?.isAutomated,
         category: options?.category,
         attachmentPath: options?.attachmentPath,
         attachmentType: options?.attachmentType,
@@ -1122,7 +1128,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const value: DataContextType = {
-    events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading, boardPostsLoading, galleryPhotosLoading,
+    events, pendingUsers, approvedMembers, staffInboxUserId, messageThreads, chatThreadMetadata, chatReplyStatusUnavailable, notifications, boardPosts, eventParticipants, galleryPhotos, loading, usersLoading, boardPostsLoading, galleryPhotosLoading,
     homeLoadErrors,
     retryHomeSection: async (section) => {
       if (section === 'board') await fetchBoardPosts();

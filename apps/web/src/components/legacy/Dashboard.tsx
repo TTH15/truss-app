@@ -6,6 +6,7 @@ import { Badge } from '../ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { MemberTheme } from '../member/MemberTheme';
+import { MembershipFeeSummary } from '../member/MembershipFeeSummary';
 import { HomePage } from './HomePage';
 import { EventsPage } from './EventsPage';
 import { MembersPage } from './MembersPage';
@@ -713,7 +714,7 @@ export function Dashboard({
       </nav>
 
       <Dialog open={feePaymentDialogOpen} onOpenChange={setFeePaymentDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-[#49B1E4]" />
@@ -730,20 +731,7 @@ export function Dashboard({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="bg-[#F5F1E8] p-4 rounded-lg text-center">
-              <p className="text-sm text-[#6B6B7A] mb-1">
-                {language === 'ja' ? 'お支払い金額' : 'Amount'}
-              </p>
-              <p className="text-3xl font-bold text-[#3D3D4E]">
-                {user.isRenewal ? '¥2,000' : '¥2,500'}
-              </p>
-              <p className="text-xs text-[#6B6B7A] mt-1">
-                {user.isRenewal
-                  ? (language === 'ja' ? '年会費のみ（継続会員は入会金不要）' : 'Annual fee only (No entry fee for renewals)')
-                  : (language === 'ja' ? '入会金 ¥500 + 年会費 ¥2,000' : 'Entry fee ¥500 + Annual fee ¥2,000')
-                }
-              </p>
-            </div>
+            <MembershipFeeSummary isRenewal={!!user.isRenewal} language={language} />
 
             <div className="space-y-3">
               <h4 className="font-medium text-[#3D3D4E]">

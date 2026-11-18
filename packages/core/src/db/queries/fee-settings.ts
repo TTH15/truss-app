@@ -1,6 +1,7 @@
 /**
  * fee_settings の読み取り（単一行）
  */
+import { membershipFeeTotal } from "../../membership-fees";
 import { supabase } from "../../supabase";
 import type { DbFeeSettings } from "../../types/database.types";
 
@@ -22,11 +23,13 @@ export async function queryFeeSettings(): Promise<FeeSettings> {
     DbFeeSettings,
     "annual_fee" | "admission_fee" | "currency" | "updated_at"
   >;
-  return {
+  const settings = {
     annualFee: row.annual_fee,
     admissionFee: row.admission_fee,
     currency: row.currency,
     updatedAt: row.updated_at,
   };
+  membershipFeeTotal(settings, false);
+  return settings;
 }
 

@@ -97,6 +97,7 @@ export function AdminPage({ user, onLogout, language, onLanguageChange, events, 
 
   useEffect(() => {
     try {
+      if (new URLSearchParams(window.location.search).get('tab') === 'chat') { setCurrentTab('chat'); return; }
       const saved = localStorage.getItem(ADMIN_TAB_STORAGE_KEY) as AdminTab | null;
       if (!saved) return;
       const validTabs: AdminTab[] = ['members', 'events', 'gallery', 'boards', 'chat', 'settings'];

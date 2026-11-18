@@ -278,17 +278,17 @@ export async function fetchSiteDocument(
   if (url && key) {
     try {
       const res = await fetch(
-        `${url}/rest/v1/site_documents?id=eq.${id}&select=content,updated_at`,
+        `${url}/rest/v1/site_documents?id=eq.${id}&select=content,updated_at,is_initial_version`,
         {
           headers: { apikey: key, Authorization: `Bearer ${key}` },
           next: { revalidate: 300 },
         }
       );
       if (res.ok) {
-        const rows = (await res.json()) as Array<{ content?: string; updated_at?: string }>;
+        const rows = (await res.json()) as Array<{ content?: string; updated_at?: string; is_initial_version?: boolean }>;
         const content = rows?.[0]?.content;
         if (typeof content === "string" && content.trim()) {
-          return { content, updatedAt: rows[0]?.updated_at ?? null };
+          return { content, updatedAt: rows[0]?.is_initial_version ? null : rows[0]?.updated_at ?? null };
         }
       }
     } catch {

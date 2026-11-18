@@ -116,6 +116,7 @@ export interface DbEvent {
   status: EventStatus;
   photos_count: number;
   line_group_link: string | null;
+  instagram_group_link?: string | null;
   share_token: string;
   /** Font Awesome キー（例: calendar, sakura） */
   event_icon: string | null;
@@ -145,6 +146,7 @@ export interface DbEventView {
 }
 
 export interface DbSiteDocument {
+  is_initial_version?: boolean;
   [key: string]: unknown;
   id: string;
   content: string;
@@ -179,11 +181,12 @@ export interface DbUserRoleHistory {
 }
 
 export interface DbSiteDocumentRevision {
+  is_initial_version: boolean;
   [key: string]: unknown;
   id: number;
   document_id: string;
   content: string;
-  saved_at: string;
+  saved_at: string | null;
   saved_by: string | null;
   archived_at: string;
 }
@@ -208,6 +211,21 @@ export interface DbFeeSettings {
   updated_at: string;
 }
 
+export interface DbFeeSettingsHistory {
+  [key: string]: unknown;
+  id: number;
+  changed_at: string;
+  action: 'baseline' | 'insert' | 'update' | 'delete';
+  changed_by: string | null;
+  changed_by_auth_id: string | null;
+  previous_annual_fee: number | null;
+  previous_admission_fee: number | null;
+  previous_currency: string | null;
+  annual_fee: number | null;
+  admission_fee: number | null;
+  currency: string | null;
+}
+
 export interface DbMessage {
   // Supabase JS v2 GenericTable の互換性確保のため（Record<string, unknown> 前提）
   [key: string]: unknown;
@@ -223,6 +241,7 @@ export interface DbMessage {
   pinned: boolean;
   flagged: boolean;
   is_broadcast: boolean;
+  is_automated?: boolean;
   broadcast_subject: string | null;
   broadcast_subject_en: string | null;
   broadcast_id: number | null;
@@ -497,6 +516,12 @@ export interface Database {
         Update: Partial<Omit<DbUserTourAnnouncement, 'id' | 'updated_at'>>;
         Relationships: [];
       };
+      site_document_published_revisions: {
+        Row: { [key: string]: unknown; revision_id: number; document_id: string; content: string; saved_at: string | null; is_initial_version: boolean; published_at: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       site_document_revisions: {
         Row: DbSiteDocumentRevision;
         Insert: never;
@@ -509,10 +534,28 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      fee_settings_history: {
+        Row: DbFeeSettingsHistory;
+        Insert: never;
+        Update: never;
+        Relationships: [{ foreignKeyName: 'fee_settings_history_changed_by_fkey'; columns: ['changed_by']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
+      };
       fee_settings: {
         Row: DbFeeSettings;
         Insert: DbFeeSettingsInsert;
         Update: DbFeeSettingsUpdate;
+        Relationships: [];
+      };
+      admin_chat_attention_preferences: {
+        Row: { [key: string]: unknown; admin_user_id: string; show_reply_marks: boolean; highlight_after_days: number; reminder_enabled: boolean; remind_after_days: number };
+        Insert: { admin_user_id: string; show_reply_marks: boolean; highlight_after_days: number; reminder_enabled: boolean; remind_after_days: number };
+        Update: { show_reply_marks?: boolean; highlight_after_days?: number; reminder_enabled?: boolean; remind_after_days?: number };
+        Relationships: [];
+      };
+      admin_chat_attention_dismissals: {
+        Row: { [key: string]: unknown; admin_user_id: string; thread_user_id: string; message_id: number };
+        Insert: { admin_user_id: string; thread_user_id: string; message_id: number };
+        Update: { message_id?: number };
         Relationships: [];
       };
       messages: {
@@ -578,6 +621,8 @@ export interface Database {
     };
     Views: {};
     Functions: {
+      set_site_document_revision_published: { Args: { p_revision_id: number; p_published: boolean }; Returns: boolean };
+      admin_chat_reply_status: { Args: Record<string, never>; Returns: { user_id: string; needs_reply: boolean; latest_message: DbMessage }[] };
       is_admin: {
         Args: Record<string, never>;
         Returns: boolean;

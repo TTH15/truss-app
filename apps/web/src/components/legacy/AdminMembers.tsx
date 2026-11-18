@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Search, Download, MessageCircle, Users2, UserMinus, UserCheck, ListChecks, Send, CircleCheck, Trash2, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { queryFeeSettings, toLocalDateKey } from '@truss/core';
+import { membershipFeeTotal, queryFeeSettings, toLocalDateKey } from '@truss/core';
 import { upsertFeeSettingsRow } from '@truss/core';
 import { BulkEmailModal } from './BulkEmailModal';
 import { ReuploadRequestModal } from './ReuploadRequestModal';
+import { FeeSettingsHistory } from '../member/FeeSettingsHistory';
 import { MemberDetailModal } from './MemberDetailModal';
 import { RoleBadge } from './RoleBadge';
 import { FeeUnpaidWalletIcon } from './FeeUnpaidWalletIcon';
@@ -163,7 +164,8 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
   const [sortBy, setSortBy] = useState<'furigana' | 'createdAt'>('furigana');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [annualFeeAmount, setAnnualFeeAmount] = useState('2000');
-  const [admissionFeeAmount, setAdmissionFeeAmount] = useState('2500');
+  const feeInputId = useId();
+  const [admissionFeeAmount, setAdmissionFeeAmount] = useState('500');
   // 実在の人だけを名簿に出す。システム行（運営受信箱）と、役職を持たない is_admin
   // （= 移行前の専用アカウント。Truss Admin 等）は除外する。
   // 運営メンバー（役職持ち）は部員タブに並び、役職バッジで区別される
@@ -246,8 +248,10 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     if (!onConfirmFeePayment) return;
     const ids = requireSelectedMemberIds();
     if (!ids) return;
-    await Promise.all(ids.map((id) => onConfirmFeePayment(id, isRenewal)));
-    toast.success(t.bulkUpdated);
+    try {
+      await Promise.all(ids.map((id) => onConfirmFeePayment(id, isRenewal)));
+      toast.success(t.bulkUpdated);
+    } catch { toast.error(language === 'ja' ? '支払い確認に失敗しました。反映状況を確認してください。' : 'Failed to confirm payments. Please check their status.'); }
   };
   const handleBulkConfirmFeePaymentKeepType = async () => {
     if (!onConfirmFeePayment) return;
@@ -258,8 +262,10 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     }
     // 会費の記録を書き換える破壊的な操作なので、削除と同じく確認を挟む
     if (!window.confirm(t.confirmBulkMarkPaid)) return;
-    await Promise.all(selected.map((member) => onConfirmFeePayment(member.id, member.isRenewal ?? false)));
-    toast.success(t.bulkUpdated);
+    try {
+      await Promise.all(selected.map((member) => onConfirmFeePayment(member.id, member.isRenewal ?? false)));
+      toast.success(t.bulkUpdated);
+    } catch { toast.error(language === 'ja' ? '支払い確認に失敗しました。反映状況を確認してください。' : 'Failed to confirm payments. Please check their status.'); }
   };
   const getSelectedMemberList = () => sortedMembers.filter((member) => selectedMembers.has(member.id));
   const handleBulkDownloadCsv = () => {
@@ -398,10 +404,9 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
       const settings = await queryFeeSettings();
       setAnnualFeeAmount(String(settings.annualFee));
       setAdmissionFeeAmount(String(settings.admissionFee));
-    } catch {
-      // 取得失敗時は画面上の値をそのまま使う（デフォルトあり）
-    } finally {
       setShowFeeSettingsModal(true);
+    } catch {
+      toast.error(language === 'ja' ? '会費設定を取得できませんでした。もう一度お試しください。' : 'Could not load fee settings. Please try again.');
     }
   };
 
@@ -410,8 +415,10 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
     const admissionFee = Number(admissionFeeAmount);
     if (!Number.isFinite(annualFee) || annualFee < 0) return toast.error(language === 'ja' ? '年会費の値が不正です' : 'Invalid annual fee');
     if (!Number.isFinite(admissionFee) || admissionFee < 0) return toast.error(language === 'ja' ? '入会費の値が不正です' : 'Invalid admission fee');
+    if (!annualFeeAmount.trim() || !admissionFeeAmount.trim() || !Number.isSafeInteger(annualFee) || !Number.isSafeInteger(admissionFee)) return toast.error(language === 'ja' ? '金額は0以上の整数で入力してください' : 'Enter non-negative whole amounts');
     const { error } = await upsertFeeSettingsRow({ annualFee, admissionFee, currency: 'JPY' });
     if (error) return toast.error(error.message);
+    window.dispatchEvent(new Event('truss-fee-settings-updated'));
     toast.success(t.priceUpdated);
     setShowFeeSettingsModal(false);
   };
@@ -710,25 +717,27 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
       {/* 会費の設定（全体設定）。選択メンバーへの一括操作とは無関係なので別ダイアログにした */}
       {showFeeSettingsModal && (
         <Dialog open={showFeeSettingsModal} onOpenChange={setShowFeeSettingsModal}>
-          <DialogContent className="max-w-sm bg-[#F5F1E8]">
+          <DialogContent className="max-w-sm bg-[#F5F1E8] max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-[#3D3D4E]">{t.feePriceSetting}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-1">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-[#3D3D4E]">{t.annualFee}</label>
-                  <Input value={annualFeeAmount} onChange={(e) => setAnnualFeeAmount(e.target.value)} className="bg-[#EEEBE3] border-0" />
+                  <label htmlFor={`${feeInputId}-annual`} className="text-xs text-[#3D3D4E]">{t.annualFee}</label>
+                  <Input id={`${feeInputId}-annual`} inputMode="numeric" value={annualFeeAmount} onChange={(e) => setAnnualFeeAmount(e.target.value)} className="bg-[#EEEBE3] border-0" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-[#3D3D4E]">{t.admissionFee}</label>
-                  <Input value={admissionFeeAmount} onChange={(e) => setAdmissionFeeAmount(e.target.value)} className="bg-[#EEEBE3] border-0" />
+                  <label htmlFor={`${feeInputId}-entry`} className="text-xs text-[#3D3D4E]">{t.admissionFee}</label>
+                  <Input id={`${feeInputId}-entry`} inputMode="numeric" value={admissionFeeAmount} onChange={(e) => setAdmissionFeeAmount(e.target.value)} className="bg-[#EEEBE3] border-0" />
                 </div>
               </div>
+              <p className="text-sm">{language === 'ja' ? '新規会員の合計' : 'New member total'}: ¥{(Number(annualFeeAmount || 0) + Number(admissionFeeAmount || 0)).toLocaleString()}</p>
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => setShowFeeSettingsModal(false)} className="text-[#3D3D4E] hover:bg-[#EEEBE3]">{t.close}</Button>
                 <Button onClick={() => void handleSaveFeeSettings()} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.applyPriceSetting}</Button>
               </div>
+              <FeeSettingsHistory language={language} />
             </div>
           </DialogContent>
         </Dialog>
@@ -763,9 +772,11 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
             toast.success(language === 'ja' ? 'メンバーを削除しました' : 'Member deleted successfully');
             setShowDetailModal(false);
           }}
-          onConfirmFeePayment={(isRenewal: boolean) => {
-            if (onConfirmFeePayment) onConfirmFeePayment(selectedUser.id, isRenewal);
-            const feeAmount = isRenewal ? '¥2,000' : '¥2,500';
+          onConfirmFeePayment={async (isRenewal: boolean) => {
+            if (!onConfirmFeePayment) return;
+            const settings = await queryFeeSettings();
+            await onConfirmFeePayment(selectedUser.id, isRenewal);
+            const feeAmount = `¥${membershipFeeTotal(settings, isRenewal).toLocaleString()}`;
             toast.success(language === 'ja' ? `年会費（${feeAmount}）の支払いを確認しました` : `Fee payment (${feeAmount}) confirmed`);
             setShowDetailModal(false);
           }}

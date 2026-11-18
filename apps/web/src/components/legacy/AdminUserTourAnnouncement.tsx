@@ -21,7 +21,6 @@ import { Textarea } from '../ui/textarea';
 
 const translations = {
   ja: {
-    help: '初回ガイドの最後に表示する案内です。保存後、次にガイドを開いたときから反映されます。',
     title: 'タイトル',
     description: '本文',
     linkLabel: 'ボタンの文言',
@@ -40,7 +39,6 @@ const translations = {
     'invalid-url': '参加リンクには、ユーザー名やパスワードを含まない https:// の URL を入力してください。',
   },
   en: {
-    help: 'This announcement appears at the end of the welcome guide. Changes apply the next time the guide is opened.',
     title: 'Title',
     description: 'Description',
     linkLabel: 'Button label',
@@ -60,7 +58,7 @@ const translations = {
   },
 };
 
-export function AdminUserTourAnnouncement({ language }: { language: Language }) {
+export function AdminUserTourAnnouncement({ language, embedded = false }: { language: Language; embedded?: boolean }) {
   const [draft, setDraft] = useState<UserTourAnnouncement | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -109,8 +107,7 @@ export function AdminUserTourAnnouncement({ language }: { language: Language }) 
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 space-y-4">
-      <p className="text-sm text-[#6B6B7A] leading-relaxed">{t.help}</p>
+    <div className={embedded ? "space-y-4" : "bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 space-y-4"}>
       {loadError ? (
         <div role="alert" className="space-y-3">
           <p className="text-sm text-red-600">{t.loadError}</p>

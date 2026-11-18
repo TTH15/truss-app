@@ -599,7 +599,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       '登録が承認されました。Truss へようこそ！イベントへの参加や会員どうしの交流をお楽しみください。\n\n' +
       'Your registration has been approved. Welcome to Truss! Enjoy joining events and connecting with other members.';
     try {
-      await sendMessage(userId, approvalMessage, true);
+      await sendMessage(userId, approvalMessage, true, { isAutomated: true });
     } catch (error) {
       console.error('Approval notification failed (approval itself succeeded):', error);
     }
@@ -627,7 +627,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
     const messageText = language === 'ja'
       ? `学生証の再アップロードをお願いします。\n\n理由: ${reasonText}`
       : `Please re-upload your student ID card.\n\nReason: ${reasonText}`;
-    await sendMessage(userId, messageText, true);
+    await sendMessage(userId, messageText, true, { isAutomated: true });
     await refreshUsers();
     toast.success(language === 'ja' ? '学生証の再アップロードを依頼しました' : 'Student ID re-upload requested');
   };
@@ -702,7 +702,7 @@ function LegacyApp({ initialPage = 'landing', standaloneAdmin = false, sharedEve
       if (sendInApp) {
         for (const userId of userIds) {
           // プッシュはループ内で1人ずつ送らず、最後に全員分を1回にまとめる
-          await sendMessage(userId, language === 'ja' ? messageJa : messageEn, true, { suppressPush: true });
+          await sendMessage(userId, language === 'ja' ? messageJa : messageEn, true, { suppressPush: true, isAutomated: true });
         }
         void notifyMembersByPush(userIds, {
           title: subjectJa || subjectEn || '運営からのお知らせ',
