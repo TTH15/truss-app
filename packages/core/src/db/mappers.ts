@@ -124,6 +124,7 @@ export function mapDbMessageRowToMessage(row: DbMessage): Message {
     pinned: row.pinned,
     flagged: row.flagged,
     isBroadcast: row.is_broadcast,
+    isAutomated: row.is_automated ?? false,
     broadcastSubject: row.broadcast_subject ?? undefined,
     broadcastSubjectEn: row.broadcast_subject_en ?? undefined,
     category: row.category ?? undefined,

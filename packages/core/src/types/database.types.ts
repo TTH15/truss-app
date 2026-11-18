@@ -239,6 +239,7 @@ export interface DbMessage {
   pinned: boolean;
   flagged: boolean;
   is_broadcast: boolean;
+  is_automated?: boolean;
   broadcast_subject: string | null;
   broadcast_subject_en: string | null;
   broadcast_id: number | null;
@@ -600,6 +601,7 @@ export interface Database {
     };
     Views: {};
     Functions: {
+      admin_chat_reply_status: { Args: Record<string, never>; Returns: { user_id: string; needs_reply: boolean; latest_message: DbMessage }[] };
       is_admin: {
         Args: Record<string, never>;
         Returns: boolean;

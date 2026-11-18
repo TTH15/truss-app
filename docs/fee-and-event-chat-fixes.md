@@ -18,7 +18,7 @@
 
 ## 公開手順
 
-1. `supabase/migrations/20261118080630_event_chats_and_fee_defaults.sql` と `20261118082639_fee_settings_history.sql` を順に本番へ適用する。既存の会費設定値は更新しない。Instagram列の追加、入会金の列デフォルト、会費設定の変更履歴を追加する。既存のRLSを維持する。
+1. `supabase/migrations/20261118080630_event_chats_and_fee_defaults.sql` と `20261118082639_fee_settings_history.sql`・`20261118083854_admin_chat_reply_status.sql` を順に本番へ適用する。既存の会費設定値は更新しない。Instagram列の追加、入会金の列デフォルト、会費設定の変更履歴を追加する。既存のRLSを維持する。
 2. PWAのブランチを本番へ公開する。旧PWAは追加列を無視するためDBを先に更新できる。
 3. 運営画面で各イベントの有効なInstagram招待リンクを設定する。実際のリンクは運営が用意する。
 
@@ -51,3 +51,5 @@ Chromeの280〜1280pxの13幅・日英、200%文字サイズ、長いURLで表�
 移行時点の設定を初期記録として残す。導入前の変更日時や変更者は復元・推測しない。会員個別の入金履歴とは別の、金額設定の変更履歴である。
 
 SQL回帰テストは `supabase/tests/fee-settings-history.sql`。開発用DBのトランザクション内で履歴用の移行と合わせて実行し、必ずロールバックする。実在会員の属性や認証アカウントは変更しない。設定のテスト変更・削除・復元と履歴をロールバックし、権限や記録の整合性を確認する。
+
+関連: [登録承認・会費確認と運営チャットの未返信](./admin-chat-reply-status.md)。
