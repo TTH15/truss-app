@@ -13,6 +13,7 @@ import { membershipFeeTotal, queryFeeSettings, toLocalDateKey } from '@truss/cor
 import { upsertFeeSettingsRow } from '@truss/core';
 import { BulkEmailModal } from './BulkEmailModal';
 import { ReuploadRequestModal } from './ReuploadRequestModal';
+import { FeeSettingsHistory } from '../member/FeeSettingsHistory';
 import { MemberDetailModal } from './MemberDetailModal';
 import { RoleBadge } from './RoleBadge';
 import { FeeUnpaidWalletIcon } from './FeeUnpaidWalletIcon';
@@ -716,7 +717,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
       {/* 会費の設定（全体設定）。選択メンバーへの一括操作とは無関係なので別ダイアログにした */}
       {showFeeSettingsModal && (
         <Dialog open={showFeeSettingsModal} onOpenChange={setShowFeeSettingsModal}>
-          <DialogContent className="max-w-sm bg-[#F5F1E8]">
+          <DialogContent className="max-w-sm bg-[#F5F1E8] max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-[#3D3D4E]">{t.feePriceSetting}</DialogTitle>
             </DialogHeader>
@@ -736,6 +737,7 @@ export function AdminMembers({ language, approvedMembers, pendingUsers, isLoadin
                 <Button variant="ghost" onClick={() => setShowFeeSettingsModal(false)} className="text-[#3D3D4E] hover:bg-[#EEEBE3]">{t.close}</Button>
                 <Button onClick={() => void handleSaveFeeSettings()} className="bg-[#49B1E4] hover:bg-[#3A9FD3] text-white">{t.applyPriceSetting}</Button>
               </div>
+              <FeeSettingsHistory language={language} />
             </div>
           </DialogContent>
         </Dialog>

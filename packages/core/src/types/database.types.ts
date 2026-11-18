@@ -209,6 +209,21 @@ export interface DbFeeSettings {
   updated_at: string;
 }
 
+export interface DbFeeSettingsHistory {
+  [key: string]: unknown;
+  id: number;
+  changed_at: string;
+  action: 'baseline' | 'insert' | 'update' | 'delete';
+  changed_by: string | null;
+  changed_by_auth_id: string | null;
+  previous_annual_fee: number | null;
+  previous_admission_fee: number | null;
+  previous_currency: string | null;
+  annual_fee: number | null;
+  admission_fee: number | null;
+  currency: string | null;
+}
+
 export interface DbMessage {
   // Supabase JS v2 GenericTable の互換性確保のため（Record<string, unknown> 前提）
   [key: string]: unknown;
@@ -509,6 +524,12 @@ export interface Database {
         Insert: Omit<DbUserRoleHistory, 'id' | 'created_at' | 'source'> & { source?: 'auto' | 'manual' };
         Update: never;
         Relationships: [];
+      };
+      fee_settings_history: {
+        Row: DbFeeSettingsHistory;
+        Insert: never;
+        Update: never;
+        Relationships: [{ foreignKeyName: 'fee_settings_history_changed_by_fkey'; columns: ['changed_by']; isOneToOne: false; referencedRelation: 'users'; referencedColumns: ['id'] }];
       };
       fee_settings: {
         Row: DbFeeSettings;

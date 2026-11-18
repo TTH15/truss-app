@@ -71,6 +71,7 @@ export * from "./db/queries/board";
 export * from "./db/queries/events";
 export * from "./db/queries/events-participation";
 export * from "./db/queries/fee-settings";
+export * from "./db/queries/fee-settings-history";
 export * from "./db/queries/gallery";
 export * from "./db/queries/messages";
 export * from "./db/queries/notifications";
