@@ -635,6 +635,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await fetchUsers(true);
     } catch (error) {
       console.error('Error confirming fee payment:', error);
+      throw error;
     }
   };
 

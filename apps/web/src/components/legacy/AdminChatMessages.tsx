@@ -560,8 +560,8 @@ export function AdminChatMessages({ language, messageThreads, onUpdateMessageThr
           language={language}
           user={detailMember}
           isSelf={currentAdmin?.id === detailMember.id}
-          onConfirmFeePayment={(isRenewal) => {
-            void confirmFeePayment(detailMember.id, isRenewal);
+          onConfirmFeePayment={async (isRenewal) => {
+            await confirmFeePayment(detailMember.id, isRenewal);
             // 一覧の再取得を待たずに表示へ反映する（役職も 035 のトリガーで member に上がる）
             setDetailMember({ ...detailMember, feePaid: true, role: detailMember.role === 'non_member' ? 'member' : detailMember.role });
           }}

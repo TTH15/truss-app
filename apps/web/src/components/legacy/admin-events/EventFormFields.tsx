@@ -128,12 +128,22 @@ export function EventFormFields({
         <div>
           <label className={LABEL_CLASS}>{t.lineGroupLink}</label>
           <Input
+            aria-label={t.lineGroupLink}
             value={values.lineGroupUrl}
             onChange={(e) => set('lineGroupUrl', e.target.value)}
             placeholder={t.lineGroupPlaceholder}
             className={INPUT_CLASS}
           />
-          <p className="text-[#6A7282] text-xs mt-2">{t.lineGroupNote}</p>
+        </div>
+        <div>
+          <label className={LABEL_CLASS}>{t.instagramGroupLink}</label>
+          <Input
+            aria-label={t.instagramGroupLink}
+            value={values.instagramGroupUrl || ''}
+            onChange={(e) => set('instagramGroupUrl', e.target.value)}
+            placeholder={t.instagramGroupPlaceholder}
+            className={INPUT_CLASS}
+          />
         </div>
 
         {/* 最大参加者数 */}

@@ -263,6 +263,8 @@ export function AdminEvents({
       }
       setShowSaveConfirm(false);
       handleCloseForm();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (language === 'ja' ? '保存に失敗しました' : 'Failed to save'));
     } finally {
       saveInFlightRef.current = false;
       setIsSavingEvent(false);

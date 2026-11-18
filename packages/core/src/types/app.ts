@@ -86,6 +86,7 @@ export interface Event {
   status: "upcoming" | "past";
   photos?: number;
   lineGroupLink?: string;
+  instagramGroupLink?: string;
   lineGroupUrl?: string;
   shareToken?: string;
   participants?: Array<{ id: string; name: string; email: string; attended?: boolean; paid?: boolean }>;

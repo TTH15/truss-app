@@ -1,4 +1,4 @@
-import { DEFAULT_EVENT_ICON_KEY } from '@truss/core';
+import { DEFAULT_EVENT_ICON_KEY, normalizeEventChatLink, parseEventChatLink } from '@truss/core';
 import type { AdminEvent, EventFormValues } from './types';
 
 export const DEFAULT_EVENT_COLOR = '#49B1E4';
@@ -64,6 +64,7 @@ export function getEmptyEventForm(date: string = ''): EventFormValues {
     participationFee: '0',
     maxParticipants: '',
     lineGroupUrl: '',
+    instagramGroupUrl: '',
     image: null,
     eventColor: DEFAULT_EVENT_COLOR,
     eventIconKey: DEFAULT_EVENT_ICON_KEY,
@@ -73,6 +74,8 @@ export function getEmptyEventForm(date: string = ''): EventFormValues {
 /** 既存イベントを編集フォームの値に変換する（詳細を開く・編集する・下書きを復元するのいずれからも使う） */
 export function eventToFormValues(event: AdminEvent): EventFormValues {
   const { startTime, endTime } = parseEventTime(event);
+  const legacyLink = event?.lineGroupLink || event?.lineGroupUrl || '';
+  const legacyInstagram = parseEventChatLink(legacyLink)?.service === 'instagram';
   return {
     titleJa: getEventText(event, 'title', 'ja'),
     titleEn: getEventText(event, 'title', 'en'),
@@ -86,7 +89,8 @@ export function eventToFormValues(event: AdminEvent): EventFormValues {
     googleMapUrl: event?.googleMapUrl || '',
     participationFee: String(event?.participationFee ?? 0),
     maxParticipants: String(event?.maxParticipants || ''),
-    lineGroupUrl: event?.lineGroupLink || event?.lineGroupUrl || '',
+    lineGroupUrl: legacyInstagram ? '' : legacyLink,
+    instagramGroupUrl: event?.instagramGroupLink || (legacyInstagram ? legacyLink : ''),
     image: event?.image || null,
     eventColor: event?.eventColor || DEFAULT_EVENT_COLOR,
     eventIconKey: event?.eventIconKey || event?.event_icon || DEFAULT_EVENT_ICON_KEY,
@@ -95,10 +99,10 @@ export function eventToFormValues(event: AdminEvent): EventFormValues {
 
 /**
  * 既存イベントを別の日付へ複製するときのフォーム値。
- * LINEグループ招待リンクだけは日付ごとに別物なので引き継がない。
+ * チャット招待リンクは日付ごとに別物なので引き継がない。
  */
 export function importedEventToFormValues(source: AdminEvent, date: string): EventFormValues {
-  return { ...eventToFormValues(source), date, lineGroupUrl: '' };
+  return { ...eventToFormValues(source), date, lineGroupUrl: '', instagramGroupUrl: '' };
 }
 
 /** フォームの共通部分（作成・更新で同じ列） */
@@ -118,7 +122,8 @@ function toBasePayload(values: EventFormValues) {
     image: values.image || undefined,
     eventColor: values.eventColor || DEFAULT_EVENT_COLOR,
     eventIconKey: values.eventIconKey || DEFAULT_EVENT_ICON_KEY,
-    lineGroupLink: values.lineGroupUrl || undefined,
+    lineGroupLink: normalizeEventChatLink(values.lineGroupUrl, 'line'),
+    instagramGroupLink: normalizeEventChatLink(values.instagramGroupUrl, 'instagram'),
   };
 }
 

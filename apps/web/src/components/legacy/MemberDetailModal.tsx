@@ -21,6 +21,8 @@ import {
 import type { DbError } from '@truss/core';
 import { RoleBadge } from './RoleBadge';
 import { useEffect, useState } from 'react';
+import { useFeeSettings } from '../../lib/use-fee-settings';
+import { membershipFeeTotal } from '@truss/core';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -33,7 +35,7 @@ interface MemberDetailModalProps {
   onApprove?: () => void;
   onReject?: () => void;
   onDelete?: () => void;
-  onConfirmFeePayment?: (isRenewal: boolean) => void;
+  onConfirmFeePayment?: (isRenewal: boolean) => void | Promise<void>;
   /** 役職の変更。成否をモーダル側で案内するため、結果を返すこと */
   onSetRole?: (role: UserRole) => Promise<{ error: DbError | null }>;
   /** 引き継ぎ（前任降格 + 後任昇格）が完了したとき。親が保持する表示用 user の更新に使う */
@@ -49,7 +51,7 @@ type TransferableRole = (typeof TRANSFERABLE_ROLES)[number];
 const HISTORY_ROLES: UserRole[] = ['officer', 'vice_president', 'president', 'advisor'];
 
 const translations = {
-  ja: { applicationDate: '申請日', nickname: 'ニックネーム', id: 'ID', email: 'メールアドレス', phone: '電話番号', studentNumber: '学生番号', major: '学部学科', category: '区分', grade: '学年', birthCountry: '生まれた国', languages: '話せる言語', approve: '承認する', reject: '拒否する', delete: '削除', confirmDelete: '本当にこのメンバーを削除しますか？', confirmDeleteMessage: 'この操作は取り消せません。', cancel: 'キャンセル', japanese: '日本人学生・国内学生', regularInternational: '正規留学生', exchange: '交換留学生', feeStatus: '会費状況', feePaid: '支払い済み', feeUnpaid: '未払い', confirmFeePayment: '支払い確認', renewal: '継続会員', newMember: '新規会員', renewalFee: '¥2,000（年会費のみ）', newMemberFee: '¥2,500（入会金+年会費）', membershipYear: '会員年度', confirmAsRenewal: '継続として確認（¥2,000）', confirmAsNew: '新規として確認（¥2,500）', setAsRenewal: '継続会員に設定', setAsNew: '新規会員に設定', memberTypeHint: '※3/31までに登録完了した会員は「継続」扱い', adminFlag: '運営権限', adminFlagOn: '運営権限あり', adminFlagOff: '運営権限なし', adminFlagHint: '運営権限は役職に連動します。「部員」「非会員」以外の役職にすると、運営画面へのアクセス・会員の承認・通知の送信ができるようになります', roleSelfHint: '自分の役職は変更できません（誤って自分の運営権限を外してしまうのを防ぐため）', roleSeHint: 'SE はシステム管理用の役職です。ここからは変更できません', role: '役職', roleHint: '役職はプロフィールや名簿にバッジとして表示されます。「非会員／部員」は年会費の支払い状況に連動して自動で切り替わります。部員・非会員以外の役職には運営権限が付きます',
+  ja: { applicationDate: '申請日', nickname: 'ニックネーム', id: 'ID', email: 'メールアドレス', phone: '電話番号', studentNumber: '学生番号', major: '学部学科', category: '区分', grade: '学年', birthCountry: '生まれた国', languages: '話せる言語', approve: '承認する', reject: '拒否する', delete: '削除', confirmDelete: '本当にこのメンバーを削除しますか？', confirmDeleteMessage: 'この操作は取り消せません。', cancel: 'キャンセル', japanese: '日本人学生・国内学生', regularInternational: '正規留学生', exchange: '交換留学生', feeStatus: '会費状況', feePaid: '支払い済み', feeUnpaid: '未払い', confirmFeePayment: '支払い確認', renewal: '継続会員', newMember: '新規会員', membershipYear: '会員年度', setAsRenewal: '継続会員に設定', setAsNew: '新規会員に設定', memberTypeHint: '※3/31までに登録完了した会員は「継続」扱い', adminFlag: '運営権限', adminFlagOn: '運営権限あり', adminFlagOff: '運営権限なし', adminFlagHint: '運営権限は役職に連動します。「部員」「非会員」以外の役職にすると、運営画面へのアクセス・会員の承認・通知の送信ができるようになります', roleSelfHint: '自分の役職は変更できません（誤って自分の運営権限を外してしまうのを防ぐため）', roleSeHint: 'SE はシステム管理用の役職です。ここからは変更できません', role: '役職', roleHint: '役職はプロフィールや名簿にバッジとして表示されます。「非会員／部員」は年会費の支払い状況に連動して自動で切り替わります。部員・非会員以外の役職には運営権限が付きます',
     transferTitle: '役職の引き継ぎ', transferMessage: (roleLabel: string, holderName: string, successorName: string) => `${roleLabel}は現在 ${holderName} さんです。${successorName} さんに引き継ぎますか？`, predecessorNewRole: '前任の引き継ぎ後の役職', transferConfirm: '引き継ぐ', transferring: '引き継ぎ中...', transferDone: '役職を引き継ぎました', transferFailed: '引き継ぎに失敗しました',
     transferSelfWarning: 'この引き継ぎであなた自身が「部員」に降格し、運営画面に入れなくなります。運営権限を残すなら下の「前任の引き継ぎ後の役職」で「役職者」を選んでください',
     transferNotHolderTitle: '引き継ぎを実行できません',
@@ -72,7 +74,7 @@ const translations = {
       detailLabel: '詳細',
     },
     roleHistory: '役職履歴', roleHistoryEmpty: '記録はまだありません', roleHistoryCurrent: '在任中', roleHistoryAuto: '自動記録', addHistory: '過去の役職を記録', historyRole: '役職', historyStart: '開始日', historyEnd: '終了日（任意）', historyNote: 'メモ（任意）', historyNotePlaceholder: '2024年度 など', historyAdd: '登録する', historyAdded: '役職履歴を登録しました', historyAddFailed: '登録に失敗しました', historyNeedsFields: '役職と開始日を入力してください', historyDeleted: '履歴を削除しました', historyDeleteFailed: '履歴の削除に失敗しました' },
-  en: { applicationDate: 'Application Date', nickname: 'Nickname', id: 'ID', email: 'Email', phone: 'Phone Number', studentNumber: 'Student Number', major: 'Major', category: 'Category', grade: 'Grade', birthCountry: 'Birth Country', languages: 'Languages', approve: 'Approve', reject: 'Reject', delete: 'Delete', confirmDelete: 'Are you sure you want to delete this member?', confirmDeleteMessage: 'This action cannot be undone.', cancel: 'Cancel', japanese: 'Japanese Student', regularInternational: 'Regular International', exchange: 'Exchange Student', feeStatus: 'Fee Status', feePaid: 'Paid', feeUnpaid: 'Unpaid', confirmFeePayment: 'Confirm Payment', renewal: 'Renewal', newMember: 'New Member', renewalFee: '¥2,000 (Annual fee only)', newMemberFee: '¥2,500 (Entry + Annual)', membershipYear: 'Membership Year', confirmAsRenewal: 'Confirm as Renewal (¥2,000)', confirmAsNew: 'Confirm as New (¥2,500)', setAsRenewal: 'Set as Renewal', setAsNew: 'Set as New Member', memberTypeHint: '* Members registered by 3/31 are treated as "Renewal"', adminFlag: 'Admin access', adminFlagOn: 'Has admin access', adminFlagOff: 'No admin access', adminFlagHint: 'Admin access follows the role. Any role other than Member / Non-member grants access to the admin panel, member approval, and notifications.', roleSelfHint: 'You cannot change your own role (prevents accidentally removing your own admin access).', roleSeHint: 'SE is a system-administration role and cannot be changed here.', role: 'Role', roleHint: 'Shown as a badge on profiles and the member list. Non-member and Member follow the annual fee status automatically. Roles above Member also grant admin access',
+  en: { applicationDate: 'Application Date', nickname: 'Nickname', id: 'ID', email: 'Email', phone: 'Phone Number', studentNumber: 'Student Number', major: 'Major', category: 'Category', grade: 'Grade', birthCountry: 'Birth Country', languages: 'Languages', approve: 'Approve', reject: 'Reject', delete: 'Delete', confirmDelete: 'Are you sure you want to delete this member?', confirmDeleteMessage: 'This action cannot be undone.', cancel: 'Cancel', japanese: 'Japanese Student', regularInternational: 'Regular International', exchange: 'Exchange Student', feeStatus: 'Fee Status', feePaid: 'Paid', feeUnpaid: 'Unpaid', confirmFeePayment: 'Confirm Payment', renewal: 'Renewal', newMember: 'New Member', membershipYear: 'Membership Year', setAsRenewal: 'Set as Renewal', setAsNew: 'Set as New Member', memberTypeHint: '* Members registered by 3/31 are treated as "Renewal"', adminFlag: 'Admin access', adminFlagOn: 'Has admin access', adminFlagOff: 'No admin access', adminFlagHint: 'Admin access follows the role. Any role other than Member / Non-member grants access to the admin panel, member approval, and notifications.', roleSelfHint: 'You cannot change your own role (prevents accidentally removing your own admin access).', roleSeHint: 'SE is a system-administration role and cannot be changed here.', role: 'Role', roleHint: 'Shown as a badge on profiles and the member list. Non-member and Member follow the annual fee status automatically. Roles above Member also grant admin access',
     transferTitle: 'Transfer Role', transferMessage: (roleLabel: string, holderName: string, successorName: string) => `${holderName} currently holds the ${roleLabel} role. Transfer it to ${successorName}?`, predecessorNewRole: "Predecessor's new role", transferConfirm: 'Transfer', transferring: 'Transferring...', transferDone: 'Role transferred', transferFailed: 'Failed to transfer role',
     transferSelfWarning: 'This transfer demotes you to Member and you will lose access to the admin panel. To keep admin access, pick Officer under "Predecessor\'s new role" below.',
     transferNotHolderTitle: 'Cannot start the transfer',
@@ -129,6 +131,8 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
   const { user: currentAdmin } = useAuth();
   const currentAdminId = currentAdmin?.id;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { settings: feeSettings, loading: feeLoading, error: feeError, refresh: refreshFees } = useFeeSettings(isOpen && !isPending);
+  const [confirmingFee, setConfirmingFee] = useState(false);
   // 引き継ぎ確認（1人制約のある役職を、現在の保持者がいる状態で選んだとき）
   const [pendingTransfer, setPendingTransfer] = useState<{ role: TransferableRole; holderName: string } | null>(null);
   const [predecessorNewRole, setPredecessorNewRole] = useState<'member' | 'officer'>('member');
@@ -163,7 +167,7 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
 
   const isFeePaid = !!user.feePaid;
   const isRenewal = !!user.isRenewal;
-  const feeAmountLabel = isRenewal ? t.renewalFee : t.newMemberFee;
+  const feeAmountLabel = feeSettings && !feeLoading ? `¥${membershipFeeTotal(feeSettings, isRenewal).toLocaleString()} (${isRenewal ? (language === 'ja' ? '会費のみ' : 'Membership fee only') : (language === 'ja' ? '入会金＋会費' : 'Entry + Membership fee')})` : (language === 'ja' ? '会費を確認中…' : 'Loading membership fees…');
   const feeBadgeClass = isFeePaid
     ? 'bg-[#dcfce7] text-[#166534]'
     : 'bg-[#fee2e2] text-[#991b1b]';
@@ -432,13 +436,20 @@ export function MemberDetailModal({ isOpen, onClose, user, language, isPending =
                 </div>
               </div>
               <p className="text-sm text-[#3D3D4E]">
-                {feeAmountLabel}
+                {feeError ? <Button variant="outline" onClick={() => void refreshFees()}>{language === 'ja' ? '会費を再取得' : 'Retry loading fees'}</Button> : feeAmountLabel}
               </p>
 
               {onConfirmFeePayment && (
                 <div className="pt-1">
                   <Button
-                    onClick={() => onConfirmFeePayment(Boolean(user.isRenewal))}
+                    disabled={!feeSettings || feeLoading || confirmingFee}
+                    onClick={async () => {
+                      if (confirmingFee) return;
+                      setConfirmingFee(true);
+                      try { await onConfirmFeePayment(Boolean(user.isRenewal)); }
+                      catch { toast.error(language === 'ja' ? '支払い確認に失敗しました' : 'Failed to confirm payment'); }
+                      finally { setConfirmingFee(false); }
+                    }}
                     className="w-full bg-[#49B1E4] hover:bg-[#3A9FD3] text-white h-9"
                   >
                     {t.confirmFeePayment}

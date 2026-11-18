@@ -30,7 +30,8 @@ export async function insertEventRow(
     tags_friends_can_meet: eventData.tags.friendsCanMeet,
     tags_photo_contest: eventData.tags.photoContest,
     status: eventData.status,
-    line_group_link: eventData.lineGroupLink ?? null,
+    line_group_link: eventData.lineGroupLink?.trim() || null,
+    ...(eventData.instagramGroupLink ? { instagram_group_link: eventData.instagramGroupLink.trim() } : {}),
   });
   return { error: error ? new Error(error.message) : null };
 }
@@ -64,7 +65,10 @@ export function buildEventUpdatePatch(
   }
   if (updates.status !== undefined) dbUpdates.status = updates.status;
   if (updates.lineGroupLink !== undefined) {
-    dbUpdates.line_group_link = updates.lineGroupLink;
+    dbUpdates.line_group_link = updates.lineGroupLink.trim() || null;
+  }
+  if (updates.instagramGroupLink !== undefined) {
+    dbUpdates.instagram_group_link = updates.instagramGroupLink.trim() || null;
   }
   return dbUpdates;
 }

@@ -116,6 +116,7 @@ export interface DbEvent {
   status: EventStatus;
   photos_count: number;
   line_group_link: string | null;
+  instagram_group_link?: string | null;
   share_token: string;
   /** Font Awesome キー（例: calendar, sakura） */
   event_icon: string | null;
