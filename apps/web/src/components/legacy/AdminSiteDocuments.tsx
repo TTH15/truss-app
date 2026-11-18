@@ -317,7 +317,7 @@ export function AdminSiteDocuments({ language, user, onAnnounce, documentId, emb
               {formatDateTime(doc.updatedAt)}
             </span>
           )}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
             <Button
               variant="outline"
               size="sm"
