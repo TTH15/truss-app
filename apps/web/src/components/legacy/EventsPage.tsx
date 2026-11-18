@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useId, useState, useRef, useEffect, useMemo } from 'react';
 import { recordEventViewRow } from '@truss/core';
 import { Button } from '../ui/button';
 import { Heart, Users, Calendar, Camera, MapPin, Clock, MessageCircle, ExternalLink, Share2 } from '../member/icons';
@@ -34,12 +34,13 @@ interface EventsPageProps {
 }
 
 const translations = {
-  ja: { title: 'イベント', viewPhotos: '写真を見る', attend: '参加する', registered: '申し込み済み', likes: 'いいね', participants: '参加者', participationFee: '参加費', registrationComplete: '参加登録完了', registrationCompleteMessage: 'イベントへの参加登録が完了しました！', photoRefusal: '顔が写っている写真のアップロードを拒否する。', close: '閉じる', confirmRegistration: '参加登録', confirmRegistrationMessage: '以下の内容を確認して、参加登録してください。', registerButton: '参加する', eventDetails: 'イベント詳細', description: '説明', noDescription: '説明はありません', tapIconHint: '日付のイベントアイコンをタップして詳細を表示できます。' },
-  en: { title: 'Events', viewPhotos: 'View Photos', attend: 'Attend', registered: 'Registered', likes: 'Likes', participants: 'Participants', participationFee: 'Participation fee', registrationComplete: 'Registration Complete', registrationCompleteMessage: 'Your event registration is complete!', photoRefusal: 'I refuse to have photos of my face uploaded.', close: 'Close', confirmRegistration: 'Event Registration', confirmRegistrationMessage: 'Please confirm the following and register.', registerButton: 'Register', eventDetails: 'Event Details', description: 'Description', noDescription: 'No description available', tapIconHint: 'Tap an event icon on the calendar to see details.' },
+  ja: { title: 'イベント', viewPhotos: '写真を見る', attend: '参加する', registered: '申し込み済み', likes: 'いいね', participants: '参加者', participationFee: '参加費', registrationComplete: '参加登録完了', photoRefusal: '顔が写っている写真のアップロードを拒否する。', close: '閉じる', confirmRegistration: '参加登録', confirmRegistrationMessage: '以下の内容を確認して、参加登録してください。', registerButton: '参加する', eventDetails: 'イベント詳細', description: '説明', noDescription: '説明はありません', tapIconHint: '日付のイベントアイコンをタップして詳細を表示できます。' },
+  en: { title: 'Events', viewPhotos: 'View Photos', attend: 'Attend', registered: 'Registered', likes: 'Likes', participants: 'Participants', participationFee: 'Participation fee', registrationComplete: 'Registration Complete', photoRefusal: 'I refuse to have photos of my face uploaded.', close: 'Close', confirmRegistration: 'Event Registration', confirmRegistrationMessage: 'Please confirm the following and register.', registerButton: 'Register', eventDetails: 'Event Details', description: 'Description', noDescription: 'No description available', tapIconHint: 'Tap an event icon on the calendar to see details.' },
 };
 
 export function EventsPage({ language, events, attendingEvents, likedEvents, onToggleAttending, onToggleLike, highlightEventId, openEventId, onOpenEventHandled, onAddEventParticipant, user }: EventsPageProps) {
   const t = translations[language];
+  const registrationDescriptionId = useId();
   const { eventParticipants } = useData();
   const [selectedEventSnapshot, setSelectedEvent] = useState<Event | null>(null);
   const selectedEvent = selectedEventSnapshot ? events.find((event) => event.id === selectedEventSnapshot.id) ?? selectedEventSnapshot : null;
@@ -485,10 +486,10 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
       </Dialog>
 
       <Dialog open={lineGroupDialogOpen} onOpenChange={(open) => { if (!open) handleLineDialogClose(); }}>
-        <DialogContent className="sm:max-w-[425px] max-h-[calc(100dvh-2rem)] overflow-y-auto">
+        <DialogContent aria-describedby={registrationStep === 'confirm' ? registrationDescriptionId : undefined} className="sm:max-w-[425px] max-h-[calc(100dvh-2rem)] overflow-y-auto">
           {registrationStep === 'confirm' ? (
             <>
-              <DialogHeader><DialogTitle className="flex items-center gap-2"><Calendar className="w-5 h-5 text-[#49B1E4]" />{t.confirmRegistration}</DialogTitle><DialogDescription>{t.confirmRegistrationMessage}</DialogDescription></DialogHeader>
+              <DialogHeader><DialogTitle className="flex items-center gap-2"><Calendar className="w-5 h-5 text-[#49B1E4]" />{t.confirmRegistration}</DialogTitle><DialogDescription id={registrationDescriptionId}>{t.confirmRegistrationMessage}</DialogDescription></DialogHeader>
               <div className="space-y-4 py-2">
                 {selectedEvent && <div className="bg-[#F5F1E8] p-4 rounded-lg"><h3 className="font-medium text-[#3D3D4E] mb-1">{language === 'ja' ? selectedEvent.title : (selectedEvent.titleEn || selectedEvent.title)}</h3><p className="text-sm text-[#6B6B7A]">{formatDisplayDate(selectedEvent.date, language)} {selectedEvent.time}</p><p className="text-sm text-[#3D3D4E] mt-1">¥{Number(selectedEvent.participationFee ?? 0).toLocaleString()} ({t.participationFee})</p></div>}
                 <div className="flex items-start space-x-3 bg-yellow-50 p-3 rounded-lg border border-yellow-200"><Checkbox id="photoRefusal" checked={photoRefusal} onCheckedChange={(checked) => setPhotoRefusal(checked === true)} className="mt-0.5" /><label htmlFor="photoRefusal" className="text-sm text-[#3D3D4E] leading-relaxed cursor-pointer">{t.photoRefusal}</label></div>
@@ -498,7 +499,7 @@ export function EventsPage({ language, events, attendingEvents, likedEvents, onT
             </>
           ) : (
             <>
-              <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageCircle className="w-5 h-5 text-[#49B1E4]" />{t.registrationComplete}</DialogTitle><DialogDescription>{t.registrationCompleteMessage}</DialogDescription></DialogHeader>
+              <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageCircle className="w-5 h-5 text-[#49B1E4]" />{t.registrationComplete}</DialogTitle></DialogHeader>
               <div className="space-y-4 py-2">
                 {/* Journey Stamp の予告は、電子スタンプ（ハード）の方針が決まるまで非表示 */}
                 {selectedEvent && <EventChatLinks event={selectedEvent} language={language} />}

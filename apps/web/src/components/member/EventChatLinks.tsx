@@ -31,11 +31,11 @@ export function EventChatLinks({ event, language }: { event: Event; language: La
         </Button>
         <Button variant="outline" onClick={() => void copy(link.url)} aria-label={ja ? `${name}の招待リンクをコピー` : `Copy ${name} invitation link`}><FontAwesomeIcon icon={faCopy} /></Button>
       </div>;
-    }) : <p className="text-sm text-muted-foreground">{ja ? '招待リンクは準備中です。運営にお問い合わせください。' : 'Invitation links are not available yet. Please contact the staff.'}</p>}
+    }) : <p className="text-sm text-muted-foreground text-balance">{ja ? '招待リンクは準備中です。運営にお問い合わせください。' : 'Invitation links are not available yet. Please contact the staff.'}</p>}
     {manualUrl && <div className="space-y-1">
-      <p role="status" className="text-sm">{ja ? 'コピーできませんでした。リンクを選択してコピーしてください。' : 'Could not copy. Select and copy the link below.'}</p>
+      <p role="status" className="text-sm text-balance">{ja ? 'コピーできませんでした。リンクを選択してコピーしてください。' : 'Could not copy. Select and copy the link below.'}</p>
       <Input aria-label={ja ? 'コピー用の招待リンク' : 'Invitation link to copy'} value={manualUrl} readOnly onFocus={(e) => e.currentTarget.select()} />
     </div>}
-    {links.length > 0 && <p className="text-xs text-muted-foreground">{ja ? '開けない場合は、招待リンクをコピーしてSafari・Chromeで開いてください。' : 'If the link does not open, copy it and open it in Safari or Chrome.'}</p>}
+    {links.length > 0 && <p className="text-xs text-muted-foreground text-balance">{ja ? '開けない場合は、招待リンクをコピーしてSafari・Chromeで開いてください。' : 'If the link does not open, copy it and open it in Safari or Chrome.'}</p>}
   </section>;
 }
