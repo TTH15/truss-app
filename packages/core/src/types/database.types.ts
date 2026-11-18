@@ -538,6 +538,18 @@ export interface Database {
         Update: DbFeeSettingsUpdate;
         Relationships: [];
       };
+      admin_chat_attention_preferences: {
+        Row: { [key: string]: unknown; admin_user_id: string; show_reply_marks: boolean; highlight_after_days: number; reminder_enabled: boolean; remind_after_days: number };
+        Insert: { admin_user_id: string; show_reply_marks: boolean; highlight_after_days: number; reminder_enabled: boolean; remind_after_days: number };
+        Update: { show_reply_marks?: boolean; highlight_after_days?: number; reminder_enabled?: boolean; remind_after_days?: number };
+        Relationships: [];
+      };
+      admin_chat_attention_dismissals: {
+        Row: { [key: string]: unknown; admin_user_id: string; thread_user_id: string; message_id: number };
+        Insert: { admin_user_id: string; thread_user_id: string; message_id: number };
+        Update: { message_id?: number };
+        Relationships: [];
+      };
       messages: {
         Row: DbMessage;
         Insert: DbMessageInsert;

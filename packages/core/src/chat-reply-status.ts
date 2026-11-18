@@ -23,3 +23,8 @@ export function needsChatReply(messages: Message[]): boolean {
   }
   return latest !== undefined && !latest.isAdmin;
 }
+
+export function unrepliedDays(receivedAt: string, now = Date.now()): number {
+  const time = Date.parse(receivedAt);
+  return Number.isFinite(time) ? Math.max(0, Math.floor((now - time) / 86400000)) : 0;
+}

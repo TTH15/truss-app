@@ -92,3 +92,5 @@ export * from "./db/mutations/push-subscriptions";
 export * from "./db/mutations/role-history";
 export * from "./db/mutations/site-documents";
 export * from "./db/mutations/user-tour-announcement";
+
+export * from "./db/queries/admin-chat-attention";
