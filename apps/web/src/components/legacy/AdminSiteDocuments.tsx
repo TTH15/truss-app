@@ -36,19 +36,21 @@ interface DocumentState {
 interface AdminSiteDocumentsProps {
   language: Language;
   user: User;
+  documentId?: SiteDocumentId;
+  embedded?: boolean;
   /** 「会員に告知する」チェック時に呼ばれる（既存の一斉通知経路に接続） */
   onAnnounce?: (docId: SiteDocumentId) => Promise<void>;
 }
 
 /**
- * 利用規約・プライバシーポリシーの閲覧・改定（運営画面の設定タブに組み込むインラインパネル）。
+ * 利用規約・プライバシーポリシーの閲覧・改定（設定モーダルと単独パネルで共用）。
  * - 条文（第N条 / N.）ごとに入力を分けて編集する。保存時に1つの文書に結合して site_documents へ
  * - 公開ページは ISR のため最大5分で反映される
  * - 保護文書は上位役職（代表・副代表・顧問・SE）のみ編集可（RLS でも強制。UI は閲覧のみに）
  * - 保存のたびに旧内容が改定履歴へ自動退避され、履歴からドラフトに復元できる
  */
-export function AdminSiteDocuments({ language, user, onAnnounce }: AdminSiteDocumentsProps) {
-  const [activeId, setActiveId] = useState<SiteDocumentId>('terms-of-service');
+export function AdminSiteDocuments({ language, user, onAnnounce, documentId, embedded = false }: AdminSiteDocumentsProps) {
+  const [activeId, setActiveId] = useState<SiteDocumentId>(documentId ?? 'terms-of-service');
   const [docs, setDocs] = useState<Partial<Record<SiteDocumentId, DocumentState>>>({});
   const [revisions, setRevisions] = useState<Partial<Record<SiteDocumentId, SiteDocumentRevision[]>>>({});
   const [saving, setSaving] = useState(false);
@@ -169,15 +171,15 @@ export function AdminSiteDocuments({ language, user, onAnnounce }: AdminSiteDocu
     new Date(iso).toLocaleString(language === 'ja' ? 'ja-JP' : 'en-US');
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 space-y-4">
+    <div className={embedded ? "space-y-4" : "bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 space-y-4"}>
       <p className="text-sm text-[#6B6B7A] leading-relaxed">
         {language === 'ja'
-          ? '保存すると公開ページ（最大5分で反映）に掲載され、旧版は履歴に残ります。条文ごとに編集できます（本文の行頭「1. 」は号、「(1) 」は小見出し、「・」は箇条書きになります）。'
-          : 'Saved content is published to the public pages (within 5 minutes); previous versions are kept in history. Edit article by article — in bodies, lines starting with "1. " become numbered clauses, "(1) " sub-headings, "・" bullets.'}
+          ? '保存すると公開ページに最大5分で反映されます。'
+          : 'Saved content is published within 5 minutes.'}
       </p>
 
       <div className="flex items-center gap-2 flex-wrap">
-        {DOCUMENT_IDS.map((id) => (
+        {!documentId && DOCUMENT_IDS.map((id) => (
           <Button
             key={id}
             size="sm"
@@ -222,8 +224,8 @@ export function AdminSiteDocuments({ language, user, onAnnounce }: AdminSiteDocu
           {(revisions[activeId] ?? []).length === 0 ? (
             <p className="p-4 text-sm text-[#6B6B7A]">
               {language === 'ja'
-                ? 'まだ改定履歴はありません（保存すると旧版がここに残ります）'
-                : 'No revision history yet (previous versions appear here after you save).'}
+                ? '改定履歴はまだありません'
+                : 'No revision history yet.'}
             </p>
           ) : (
             (revisions[activeId] ?? []).map((revision) => (

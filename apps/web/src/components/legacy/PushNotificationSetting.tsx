@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell, BellOff } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { toast } from 'sonner';
-import { savePushSubscriptionRow, deletePushSubscriptionRow, updateNotificationPrefsRow } from '@truss/core';
+import { savePushSubscriptionRow, deletePushSubscriptionRow, updateNotificationPrefsRow, queryPushSubscriptionExists } from '@truss/core';
 import { Checkbox } from '../ui/checkbox';
 import type { Language, User } from '@truss/core';
 import {
@@ -19,6 +19,9 @@ const translations = {
     enable: '通知をオンにする',
     disable: '通知をオフにする',
     working: '設定中...',
+    checking: '確認中...',
+    loadError: '通知設定を確認できませんでした',
+    retry: '再試行',
     enabled: 'この端末で通知を受け取ります',
     disabled: '通知をオフにしました',
     iosNeedsInstall:
@@ -33,6 +36,9 @@ const translations = {
     enable: 'Turn on notifications',
     disable: 'Turn off notifications',
     working: 'Working...',
+    checking: 'Checking...',
+    loadError: 'Could not check notification settings',
+    retry: 'Retry',
     enabled: 'This device will receive notifications',
     disabled: 'Notifications turned off',
     iosNeedsInstall:
@@ -52,15 +58,35 @@ export function PushNotificationSetting({
   user,
   language,
   variant = 'member',
+  embedded = false,
 }: {
   user: User;
   language: Language;
   /** admin: 運営画面用。説明文を運営向けにし、種類ごとの受信設定を隠す（運営向け通知は種類で絞らないため） */
   variant?: 'member' | 'admin';
+  embedded?: boolean;
 }) {
   const t = translations[language];
   const [busy, setBusy] = useState(false);
-  const [enabled, setEnabled] = useState(false);
+  const [status, setStatus] = useState<{ owner?: string; enabled?: boolean; error?: boolean }>({});
+  const [attempt, setAttempt] = useState(0);
+  const checking = status.owner !== user.id;
+  const enabled = !checking && status.enabled;
+  useEffect(() => {
+    if (!isPushSupported()) return;
+    let cancelled = false;
+    void Promise.resolve().then(async () => {
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        const subscription = await registration?.pushManager.getSubscription();
+        const active = Notification.permission === 'granted' && !!subscription && await queryPushSubscriptionExists(subscription.endpoint, user.id);
+        if (!cancelled) setStatus({ owner: user.id, enabled: active });
+      } catch {
+        if (!cancelled) setStatus({ owner: user.id, error: true });
+      }
+    });
+    return () => { cancelled = true; };
+  }, [user.id, attempt]);
   const [prefs, setPrefs] = useState({
     notifyMessage: user.notifyMessage ?? true,
     notifyEvent: user.notifyEvent ?? true,
@@ -77,7 +103,7 @@ export function PushNotificationSetting({
     }
   };
 
-  if (!isPushSupported()) return null;
+  if (!isPushSupported()) return embedded ? <p className="text-sm text-[#6B6B7A]">{t.unsupported}</p> : null;
 
   const handleEnable = async () => {
     // iOS はホーム画面に追加していないと購読自体ができない
@@ -100,7 +126,7 @@ export function PushNotificationSetting({
         userAgent: navigator.userAgent,
       });
       if (error) throw error;
-      setEnabled(true);
+      setStatus({ owner: user.id, enabled: true });
       toast.success(t.enabled);
     } catch {
       toast.error(t.failed);
@@ -113,8 +139,11 @@ export function PushNotificationSetting({
     setBusy(true);
     try {
       const endpoint = await unsubscribeFromPush();
-      if (endpoint) await deletePushSubscriptionRow(endpoint);
-      setEnabled(false);
+      if (endpoint) {
+        const { error } = await deletePushSubscriptionRow(endpoint);
+        if (error) throw error;
+      }
+      setStatus({ owner: user.id, enabled: false });
       toast.success(t.disabled);
     } catch {
       toast.error(t.failed);
@@ -123,12 +152,8 @@ export function PushNotificationSetting({
     }
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t.title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+  const content = (
+    <>
         {variant === 'admin' && <p className="text-sm text-[#6B6B7A]">
           {language === 'ja'
             ? '入会申請や会員からのメッセージを、この端末で受け取れます。'
@@ -156,18 +181,22 @@ export function PushNotificationSetting({
         </div>
         )}
 
-        {enabled ? (
-          <Button variant="outline" onClick={handleDisable} disabled={busy}>
+        {!checking && status.error ? <div role="alert" className="space-y-2 text-sm">
+          <p>{t.loadError}</p><Button variant="outline" onClick={() => { setStatus({}); setAttempt((v) => v + 1); }}>{t.retry}</Button>
+        </div> : enabled ? (
+          <Button variant="outline" onClick={handleDisable} disabled={busy || checking}>
             <BellOff className="w-4 h-4 mr-2" />
             {busy ? t.working : t.disable}
           </Button>
         ) : (
-          <Button className="bg-[#49B1E4] hover:bg-[#3A9FD3]" onClick={handleEnable} disabled={busy}>
+          <Button className="bg-[#49B1E4] hover:bg-[#3A9FD3]" onClick={handleEnable} disabled={busy || checking}>
             <Bell className="w-4 h-4 mr-2" />
-            {busy ? t.working : t.enable}
+            {checking ? t.checking : busy ? t.working : t.enable}
           </Button>
         )}
-      </CardContent>
-    </Card>
+    </>
+  );
+  return embedded ? <div className="space-y-4">{content}</div> : (
+    <Card><CardHeader><CardTitle>{t.title}</CardTitle></CardHeader><CardContent className="space-y-3">{content}</CardContent></Card>
   );
 }

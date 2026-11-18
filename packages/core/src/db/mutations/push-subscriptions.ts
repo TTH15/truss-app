@@ -43,11 +43,13 @@ export async function deletePushSubscriptionRow(
 }
 
 /** この端末で通知を受け取る設定になっているか（設定画面の表示用） */
-export async function queryPushSubscriptionExists(endpoint: string): Promise<boolean> {
-  const { data } = await supabase
+export async function queryPushSubscriptionExists(endpoint: string, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
     .from("push_subscriptions")
     .select("endpoint")
     .eq("endpoint", endpoint)
+    .eq("user_id", userId)
     .maybeSingle();
+  if (error) throw error;
   return Boolean(data);
 }
